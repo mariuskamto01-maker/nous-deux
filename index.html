@@ -757,7 +757,7 @@ function startPoll(){
     if(pg!=='pg-q'&&currentCat){
       checkAndNotify(s);
     }
-    // Notifier nouveaux messages chat
+    // Rafraichir messages chat sans toucher au textarea
     if(currentCat){
       const qk=currentCat.id+'_'+currentQi;
       refreshLiveChat(s, qk);
@@ -995,7 +995,9 @@ function renderLiveChat(s, qk){
       </div>
       <div style="padding:10px 14px 14px;display:flex;gap:8px;align-items:flex-end;border-top:1px solid var(--faint);margin-top:10px;">
         <textarea id="chat-input" rows="2" placeholder="${myLang==='fr'?'Ton message...':'Your message...'}" style="flex:1;font-size:13px;padding:10px 12px;border-radius:12px;resize:none;"
-          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMsg('${qk}');}"></textarea>
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMsg('${qk}');}"
+          onfocus="_chatFocused=true;"
+          onblur="_chatFocused=false;"></textarea>
         <button onclick="sendChatMsg('${qk}')" style="background:linear-gradient(135deg,var(--goldD),var(--gold));border:none;border-radius:12px;color:#12090A;font-weight:700;font-size:18px;cursor:pointer;padding:10px 14px;flex-shrink:0;align-self:flex-end;">➤</button>
       </div>
     </div>`;
@@ -1004,16 +1006,66 @@ function renderLiveChat(s, qk){
   setTimeout(()=>{const el=document.getElementById('chat-msgs');if(el)el.scrollTop=el.scrollHeight;},80);
 }
 
+let _chatFocused = false;
+
 function refreshLiveChat(s, qk){
   const chatZ = document.getElementById('chat-zone');
   if(!chatZ||!chatZ.querySelector('#chat-msgs'))return;
-  // Sauvegarder le texte en cours de frappe
-  const input = document.getElementById('chat-input');
-  const draft = input?.value||'';
-  renderLiveChat(s, qk);
-  // Restaurer le brouillon
-  const newInput = document.getElementById('chat-input');
-  if(newInput&&draft) newInput.value=draft;
+
+  const key = getChatKey(qk);
+  const msgs = s?.chat?.[key]||[];
+  const thRole = myRole==='p1'?'p2':'p1';
+  const thName = s?.[thRole]?.name||'?';
+  const catLabel = currentCat?.[myLang==='fr'?'fr':'en']||'';
+
+  // Notifier nouveaux messages sans re-rendre si on est en train de taper
+  const prevCount = _lastMsgCount[qk]||0;
+  if(msgs.length > prevCount){
+    for(let i=prevCount; i<msgs.length; i++){
+      const m=msgs[i];
+      if(m.role!==myRole){
+        sendNotif(
+          myLang==='fr'? thName+' vous a écrit !': thName+' wrote to you!',
+          (currentCat?.e||'')+' '+catLabel+' — "'+m.text.substring(0,60)+(m.text.length>60?'...':'"'),
+          '💬'
+        );
+      }
+    }
+    _lastMsgCount[qk]=msgs.length;
+    // Mettre à jour uniquement la zone des messages, pas le textarea
+    updateChatMsgsOnly(s, qk, msgs);
+  }
+}
+
+function updateChatMsgsOnly(s, qk, msgs){
+  const msgsEl = document.getElementById('chat-msgs');
+  if(!msgsEl) return;
+  if(!msgs||msgs.length===0) return;
+
+  msgsEl.innerHTML = msgs.map(m=>{
+    const isMe = m.role===myRole;
+    const nm = s?.[m.role]?.name||'?';
+    const lg = s?.[m.role]?.lang||'fr';
+    const col = m.role==='p1'?'var(--p1)':'var(--p2)';
+    const bg = m.role==='p1'?'#182A40':'#2E1810';
+    const bd = m.role==='p1'?'var(--p1b)':'var(--p2b)';
+    const time = new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    return '<div style="display:flex;flex-direction:'+(isMe?'row':'row-reverse')+';gap:8px;align-items:flex-end;">'
+      +'<div style="width:28px;height:28px;border-radius:50%;background:'+bg+';border:2px solid '+bd+';display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">👤</div>'
+      +'<div style="max-width:78%;background:'+bg+';border:1px solid '+bd+';border-radius:16px;border-bottom-'+(isMe?'left':'right')+'-radius:4px;padding:8px 12px;">'
+        +'<div style="font-size:10px;font-weight:700;color:'+col+';margin-bottom:4px;display:flex;align-items:center;gap:6px;">'
+          +nm+' <span class="lang-chip '+lg+'">'+(lg==='fr'?'🇫🇷':'🇬🇧')+'</span>'
+          +'<span style="font-size:9px;color:var(--muted);margin-left:auto;">'+time+'</span>'
+        +'</div>'
+        +'<div style="font-size:13px;line-height:1.6;color:var(--cream);">'+m.text+'</div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+
+  // Scroll to bottom seulement si pas en train de taper
+  if(!_chatFocused){
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
 }
 
 async function sendChatMsg(qk){
@@ -1027,6 +1079,7 @@ async function sendChatMsg(qk){
   s.chat[key] = s.chat[key]||[];
   s.chat[key].push({role:myRole,text,ts:Date.now()});
   await saveRoom(s);lastRoom=s;
+  _lastMsgCount[qk] = (s?.chat?.[getChatKey(qk)]||[]).length;
   renderLiveChat(s,qk);
 }
 
