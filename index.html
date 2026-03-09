@@ -478,7 +478,7 @@ function updateBadgesOnly(s){
     ...(settings.customQs.length>0?[{id:'custom'}]:[])];
 
   allCats.forEach(c=>{
-    const tile = document.querySelector(`.cat-tile[onclick*="'${c.id}'"]`);
+    const tile = document.querySelector(`.cat-tile[data-catid="${c.id}"]`);
     if(!tile) return;
     const badgeN = badges[c.id]||0;
     const prevAlert = tile.classList.contains('cat-tile-alert');
@@ -1269,7 +1269,7 @@ function renderCatList(s){
           ${cats.map(c=>{
             const qCount=getQsForCat(c.id).length;
             const badgeN=badges[c.id]||0;
-            return `<button class="cat-tile ${badgeN>0?'cat-tile-alert':''}" onclick="startCat('${c.id}')">
+            return `<button class="cat-tile ${badgeN>0?'cat-tile-alert':''}" data-catid="${c.id}" onclick="startCat('${c.id}')">
               <span class="cat-tile-emoji">
                 ${c.e}
                 ${badgeN>0?'<span class="cat-tile-dot"></span>':''}
@@ -1320,13 +1320,24 @@ function collapseGroup(id,animate=true){
 
 async function startCat(catId){
   clearBadge(catId);
-  currentCat = catId==='custom'
-    ? {id:'custom',e:'💬',fr:'Nos Questions',en:'Our Questions'}
-    : CATS.find(c=>c.id===catId);
+  if(catId==='custom'){
+    currentCat={id:'custom',e:'💬',fr:'Nos Questions',en:'Our Questions'};
+  } else {
+    currentCat = CATS.find(c=>c.id===catId)
+      || settings.customThemes.find(t=>t.id===catId)
+      || null;
+  }
+  if(!currentCat){console.warn('Cat not found:',catId);return;}
   currentQi=0;
   currentQs=getQsForCat(catId);
-  const s=await loadRoom(roomCode)||lastRoom;s.aiResult=null;await saveRoom(s);lastRoom=s;
-  renderQ();goPage('pg-q');
+  if(!currentQs.length){
+    alert(myLang==='fr'?'Ce thème na pas encore de questions.':'This theme has no questions yet.');
+    return;
+  }
+  const s=await loadRoom(roomCode)||lastRoom;
+  if(s){s.aiResult=null;await saveRoom(s);lastRoom=s;}
+  renderQ();
+  goPage('pg-q');
 }
 
 // ═══════════════════════════════════════
@@ -1334,7 +1345,12 @@ async function startCat(catId){
 // ═══════════════════════════════════════
 function renderQ(){
   const pair=currentQs[currentQi];
-  if(!pair) return;
+  if(!pair){console.warn('No pair for qi',currentQi,'in',currentQs);return;}
+  // Mettre à jour le header de la page cats aussi
+  const cname=document.getElementById('cat-me-name');
+  const clang=document.getElementById('cat-me-lang');
+  if(cname)cname.textContent=myName;
+  if(clang){clang.textContent=myLang==='fr'?'🇫🇷 FR':'🇬🇧 EN';clang.className='lang-chip '+myLang;}
   document.getElementById('q-emoji').textContent=currentCat.e;
   document.getElementById('q-catname').textContent=currentCat.fr+' / '+currentCat.en;
   document.getElementById('q-counter').textContent=(currentQi+1)+'/'+currentQs.length;
