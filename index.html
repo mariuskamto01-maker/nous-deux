@@ -29,15 +29,15 @@ h2{font-family:'Cormorant Garamond',serif;font-weight:400;font-size:26px;color:v
 .card{background:var(--d3);border:1px solid var(--faint);border-radius:16px;overflow:hidden;width:100%;margin-bottom:12px;}
 .card-body{padding:14px 16px 16px;}
 .card-gold{border-color:var(--goldD);}
-.code-box{background:var(--d2);border:2px solid var(--goldD);border-radius:18px;overflow:hidden;width:100%;margin-bottom:16px;text-align:center;}
-.code-big{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:600;color:var(--goldL);letter-spacing:0.25em;padding:8px 0 4px;}
-.code-label{font-size:11px;color:var(--muted);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:8px;}
-.status-row{display:flex;gap:8px;width:100%;margin-bottom:14px;}
+.code-box{background:var(--d2);border:2px solid var(--goldD);border-radius:18px;overflow:hidden;width:100%;margin-bottom:16px;}
+.code-big{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:600;color:var(--goldL);letter-spacing:0.25em;padding:8px 0 4px;text-align:center;}
+.code-label{font-size:11px;color:var(--muted);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:8px;text-align:center;}
+.status-row{display:flex;gap:8px;width:100%;margin-bottom:14px;align-items:center;}
 .status-card{flex:1;border-radius:12px;overflow:hidden;text-align:center;}
 .status-card.p1{background:var(--p1d);border:1.5px solid var(--p1b);}
 .status-card.p2{background:var(--p2d);border:1.5px solid var(--p2b);}
-.status-name{font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--cream);padding:6px 8px 3px;}
-.status-line{display:flex;align-items:center;justify-content:center;gap:5px;padding-bottom:8px;}
+.status-name{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--cream);padding:6px 8px 3px;}
+.status-line{display:flex;align-items:center;justify-content:center;gap:5px;padding-bottom:7px;}
 .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 .dot.on{background:var(--green);box-shadow:0 0 5px var(--green);}
 .dot.off{background:var(--muted);}
@@ -48,6 +48,7 @@ h2{font-family:'Cormorant Garamond',serif;font-weight:400;font-size:26px;color:v
 .btn{border:none;border-radius:12px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;padding:13px 18px;width:100%;transition:all 0.18s;}
 .btn-gold{background:linear-gradient(135deg,#6A4A10,var(--gold));color:#12090A;}
 .btn-ghost{background:transparent;border:1.5px solid var(--faint);color:var(--muted);}
+.btn-sm{padding:8px 14px;font-size:12px;width:auto;}
 .btn:disabled{background:var(--faint);color:var(--muted);cursor:not-allowed;opacity:0.5;}
 .lang-row{display:flex;gap:8px;}
 .lang-btn{flex:1;padding:10px;border-radius:11px;border:1.5px solid var(--faint);background:transparent;color:var(--muted);cursor:pointer;font-weight:700;font-size:13px;font-family:'DM Sans',sans-serif;transition:all 0.2s;}
@@ -79,7 +80,9 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
 .ai-lang-btn{padding:3px 10px;border:none;border-radius:99px;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif;background:transparent;color:var(--muted);transition:all 0.2s;}
 .ai-lang-btn.fr.active{background:var(--fr);color:#fff;}
 .ai-lang-btn.en.active{background:var(--en);color:#12090A;}
-.cat-btn{background:var(--d3);border:1.5px solid var(--faint);border-radius:13px;padding:0;display:flex;flex-direction:column;cursor:pointer;text-align:left;width:100%;margin-bottom:8px;position:relative;overflow:hidden;}.cat-btn-inner{display:flex;align-items:center;gap:10px;padding:10px 14px;width:100%;}
+/* CATEGORY BUTTONS */
+.cat-btn{background:var(--d3);border:1.5px solid var(--faint);border-radius:13px;padding:0;display:flex;flex-direction:column;cursor:pointer;text-align:left;width:100%;margin-bottom:8px;overflow:hidden;}
+.cat-btn-inner{display:flex;align-items:center;gap:12px;padding:12px 14px;width:100%;}
 .cat-fr{font-weight:700;font-size:15px;color:#7EB8F7;}
 .cat-en{font-size:12px;color:#E8C878;font-style:italic;margin-top:2px;}
 .prog-track{width:100%;height:2px;background:var(--faint);border-radius:99px;margin-bottom:12px;}
@@ -91,6 +94,16 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
 .insight-item{background:var(--d3);border:1px solid var(--faint);border-radius:13px;overflow:hidden;margin-bottom:12px;width:100%;}
 .insight-body{padding:13px 15px;}
 .q-pair-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:9px;}
+/* SETTINGS */
+.seg-row{display:flex;background:var(--d4);border:1px solid var(--faint);border-radius:12px;padding:3px;gap:3px;margin-bottom:4px;}
+.seg-btn{flex:1;padding:8px 4px;border:none;border-radius:9px;cursor:pointer;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;background:transparent;color:var(--muted);transition:all 0.2s;}
+.seg-btn.active{background:var(--gold);color:#12090A;}
+.custom-q-item{display:flex;align-items:center;gap:8px;background:var(--d4);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+.custom-q-text{flex:1;font-size:13px;color:var(--cream);line-height:1.5;}
+.del-btn{background:none;border:none;color:#E87070;cursor:pointer;font-size:16px;flex-shrink:0;padding:2px 6px;}
+.tab-row{display:flex;gap:0;border-bottom:1px solid var(--faint);margin-bottom:16px;}
+.tab-btn{flex:1;padding:10px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;border-bottom:2px solid transparent;transition:all 0.2s;}
+.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
 @media(max-width:380px){.q-pair-grid{grid-template-columns:1fr;}.q-bilingual{flex-direction:column;}.q-half.qfr{border-right:none;border-bottom:1px solid var(--faint);}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
@@ -101,7 +114,7 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
 </head>
 <body>
 
-<!-- ══ HOME ══ -->
+<!-- HOME -->
 <div id="pg-home" class="page active">
   <div class="banner"><canvas id="banner-home"></canvas></div>
   <div class="inner" style="padding-top:24px;display:flex;flex-direction:column;align-items:center;">
@@ -123,17 +136,18 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
           <div style="display:flex;gap:8px;"><span style="color:var(--gold);font-weight:700;font-size:12px;min-width:18px;">1.</span><span style="font-size:12px;color:var(--muted);line-height:1.6;">Créer une salle · Create a room</span></div>
           <div style="display:flex;gap:8px;"><span style="color:var(--gold);font-weight:700;font-size:12px;min-width:18px;">2.</span><span style="font-size:12px;color:var(--muted);line-height:1.6;">Partager le code par WhatsApp · Share the code</span></div>
           <div style="display:flex;gap:8px;"><span style="color:var(--gold);font-weight:700;font-size:12px;min-width:18px;">3.</span><span style="font-size:12px;color:var(--muted);line-height:1.6;">L'autre rejoint de chez soi · Other joins from home</span></div>
-          <div style="display:flex;gap:8px;"><span style="color:var(--gold);font-weight:700;font-size:12px;min-width:18px;">4.</span><span style="font-size:12px;color:var(--muted);line-height:1.6;">Chacun répond dans sa langue · Each answers in their language</span></div>
+          <div style="display:flex;gap:8px;"><span style="color:var(--gold);font-weight:700;font-size:12px;min-width:18px;">4.</span><span style="font-size:12px;color:var(--muted);line-height:1.6;">Répondez chacun dans votre langue · Each answers in their language</span></div>
           <div style="display:flex;gap:8px;"><span style="color:var(--gold);font-weight:700;font-size:12px;min-width:18px;">5.</span><span style="font-size:12px;color:var(--muted);line-height:1.6;">Révélation + analyse IA · Reveal + AI analysis</span></div>
         </div>
       </div>
     </div>
     <button class="btn btn-gold mb12" onclick="goPage('pg-create')">✨ Créer une salle / Create a room</button>
-    <button class="btn btn-ghost" onclick="goPage('pg-join')">🚪 Rejoindre une salle / Join a room</button>
+    <button class="btn btn-ghost mb12" onclick="goPage('pg-join')">🚪 Rejoindre une salle / Join a room</button>
+    <button class="btn btn-ghost" onclick="goPage('pg-settings')">⚙️ Paramètres / Settings</button>
   </div>
 </div>
 
-<!-- ══ CREATE ══ -->
+<!-- CREATE -->
 <div id="pg-create" class="page">
   <div class="banner"><canvas id="banner-create"></canvas></div>
   <div class="inner" style="padding-top:20px;">
@@ -151,7 +165,7 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
   </div>
 </div>
 
-<!-- ══ JOIN ══ -->
+<!-- JOIN -->
 <div id="pg-join" class="page">
   <div class="banner"><canvas id="banner-join"></canvas></div>
   <div class="inner" style="padding-top:20px;">
@@ -173,7 +187,7 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
   </div>
 </div>
 
-<!-- ══ WAITING ══ -->
+<!-- WAITING -->
 <div id="pg-wait" class="page">
   <div class="banner"><canvas id="banner-wait"></canvas></div>
   <div class="inner" style="padding-top:20px;display:flex;flex-direction:column;align-items:center;">
@@ -182,8 +196,10 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
       <div style="padding:16px 20px;">
         <div class="code-label">Code de la salle / Room code</div>
         <div class="code-big" id="wait-code">——</div>
-        <button onclick="copyCode()" id="copy-btn" style="background:rgba(200,148,59,0.2);border:1px solid var(--goldD);border-radius:8px;color:var(--gold);font-size:12px;padding:6px 16px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:8px;">📋 Copier / Copy</button>
-        <p style="font-size:12px;color:var(--muted);margin-top:10px;" id="wait-share-msg"></p>
+        <div style="text-align:center;">
+          <button onclick="copyCode()" id="copy-btn" style="background:rgba(200,148,59,0.2);border:1px solid var(--goldD);border-radius:8px;color:var(--gold);font-size:12px;padding:6px 16px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:8px;">📋 Copier / Copy</button>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-top:10px;text-align:center;" id="wait-share-msg"></p>
       </div>
     </div>
     <div class="status-row" id="wait-status"></div>
@@ -197,14 +213,69 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
   </div>
 </div>
 
-<!-- ══ CATEGORIES ══ -->
+<!-- SETTINGS -->
+<div id="pg-settings" class="page">
+  <div class="banner"><canvas id="banner-settings"></canvas></div>
+  <div class="inner" style="padding-top:20px;">
+    <button class="back-btn" onclick="goPage('pg-home')">←</button>
+    <h2 class="mb8">⚙️ Paramètres</h2>
+    <p style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:20px;">Settings</p>
+
+    <!-- Tabs -->
+    <div class="tab-row">
+      <button class="tab-btn active" id="tab-nb" onclick="switchTab('nb')">📊 Nombre de Q</button>
+      <button class="tab-btn" id="tab-custom" onclick="switchTab('custom')">✏️ Mes questions</button>
+    </div>
+
+    <!-- Tab: Nombre de questions -->
+    <div id="tab-nb-content">
+      <div class="card card-gold mb16">
+        <div class="strip"><div style="background:var(--k1)"></div><div style="background:var(--k2)"></div><div style="background:var(--k3)"></div><div style="background:var(--k4)"></div><div style="background:var(--k1)"></div><div style="background:var(--k3)"></div><div style="background:var(--k2)"></div><div style="background:var(--k4)"></div></div>
+        <div class="card-body">
+          <p style="font-size:13px;color:var(--cream);font-weight:600;margin-bottom:6px;">Nombre de questions par thème</p>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">How many questions per theme</p>
+          <div class="seg-row">
+            <button class="seg-btn" id="seg-3" onclick="setQCount(3)">3</button>
+            <button class="seg-btn active" id="seg-5" onclick="setQCount(5)">5</button>
+            <button class="seg-btn" id="seg-8" onclick="setQCount(8)">8</button>
+            <button class="seg-btn" id="seg-0" onclick="setQCount(0)">Toutes / All</button>
+          </div>
+          <p style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center;" id="qcount-label">5 questions par thème sélectionnées</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Questions personnalisées -->
+    <div id="tab-custom-content" style="display:none;">
+      <div class="card card-gold mb12">
+        <div class="strip"><div style="background:var(--k1)"></div><div style="background:var(--k2)"></div><div style="background:var(--k3)"></div><div style="background:var(--k4)"></div><div style="background:var(--k1)"></div><div style="background:var(--k3)"></div><div style="background:var(--k2)"></div><div style="background:var(--k4)"></div></div>
+        <div class="card-body">
+          <p style="font-size:13px;color:var(--cream);font-weight:600;margin-bottom:4px;">Ajouter une question / Add a question</p>
+          <p style="font-size:11px;color:var(--muted);margin-bottom:12px;">Vos questions apparaîtront dans un thème spécial "💬 Nos Questions"</p>
+          <div class="mb8"><div class="label">🇫🇷 En français</div><input id="cq-fr" type="text" placeholder="Ta question en français..."></div>
+          <div class="mb12"><div class="label">🇬🇧 In English</div><input id="cq-en" type="text" placeholder="Your question in English..."></div>
+          <button class="btn btn-gold" onclick="addCustomQ()">+ Ajouter / Add</button>
+        </div>
+      </div>
+      <div id="custom-q-list"></div>
+      <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px;" id="custom-q-count"></p>
+    </div>
+
+    <button class="btn btn-gold" style="margin-top:16px;" onclick="saveSettings()">✅ Sauvegarder / Save</button>
+  </div>
+</div>
+
+<!-- CATEGORIES -->
 <div id="pg-cats" class="page">
   <div class="banner"><canvas id="banner-cats"></canvas></div>
   <div class="inner" style="padding-top:18px;">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
       <span id="cat-me-name" style="font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--cream);"></span>
       <span id="cat-me-lang" class="lang-chip"></span>
-      <button onclick="showInsights()" style="margin-left:auto;background:none;border:1px solid var(--faint);border-radius:8px;color:var(--muted);cursor:pointer;font-size:11px;padding:5px 10px;font-family:'DM Sans',sans-serif;">📋 Analyses</button>
+      <div style="margin-left:auto;display:flex;gap:6px;">
+        <button onclick="showInsights()" style="background:none;border:1px solid var(--faint);border-radius:8px;color:var(--muted);cursor:pointer;font-size:11px;padding:5px 10px;font-family:'DM Sans',sans-serif;">📋</button>
+        <button onclick="goPage('pg-settings')" style="background:none;border:1px solid var(--faint);border-radius:8px;color:var(--muted);cursor:pointer;font-size:11px;padding:5px 10px;font-family:'DM Sans',sans-serif;">⚙️</button>
+      </div>
     </div>
     <div class="status-row" id="cat-status"></div>
     <h2 style="font-size:21px;margin-bottom:12px;">Thème / Theme</h2>
@@ -212,7 +283,7 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
   </div>
 </div>
 
-<!-- ══ QUESTION ══ -->
+<!-- QUESTION -->
 <div id="pg-q" class="page">
   <div class="banner"><canvas id="banner-q"></canvas></div>
   <div class="inner" style="padding-top:16px;">
@@ -240,7 +311,7 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
   </div>
 </div>
 
-<!-- ══ INSIGHTS ══ -->
+<!-- INSIGHTS -->
 <div id="pg-insights" class="page">
   <div class="banner"><canvas id="banner-insights"></canvas></div>
   <div class="inner" style="padding-top:20px;">
@@ -252,34 +323,176 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════════════
-// FIREBASE REALTIME DATABASE — connexion directe via REST API
-// Aucune bibliothèque nécessaire !
-// ═══════════════════════════════════════════════════════════
-const FB_URL = "https://nous-deux-fb69a-default-rtdb.europe-west1.firebasedatabase.app";
+// ═══════════════════════════════════════
+// FIREBASE REST API
+// ═══════════════════════════════════════
+const FB = "https://nous-deux-fb69a-default-rtdb.europe-west1.firebasedatabase.app";
 
-async function saveRoom(state) {
+async function saveRoom(s) {
   try {
-    await fetch(`${FB_URL}/rooms/${state.code}.json`, {
-      method: "PUT",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(state)
+    await fetch(`${FB}/rooms/${s.code}.json`, {
+      method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(s)
     });
-  } catch(e) { console.error("saveRoom error:", e); }
+  } catch(e){ console.error("saveRoom:",e); }
 }
-
 async function loadRoom(code) {
   try {
-    const res = await fetch(`${FB_URL}/rooms/${code}.json`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data; // null si inexistant, objet sinon
-  } catch(e) { return null; }
+    const r = await fetch(`${FB}/rooms/${code}.json`);
+    if(!r.ok) return null;
+    return await r.json();
+  } catch(e){ return null; }
 }
 
-// ═══════════════════════════════════════════════════════════
-// QUESTIONS (14 thèmes)
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// SETTINGS (localStorage)
+// ═══════════════════════════════════════
+let settings = {
+  qCount: 5,       // 0 = all
+  customQs: []     // [{fr, en}]
+};
+
+function loadSettings() {
+  try {
+    const s = localStorage.getItem('nd_settings');
+    if(s) settings = {...settings, ...JSON.parse(s)};
+  } catch(e){}
+  applySettingsUI();
+}
+
+// ═══════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════
+async function requestNotifPermission(){
+  if(!('Notification' in window))return false;
+  if(Notification.permission==='granted')return true;
+  if(Notification.permission==='denied')return false;
+  const perm=await Notification.requestPermission();
+  return perm==='granted';
+}
+
+function sendNotif(title, body, emoji='💬'){
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  try{
+    const n=new Notification(emoji+' '+title,{
+      body,
+      icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="%23C8943B"/><text y="48" font-size="40" x="12">💛</text></svg>',
+      badge:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="%23C8943B"/></svg>',
+      tag:'nous-deux',
+      renotify:true,
+      vibrate:[200,100,200]
+    });
+    setTimeout(()=>n.close(),6000);
+  }catch(e){}
+}
+
+// Tracker pour eviter les notifs en double
+const _notified={};
+
+function checkAndNotify(s){
+  if(!currentCat||!currentQs.length)return;
+  const qk=currentCat.id+'_'+currentQi;
+  if(_notified[qk])return;
+  const myA=s?.answers?.[qk+'_'+myRole];
+  const thRole=myRole==='p1'?'p2':'p1';
+  const thA=s?.answers?.[qk+'_'+thRole];
+  const thName=s?.[thRole]?.name||'Ton partenaire';
+  const catName=currentCat?.[myLang==='fr'?'fr':'en']||'';
+
+  if(!myA&&thA){
+    // L'autre a repondu et j'attends encore — notifier
+    _notified[qk]=true;
+    sendNotif(
+      myLang==='fr'?thName+' a répondu !':thName+' answered!',
+      myLang==='fr'?'Thème: '+catName+' — À ton tour de répondre !':'Theme: '+catName+' — Your turn to answer!',
+      '✍️'
+    );
+  } else if(myA&&thA){
+    // Les deux ont repondu — notifier pour la revelation
+    _notified[qk]=true;
+    sendNotif(
+      myLang==='fr'?'Révélation disponible !':'Reveal ready!',
+      myLang==='fr'?thName+' a aussi répondu — découvrez vos réponses !':thName+' also answered — discover your answers!',
+      '✨'
+    );
+  }
+}
+function saveSettings() {
+  localStorage.setItem('nd_settings', JSON.stringify(settings));
+  const btn = document.querySelector('#pg-settings .btn-gold:last-child');
+  if(btn){ btn.textContent='✅ Sauvegardé !'; setTimeout(()=>btn.textContent='✅ Sauvegarder / Save',1500); }
+}
+function applySettingsUI() {
+  setQCount(settings.qCount, false);
+  renderCustomQList();
+}
+
+// Q Count
+function setQCount(n, save=true) {
+  settings.qCount = n;
+  [3,5,8,0].forEach(v => {
+    const el = document.getElementById('seg-'+v);
+    if(el) el.className = 'seg-btn' + (v===n?' active':'');
+  });
+  const lbl = document.getElementById('qcount-label');
+  if(lbl) lbl.textContent = n===0 ? 'Toutes les questions sélectionnées / All questions selected' : `${n} questions par thème / ${n} questions per theme`;
+  if(save) saveSettings();
+}
+
+// Get questions for a category (respecting qCount)
+function getQsForCat(catId) {
+  let qs = [...(QS[catId]||[])];
+  // Add custom questions if category is "custom"
+  if(catId === 'custom') return settings.customQs.map(q=>[q.fr, q.en]);
+  if(settings.qCount > 0) qs = qs.slice(0, settings.qCount);
+  return qs;
+}
+
+// Custom questions
+function addCustomQ() {
+  const fr = document.getElementById('cq-fr').value.trim();
+  const en = document.getElementById('cq-en').value.trim();
+  if(!fr && !en) return;
+  settings.customQs.push({fr: fr||en, en: en||fr});
+  document.getElementById('cq-fr').value='';
+  document.getElementById('cq-en').value='';
+  renderCustomQList();
+  saveSettings();
+}
+function removeCustomQ(i) {
+  settings.customQs.splice(i,1);
+  renderCustomQList();
+  saveSettings();
+}
+function renderCustomQList() {
+  const list = document.getElementById('custom-q-list');
+  const count = document.getElementById('custom-q-count');
+  if(!list) return;
+  if(!settings.customQs.length) {
+    list.innerHTML='<p style="font-size:13px;color:var(--muted);text-align:center;padding:12px 0;">Aucune question ajoutée / No questions added yet</p>';
+    if(count) count.textContent='';
+    return;
+  }
+  list.innerHTML = settings.customQs.map((q,i)=>`
+    <div class="custom-q-item fu">
+      <div class="custom-q-text">
+        <div style="color:#7EB8F7;font-size:12px;margin-bottom:2px;">🇫🇷 ${q.fr}</div>
+        <div style="color:#E8C878;font-size:12px;">🇬🇧 ${q.en}</div>
+      </div>
+      <button class="del-btn" onclick="removeCustomQ(${i})">🗑️</button>
+    </div>`).join('');
+  if(count) count.textContent = settings.customQs.length + ' question'+(settings.customQs.length>1?'s':'')+' personnalisée'+(settings.customQs.length>1?'s':'');
+}
+
+function switchTab(tab) {
+  document.getElementById('tab-nb-content').style.display = tab==='nb'?'block':'none';
+  document.getElementById('tab-custom-content').style.display = tab==='custom'?'block':'none';
+  document.getElementById('tab-nb').className = 'tab-btn'+(tab==='nb'?' active':'');
+  document.getElementById('tab-custom').className = 'tab-btn'+(tab==='custom'?' active':'');
+}
+
+// ═══════════════════════════════════════
+// QUESTIONS
+// ═══════════════════════════════════════
 const CATS=[
   {id:"enfance",e:"👶",fr:"L'Enfance",en:"Childhood"},
   {id:"vie",e:"📖",fr:"Expériences de Vie",en:"Life Experiences"},
@@ -296,7 +509,6 @@ const CATS=[
   {id:"craintes",e:"⚠️",fr:"Peurs & Limites",en:"Fears & Limits"},
   {id:"vision",e:"🌅",fr:"Vision de Vie",en:"Life Vision"},
 ];
-
 const QS={
   enfance:[["Quel est ton souvenir d'enfance le plus heureux ?","What is your happiest childhood memory?"],["Quelle ambiance émotionnelle régnait dans ta maison en grandissant ?","What was the emotional atmosphere in your home growing up?"],["Ton père était-il présent — émotionnellement et physiquement ?","Was your father present — emotionally and physically?"],["Ta mère était-elle présente — émotionnellement et physiquement ?","Was your mother present — emotionally and physically?"],["Y avait-il de la violence dans ta maison d'enfance ?","Was there violence in your childhood home?"],["Comment l'argent était-il vécu dans ta famille ?","How was money treated in your family growing up?"],["Quel rôle jouais-tu dans ta fratrie ?","What role did you play among your siblings?"],["Comment tes parents géraient-ils leurs conflits ?","How did your parents handle conflicts?"],["Quelle phrase de tes parents résonne encore en toi ?","What phrase from your parents still echoes in you?"],["Y a-t-il un traumatisme d'enfance que tu portes encore ?","Is there a childhood trauma you still carry?"],["Quelle peur d'enfance t'accompagne encore adulte ?","What childhood fear still accompanies you as an adult?"],["Qu'aurais-tu voulu que tes parents fassent différemment ?","What do you wish your parents had done differently?"]],
   vie:[["Quelle est l'expérience la plus difficile de ta vie adulte ?","What is the most difficult experience of your adult life?"],["Quelle décision regrettes-tu le plus profondément ?","What decision do you regret most deeply?"],["As-tu déjà touché le fond ? Qu'est-ce qui t'a fait remonter ?","Have you ever hit rock bottom? What brought you back?"],["As-tu été trahi·e par quelqu'un de confiance absolue ?","Have you been betrayed by someone you trusted completely?"],["As-tu souffert de dépression ou d'anxiété profonde ?","Have you suffered from depression or deep anxiety?"],["As-tu vécu une migration ou un déracinement ?","Have you experienced migration or uprooting?"],["Quelle expérience t'a forcé·e à te réinventer ?","What experience forced you to reinvent yourself?"],["As-tu vécu une discrimination à cause de ta race ou religion ?","Have you experienced discrimination because of race or religion?"],["Quelle a été ton expérience réelle du mariage ?","What was your real experience of marriage?"],["Y a-t-il quelque chose que tu as vécu que tu n'as dit à personne ?","Is there something you experienced you've told no one?"]],
@@ -314,28 +526,26 @@ const QS={
   vision:[["Comment tu imagines ta vie dans 10 ans ?","How do you picture your life in 10 years?"],["Quel type de relation veux-tu — mariage, cohabitation, union libre ?","What type of relationship do you want — marriage, cohabitation, free union?"],["Le mariage est-il encore une option pour toi après ton vécu ?","Is marriage still an option for you after your experience?"],["Quelle est ta vision d'un foyer heureux au quotidien ?","What is your vision of a happy home daily?"],["Quel cadre de vie te ressemble — ville, campagne, autre pays ?","What living environment suits you — city, countryside, another country?"],["Qu'est-ce qui tue lentement un couple sans drame ni trahison ?","What slowly kills a couple without drama or betrayal?"],["Si on construit quelque chose ensemble, sur quel fondement ?","If we build something together, what foundation do you want?"],["Qu'est-ce que tu veux que l'autre retienne de toi dans 30 ans ?","What do you want the other to remember about you in 30 years?"]],
 };
 
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // STATE
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 let myRole=null, myName='', myLang='fr', roomCode='';
-let currentCat=null, currentQi=0;
+let currentCat=null, currentQi=0, currentQs=[];
 let pollTimer=null, lastRoom=null;
 let createLang='fr', joinLang='en';
 
-// ═══════════════════════════════════════════════════════════
-// KENTE BANNER
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// BANNER
+// ═══════════════════════════════════════
 function drawBanner(id) {
   const canvas=document.getElementById('banner-'+id);
   if(!canvas)return;
   const W=canvas.parentElement.offsetWidth||390;
-  canvas.width=W*2;canvas.height=84;
-  canvas.style.width=W+'px';canvas.style.height='42px';
+  canvas.width=W*2;canvas.height=84;canvas.style.width=W+'px';canvas.style.height='42px';
   const ctx=canvas.getContext('2d');
   const cols=['#E8B830','#C83820','#1A6830','#1A3880'];
   for(let r=0;r<6;r++)for(let i=0;i<Math.ceil(W*2/16);i++){
-    ctx.fillStyle=cols[(i+r)%4];ctx.globalAlpha=0.88;
-    ctx.fillRect(i*16,r*14,16,14);
+    ctx.fillStyle=cols[(i+r)%4];ctx.globalAlpha=0.88;ctx.fillRect(i*16,r*14,16,14);
   }
   ctx.globalAlpha=0.5;
   [80,200,320,440,560,680,800].forEach(x=>{
@@ -343,10 +553,9 @@ function drawBanner(id) {
     ctx.beginPath();ctx.arc(x,42,18,0,Math.PI*2);ctx.stroke();
     ctx.beginPath();ctx.arc(x,42,9,0,Math.PI*2);ctx.stroke();
     ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x,42,3,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.moveTo(x-14,28);ctx.lineTo(x-6,36);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(x+14,28);ctx.lineTo(x+6,36);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(x-14,56);ctx.lineTo(x-6,48);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(x+14,56);ctx.lineTo(x+6,48);ctx.stroke();
+    [[x-14,28,x-6,36],[x+14,28,x+6,36],[x-14,56,x-6,48],[x+14,56,x+6,48]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    });
   });
   ctx.globalAlpha=0.4;
   [140,300,460,620].forEach(x=>{
@@ -359,140 +568,149 @@ function drawBanner(id) {
   g.addColorStop(0.65,'rgba(7,5,11,0)');g.addColorStop(1,'rgba(7,5,11,0.6)');
   ctx.fillStyle=g;ctx.fillRect(0,0,W*2,84);
 }
-function drawAll(){['home','create','join','wait','cats','q','insights'].forEach(drawBanner);}
-window.addEventListener('load',drawAll);
+function drawAll(){['home','create','join','wait','settings','cats','q','insights'].forEach(drawBanner);}
+window.addEventListener('load',()=>{drawAll();loadSettings();});
 window.addEventListener('resize',drawAll);
 
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // NAVIGATION
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 function goPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo(0,0);
   setTimeout(()=>drawBanner(id.replace('pg-','')),50);
 }
-
 function genCode(){
   const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   return Array.from({length:6},()=>c[Math.floor(Math.random()*c.length)]).join('');
 }
-
 function strip(){
   return `<div class="strip"><div style="background:var(--k1)"></div><div style="background:var(--k2)"></div><div style="background:var(--k3)"></div><div style="background:var(--k4)"></div><div style="background:var(--k1)"></div><div style="background:var(--k3)"></div><div style="background:var(--k2)"></div><div style="background:var(--k4)"></div></div>`;
 }
 
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // LANG / FORM
-// ═══════════════════════════════════════════════════════════
-function setLang(which,l){
-  if(which==='create'){
-    createLang=l;
-    document.getElementById('c-fr').className='lang-btn fr'+(l==='fr'?' sel':'');
-    document.getElementById('c-en').className='lang-btn en'+(l==='en'?' sel':'');
-  } else {
-    joinLang=l;
-    document.getElementById('j-fr').className='lang-btn fr'+(l==='fr'?' sel':'');
-    document.getElementById('j-en').className='lang-btn en'+(l==='en'?' sel':'');
-  }
+// ═══════════════════════════════════════
+function setLang(w,l){
+  if(w==='create'){createLang=l;document.getElementById('c-fr').className='lang-btn fr'+(l==='fr'?' sel':'');document.getElementById('c-en').className='lang-btn en'+(l==='en'?' sel':'');}
+  else{joinLang=l;document.getElementById('j-fr').className='lang-btn fr'+(l==='fr'?' sel':'');document.getElementById('j-en').className='lang-btn en'+(l==='en'?' sel':'');}
 }
 function checkCreate(){document.getElementById('c-btn').disabled=!document.getElementById('c-name').value.trim();}
-function checkJoin(){
-  document.getElementById('j-btn').disabled=!(document.getElementById('j-code').value.trim().length===6&&document.getElementById('j-name').value.trim());
-}
+function checkJoin(){document.getElementById('j-btn').disabled=!(document.getElementById('j-code').value.trim().length===6&&document.getElementById('j-name').value.trim());}
 
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // CREATE / JOIN
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 async function createRoom(){
-  myName=document.getElementById('c-name').value.trim();
-  myLang=createLang;myRole='p1';roomCode=genCode();
-  const btn=document.getElementById('c-btn');
-  btn.textContent='Création...';btn.disabled=true;
+  myName=document.getElementById('c-name').value.trim();myLang=createLang;myRole='p1';roomCode=genCode();
+  const btn=document.getElementById('c-btn');btn.textContent='Création...';btn.disabled=true;
   const state={code:roomCode,p1:{name:myName,lang:myLang,ts:Date.now()},p2:null,answers:{},insights:[],aiResult:null};
-  await saveRoom(state);
-  lastRoom=state;
-  startPoll();
-  showWaiting(state);
+  await saveRoom(state);lastRoom=state;startPoll();showWaiting(state);
 }
-
 async function joinRoom(){
   const code=document.getElementById('j-code').value.trim().toUpperCase();
   const name=document.getElementById('j-name').value.trim();
-  const errEl=document.getElementById('j-err');
-  errEl.style.display='none';
-  const btn=document.getElementById('j-btn');
-  btn.textContent='Connexion...';btn.disabled=true;
-
+  const errEl=document.getElementById('j-err');errEl.style.display='none';
+  const btn=document.getElementById('j-btn');btn.textContent='Connexion...';btn.disabled=true;
   const state=await loadRoom(code);
-  if(!state){
-    errEl.textContent='❌ Salle introuvable / Room not found — vérifiez le code.';
-    errEl.style.display='block';
-    btn.textContent='Rejoindre / Join →';btn.disabled=false;
-    return;
-  }
+  if(!state){errEl.textContent='Salle introuvable — verifiez le code / Room not found';errEl.style.display='block';btn.textContent='Rejoindre / Join';btn.disabled=false;return;}
   myName=name;myLang=joinLang;myRole='p2';roomCode=code;
   state.p2={name:myName,lang:myLang,ts:Date.now()};
-  await saveRoom(state);
-  lastRoom=state;
-  startPoll();
-  showWaiting(state);
+  await saveRoom(state);lastRoom=state;startPoll();
+  // RECONNEXION INTELLIGENTE: detecter si p1 attend une reponse
+  const pending=detectPending(state);
+  if(pending){
+    window._wentToCats=true;
+    currentCat=pending.cat;currentQi=pending.qi;currentQs=getQsForCat(pending.cat.id);
+    document.getElementById('cat-me-name').textContent=myName;
+    const lc=document.getElementById('cat-me-lang');lc.textContent=myLang==='fr'?'FR':'EN';lc.className='lang-chip '+myLang;
+    renderStatus('cat-status',state);
+    setTimeout(()=>{renderQ();goPage('pg-q');},300);
+  } else {
+    showWaiting(state);
+  }
 }
 
-// ═══════════════════════════════════════════════════════════
+function detectPending(state){
+  if(!state||!state.answers)return null;
+  for(const k of Object.keys(state.answers)){
+    if(k.endsWith('_p1')){
+      const base=k.replace('_p1','');
+      if(!state.answers[base+'_p2']){
+        const parts=base.split('_');
+        const qi=parseInt(parts[parts.length-1]);
+        const catId=parts.slice(0,parts.length-1).join('_');
+        const cat=catId==='custom'?{id:'custom',e:'💬',fr:'Nos Questions',en:'Our Questions'}:CATS.find(c=>c.id===catId);
+        if(cat&&!isNaN(qi))return{cat,qi};
+      }
+    }
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════
 // WAITING
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 function showWaiting(state){
   document.getElementById('wait-code').textContent=state.code;
   document.getElementById('wait-share-msg').textContent=myLang==='fr'?'Partage ce code par WhatsApp ou SMS':'Share this code via WhatsApp or SMS';
   renderStatus('wait-status',state);
   const box=document.getElementById('wait-spinner-box');
   if(state.p2){box.style.display='none';setTimeout(()=>showCats(),600);}
-  else{
-    box.style.display='block';
-    document.getElementById('wait-msg').textContent=myLang==='fr'?"En attente que l'autre personne rejoigne...":'Waiting for the other person to join...';
-  }
+  else{box.style.display='block';document.getElementById('wait-msg').textContent=myLang==='fr'?"En attente que l'autre personne rejoigne...":'Waiting for the other person to join...';}
   goPage('pg-wait');
 }
-
 function copyCode(){
-  navigator.clipboard.writeText(roomCode).then(()=>{
-    const b=document.getElementById('copy-btn');
-    b.textContent='✅ Copié!';setTimeout(()=>b.textContent='📋 Copier / Copy',2000);
-  });
+  navigator.clipboard.writeText(roomCode).then(()=>{const b=document.getElementById('copy-btn');b.textContent='✅ Copié!';setTimeout(()=>b.textContent='📋 Copier / Copy',2000);});
 }
 
-// ═══════════════════════════════════════════════════════════
-// POLLING (toutes les 4 secondes)
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// POLLING
+// ═══════════════════════════════════════
 function startPoll(){
   if(pollTimer)clearInterval(pollTimer);
   pollTimer=setInterval(async()=>{
-    const s=await loadRoom(roomCode);
-    if(!s)return;
-    // Mettre à jour timestamp de présence
+    const s=await loadRoom(roomCode);if(!s)return;
+    // Mettre a jour le timestamp de presence
     if(myRole==='p1')s.p1.ts=Date.now();
     else if(s.p2)s.p2.ts=Date.now();
-    await saveRoom(s);
-    lastRoom=s;
+    await saveRoom(s);lastRoom=s;
     const pg=document.querySelector('.page.active')?.id;
-    renderStatus('wait-status',s);
-    renderStatus('cat-status',s);
-    renderStatus('q-status',s);
-    if(pg==='pg-wait'&&s.p2&&!window._wentToCats){window._wentToCats=true;showCats();}
-    if(pg==='pg-q')checkQState(s);
-  },4000);
+    // Mettre a jour les indicateurs de presence partout
+    renderStatus('wait-status',s);renderStatus('cat-status',s);renderStatus('q-status',s);
+    // Transitions de page
+    if(pg==='pg-wait'&&s.p2&&!window._wentToCats){
+      window._wentToCats=true;
+      const thName=s?.[myRole==='p1'?'p2':'p1']?.name||'Ton partenaire';
+      sendNotif(
+        myLang==='fr'?thName+' a rejoint !':thName+' joined!',
+        myLang==='fr'?'La session peut commencer !':'The session can begin!',
+        '🎉'
+      );
+      showCats();
+    }
+    if(pg==='pg-q'&&currentCat){
+      // TOUJOURS verifier l etat de la question en cours
+      checkQState(s);
+      // Notifier si l'autre a répondu
+      checkAndNotify(s);
+    }
+    // Notifier meme si l'app est en arriere-plan (autre page)
+    if(pg!=='pg-q'&&currentCat){
+      checkAndNotify(s);
+    }
+  },2000);
 }
 
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // STATUS
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 function isOnline(p){return p&&(Date.now()-p.ts)<15000;}
-function renderStatus(containerId,state){
-  const el=document.getElementById(containerId);if(!el)return;
-  el.innerHTML=[{d:state?.p1,cls:'p1'},{d:state?.p2,cls:'p2'}].map(({d,cls})=>`
-    <div class="status-card ${cls}">
-      ${strip()}
+function renderStatus(cid,s){
+  const el=document.getElementById(cid);if(!el)return;
+  el.innerHTML=[{d:s?.p1,cls:'p1'},{d:s?.p2,cls:'p2'}].map(({d,cls})=>`
+    <div class="status-card ${cls}">${strip()}
       <div class="status-name">${d?.name||'—'}</div>
       <div class="status-line">
         <span class="dot ${d?(isOnline(d)?'on':'off'):'wait'}"></span>
@@ -502,79 +720,90 @@ function renderStatus(containerId,state){
     </div>`).join('<span style="color:var(--goldD);font-size:16px;display:flex;align-items:center;">♡</span>');
 }
 
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // CATEGORIES
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 function showCats(){
   window._wentToCats=true;
   document.getElementById('cat-me-name').textContent=myName;
-  const lc=document.getElementById('cat-me-lang');
-  lc.textContent=myLang==='fr'?'🇫🇷 FR':'🇬🇧 EN';lc.className='lang-chip '+myLang;
-  document.getElementById('cat-list').innerHTML=CATS.map(c=>`
-    <button class="cat-btn" onclick="startCat('${c.id}')">
+  const lc=document.getElementById('cat-me-lang');lc.textContent=myLang==='fr'?'🇫🇷 FR':'🇬🇧 EN';lc.className='lang-chip '+myLang;
+  // Build list — add custom category if questions exist
+  const allCats = [...CATS];
+  if(settings.customQs.length > 0) allCats.push({id:'custom',e:'💬',fr:'Nos Questions',en:'Our Questions'});
+  document.getElementById('cat-list').innerHTML=allCats.map(c=>{
+    const qCount = getQsForCat(c.id).length;
+    return `<button class="cat-btn" onclick="startCat('${c.id}')">
       ${strip()}
       <div class="cat-btn-inner">
         <span style="font-size:22px;flex-shrink:0;">${c.e}</span>
-        <div style="flex:1;">
-          <div class="cat-fr">${c.fr}</div>
-          <div class="cat-en">${c.en}</div>
-        </div>
-        <span style="font-size:10px;color:var(--muted);border:1px solid var(--faint);border-radius:99px;padding:2px 8px;flex-shrink:0;">${QS[c.id].length}Q</span>
+        <div style="flex:1;"><div class="cat-fr">${c.fr}</div><div class="cat-en">${c.en}</div></div>
+        <span style="font-size:10px;color:var(--muted);border:1px solid var(--faint);border-radius:99px;padding:2px 8px;flex-shrink:0;">${qCount}Q</span>
       </div>
-    </button>`).join('');
+    </button>`;
+  }).join('');
   if(lastRoom)renderStatus('cat-status',lastRoom);
   goPage('pg-cats');
 }
 
 async function startCat(catId){
-  currentCat=CATS.find(c=>c.id===catId);currentQi=0;
-  const s=await loadRoom(roomCode)||lastRoom;
-  s.aiResult=null;await saveRoom(s);lastRoom=s;
+  currentCat = catId==='custom'
+    ? {id:'custom',e:'💬',fr:'Nos Questions',en:'Our Questions'}
+    : CATS.find(c=>c.id===catId);
+  currentQi=0;
+  currentQs=getQsForCat(catId);
+  const s=await loadRoom(roomCode)||lastRoom;s.aiResult=null;await saveRoom(s);lastRoom=s;
   renderQ();goPage('pg-q');
 }
 
-// ═══════════════════════════════════════════════════════════
-// QUESTION
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// QUESTION — avec persistance des réponses
+// ═══════════════════════════════════════
 function renderQ(){
-  const qs=QS[currentCat.id],pair=qs[currentQi];
+  const pair=currentQs[currentQi];
+  if(!pair) return;
   document.getElementById('q-emoji').textContent=currentCat.e;
   document.getElementById('q-catname').textContent=currentCat.fr+' / '+currentCat.en;
-  document.getElementById('q-counter').textContent=(currentQi+1)+'/'+qs.length;
-  document.getElementById('q-bar').style.width=((currentQi+1)/qs.length*100)+'%';
+  document.getElementById('q-counter').textContent=(currentQi+1)+'/'+currentQs.length;
+  document.getElementById('q-bar').style.width=((currentQi+1)/currentQs.length*100)+'%';
   document.getElementById('q-fr').textContent=pair[0];
   document.getElementById('q-en').textContent=pair[1];
   if(lastRoom)renderStatus('q-status',lastRoom);
-  ['my-zone','sent-zone','reveal-zone'].forEach(z=>{
-    const el=document.getElementById(z);el.innerHTML='';el.style.display='none';
-  });
+  ['my-zone','sent-zone','reveal-zone'].forEach(z=>{const el=document.getElementById(z);el.innerHTML='';el.style.display='none';});
   checkQState(lastRoom||{answers:{},insights:[]});
 }
 
 function checkQState(s){
-  if(!currentCat)return;
+  if(!currentCat||!currentQs.length)return;
   const qk=currentCat.id+'_'+currentQi;
   const myA=s?.answers?.[qk+'_'+myRole];
   const thA=s?.answers?.[qk+'_'+(myRole==='p1'?'p2':'p1')];
   const ardy=s?.aiResult?.qk===qk;
-  if(ardy||!!(myA&&thA))showReveal(s,qk);
-  else if(myA&&!thA)showSent(s);
-  else showMyInput();
+  const revealShown=document.getElementById('reveal-zone')?.style.display!=='none'
+    &&document.getElementById('reveal-zone')?.innerHTML.length>10;
+  // Si revelation deja affichee, ne pas re-rendre (eviter flash)
+  if(ardy||!!(myA&&thA)){
+    if(!revealShown) showReveal(s,qk);
+    return;
+  }
+  const sentShown=document.getElementById('sent-zone')?.style.display!=='none';
+  if(myA&&!thA){
+    if(!sentShown) showSent(s);
+    return;
+  }
+  const inputShown=document.getElementById('my-zone')?.style.display!=='none';
+  if(!inputShown) showMyInput();
 }
 
 function showMyInput(){
-  const pair=QS[currentCat.id][currentQi];
+  const pair=currentQs[currentQi];
   const isP1=myRole==='p1';
-  const col=isP1?'var(--p1)':'var(--p2)';
-  const bg=isP1?'var(--p1d)':'var(--p2d)';
-  const bd=isP1?'var(--p1b)':'var(--p2b)';
   const z=document.getElementById('my-zone');
   z.innerHTML=`
-    <div class="card fu" style="border-color:${bd};background:${bg}cc;">
+    <div class="card fu" style="border-color:${isP1?'var(--p1b)':'var(--p2b)'};background:${isP1?'var(--p1d)':'var(--p2d)'}cc;">
       ${strip()}
       <div class="card-body">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-          <span style="font-size:13px;font-weight:700;color:${col}">✍️ ${myName}</span>
+          <span style="font-size:13px;font-weight:700;color:${isP1?'var(--p1)':'var(--p2)'}">✍️ ${myName}</span>
           <span class="lang-chip ${myLang}">${myLang==='fr'?'🇫🇷':'🇬🇧'}</span>
         </div>
         <div style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:9px;padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:8px;border-left:2px solid var(--faint);line-height:1.6;">${pair[myLang==='fr'?0:1]}</div>
@@ -586,34 +815,50 @@ function showMyInput(){
 }
 
 async function submitAnswer(){
-  const val=document.getElementById('my-ta')?.value.trim();
-  if(!val)return;
+  const val=document.getElementById('my-ta')?.value.trim();if(!val)return;
   const qk=currentCat.id+'_'+currentQi;
   const s=await loadRoom(roomCode)||lastRoom;
   s.answers=s.answers||{};
   s.answers[qk+'_'+myRole]=val;
+  // ✅ PERSISTANCE : la réponse reste dans Firebase même si l'autre répond plus tard
   await saveRoom(s);lastRoom=s;
   showSent(s);
+  // Vérification immédiate après envoi
+  setTimeout(async()=>{
+    const fresh=await loadRoom(roomCode);
+    if(fresh){lastRoom=fresh;checkQState(fresh);}
+  },500);
 }
 
 function showSent(s){
+  const qk=currentCat.id+'_'+currentQi;
+  const myA=s?.answers?.[qk+'_'+myRole];
   const thN=s?.[myRole==='p1'?'p2':'p1']?.name||'...';
+  const isP1=myRole==='p1';
   const z=document.getElementById('sent-zone');
   z.innerHTML=`
-    <div style="background:${myRole==='p1'?'rgba(10,30,58,0.8)':'rgba(58,16,8,0.8)'};border:1.5px solid ${myRole==='p1'?'var(--p1b)':'var(--p2b)'};border-radius:12px;padding:12px 15px;text-align:center;margin-bottom:10px;">
-      <p style="color:var(--green);font-weight:700;font-size:14px;">✅ ${myLang==='fr'?'Réponse envoyée !':'Answer sent!'}</p>
+    <div style="background:${isP1?'rgba(10,30,58,0.8)':'rgba(58,16,8,0.8)'};border:1.5px solid ${isP1?'var(--p1b)':'var(--p2b)'};border-radius:12px;padding:12px 15px;margin-bottom:10px;">
+      <p style="color:var(--green);font-weight:700;font-size:13px;margin-bottom:6px;">&#x2705; ${myLang==='fr'?'Ta reponse est sauvegardee :':'Your answer is saved:'}</p>
+      <p style="font-size:13px;color:var(--cream);line-height:1.6;font-style:italic;">"${myA||''}"</p>
     </div>
     <div class="card card-gold">
-      ${strip()}
+      <div class="strip"><div style="background:var(--k1)"></div><div style="background:var(--k2)"></div><div style="background:var(--k3)"></div><div style="background:var(--k4)"></div><div style="background:var(--k1)"></div><div style="background:var(--k3)"></div><div style="background:var(--k2)"></div><div style="background:var(--k4)"></div></div>
       <div class="card-body" style="text-align:center;">
-        <div class="spinner mb12"></div>
-        <p style="color:var(--gold);font-weight:600;font-size:14px;">${myLang==='fr'?`En attente de ${thN}...`:`Waiting for ${thN}...`}</p>
-        <p style="font-size:12px;color:var(--muted);margin-top:5px;">${myLang==='fr'?'Révélation quand vous aurez tous les deux répondu.':'Reveal when you\'ve both answered.'}</p>
+        <div class="spinner" style="margin-bottom:12px;"></div>
+        <p style="color:var(--gold);font-weight:600;font-size:14px;">${myLang==='fr'?'En attente de '+thN+'...':'Waiting for '+thN+'...'}</p>
+        <p style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6;">${myLang==='fr'?'Ta reponse est dans la base. Meme si '+thN+' se reconnecte plus tard, la revelation se fera automatiquement.':'Your answer is saved. Even if '+thN+' reconnects later, the reveal will happen automatically.'}</p>
+        <button onclick="forceCheck()" style="margin-top:12px;background:rgba(200,148,59,0.2);border:1px solid var(--goldD);border-radius:8px;color:var(--gold);font-size:12px;padding:6px 16px;cursor:pointer;font-family:DM Sans,sans-serif;">&#x1F504; ${myLang==='fr'?'Verifier maintenant':'Check now'}</button>
       </div>
     </div>`;
   z.style.display='block';
   document.getElementById('my-zone').style.display='none';
 }
+
+async function forceCheck(){
+  const s=await loadRoom(roomCode);
+  if(s){lastRoom=s;checkQState(s);}
+}
+
 
 function showReveal(s,qk){
   document.getElementById('sent-zone').style.display='none';
@@ -628,28 +873,26 @@ function showReveal(s,qk){
     </div>
     ${['p1','p2'].map(role=>{
       const isMe=role===myRole;
-      const nm=s?.[role]?.name||'?';
-      const lg=s?.[role]?.lang||'fr';
-      const ans=s?.answers?.[qk+'_'+role]||'...';
+      const nm=s?.[role]?.name||'?',lg=s?.[role]?.lang||'fr',ans=s?.answers?.[qk+'_'+role]||'...';
       return `<div class="bubble-row ${isMe===isMe1?'left':'right'} fu">
         <div class="avatar" style="background:var(--${role}d);border:2px solid var(--${role});">👤</div>
         <div class="bubble ${role}" style="border-top-left-radius:${(isMe===isMe1)?3:16}px;border-top-right-radius:${(isMe===isMe1)?16:3}px;">
           <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--${role}),transparent);"></div>
-          <div class="bubble-name" style="color:var(--${role});">${nm} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
-          ${ans}
+          <div class="bubble-name" style="color:var(--${role});">${nm} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>${ans}
         </div>
       </div>`;
     }).join('')}
     ${!ardy?`<button class="btn btn-gold" style="margin-top:10px;margin-bottom:10px;" onclick="doAnalysis()">🔍 ${myLang==='fr'?'Analyser notre compatibilité':'Analyse our compatibility'}</button>`:''}
     <div id="ai-zone"></div>
-    <div id="nav-zone">${ardy?navHTML():''}  </div>`;
+    <div id="nav-zone">${ardy?navHTML():''}</div>`;
   z.style.display='block';
   if(ardy)renderAI(s.aiResult);
 }
 
 function navHTML(){
+  const hasNext = currentQi < currentQs.length-1;
   return `<div class="nav-row">
-    <button class="btn btn-ghost" style="flex:1;" onclick="nextQ()">${myLang==='fr'?'Question suivante →':'Next question →'}</button>
+    ${hasNext?`<button class="btn btn-ghost" style="flex:1;" onclick="nextQ()">${myLang==='fr'?'Question suivante →':'Next question →'}</button>`:'<button class="btn btn-ghost" style="flex:1;" onclick="showCats()">🏠 '+( myLang==="fr"?"Changer de thème":"Change theme")+'</button>'}
     <button class="btn btn-ghost" style="flex:0 0 auto;width:auto;padding:12px 14px;" onclick="showCats()">🗂️</button>
   </div>`;
 }
@@ -657,7 +900,7 @@ function navHTML(){
 async function doAnalysis(){
   const qk=currentCat.id+'_'+currentQi;
   const s=lastRoom||await loadRoom(roomCode);
-  const pair=QS[currentCat.id][currentQi];
+  const pair=currentQs[currentQi];
   const a1=s?.answers?.[qk+'_p1'],a2=s?.answers?.[qk+'_p2'];
   const l1=s?.p1?.lang||'fr',l2=s?.p2?.lang||'en';
   const al=(l1==='fr'&&l2==='fr')?'fr':(l1==='en'&&l2==='en')?'en':'both';
@@ -677,26 +920,21 @@ async function doAnalysis(){
     let fr=txt,en=txt;
     if(al==='both'){const fm=txt.match(/🇫🇷([\s\S]*?)(?=🇬🇧|$)/),em=txt.match(/🇬🇧([\s\S]*?)$/);if(fm)fr=fm[1].trim();if(em)en=em[1].trim();}
     const result={txt,fr,en,al,qk};
-    const fresh=await loadRoom(roomCode)||s;
-    fresh.aiResult=result;
-    fresh.insights=fresh.insights||[];
+    const fresh=await loadRoom(roomCode)||s;fresh.aiResult=result;fresh.insights=fresh.insights||[];
     fresh.insights.push({cat:currentCat.fr+'/'+currentCat.en,e:currentCat.e,qfr:pair[0],qen:pair[1],a1,a2,n1:s?.p1?.name,n2:s?.p2?.name,l1,l2,txt});
-    await saveRoom(fresh);lastRoom=fresh;
-    renderAI(result);
+    await saveRoom(fresh);lastRoom=fresh;renderAI(result);
     document.getElementById('nav-zone').innerHTML=navHTML();
   }catch(e){
-    aiZ.innerHTML=`<div class="error">Erreur de connexion / Connection error. Réessayez / Try again.</div>`;
-    if(btn){btn.textContent='🔍 Réessayer / Retry';btn.disabled=false;}
+    aiZ.innerHTML=`<div class="error">Erreur / Error — réessayez / try again</div>`;
+    if(btn){btn.textContent='🔍 Réessayer';btn.disabled=false;}
   }
 }
 
 let _aiFr='',_aiEn='',_aiBi=false;
 function renderAI(r){
   _aiFr=r.fr||r.txt;_aiEn=r.en||r.txt;_aiBi=r.al==='both';
-  const aiZ=document.getElementById('ai-zone');
-  aiZ.innerHTML=`
-    <div class="card ai-card fu">
-      ${strip()}
+  document.getElementById('ai-zone').innerHTML=`
+    <div class="card ai-card fu">${strip()}
       <div class="ai-header">
         <span style="font-size:11px;color:var(--gold);letter-spacing:0.12em;text-transform:uppercase;font-weight:700;">🧠 Analyse</span>
         ${_aiBi?`<div class="ai-lang-toggle">
@@ -712,25 +950,22 @@ function swAI(l){
   document.getElementById('aien').className='ai-lang-btn en'+(l==='en'?' active':'');
   document.getElementById('ai-body').textContent=l==='fr'?_aiFr:_aiEn;
 }
-
 async function nextQ(){
-  currentQi=(currentQi+1)%QS[currentCat.id].length;
-  const fresh=await loadRoom(roomCode)||lastRoom;
-  fresh.aiResult=null;await saveRoom(fresh);lastRoom=fresh;
+  currentQi++;
+  const fresh=await loadRoom(roomCode)||lastRoom;fresh.aiResult=null;await saveRoom(fresh);lastRoom=fresh;
   renderQ();
 }
 
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 // INSIGHTS
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════
 function showInsights(){
   const ins=(lastRoom?.insights)||[];
   document.getElementById('ins-count').textContent=ins.length+' sauvegardée'+(ins.length!==1?'s':'');
   document.getElementById('ins-list').innerHTML=!ins.length
-    ?'<p style="font-size:13px;color:var(--muted);">Aucune analyse encore / No analyses yet</p>'
+    ?'<p style="font-size:13px;color:var(--muted);text-align:center;">Aucune analyse encore / No analyses yet</p>'
     :ins.map(x=>`
-      <div class="insight-item fu">
-        ${strip()}
+      <div class="insight-item fu">${strip()}
         <div class="insight-body">
           <div style="font-size:11px;color:var(--gold);margin-bottom:8px;">${x.e} ${x.cat}</div>
           <div class="q-pair-grid">
