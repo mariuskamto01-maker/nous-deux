@@ -237,9 +237,12 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
 <div id="pg-settings" class="page">
   <div class="banner"><canvas id="banner-settings"></canvas></div>
   <div class="inner" style="padding-top:20px;">
-    <button class="back-btn" onclick="goBack()">←</button>
-    <h2 class="mb8">⚙️ Paramètres</h2>
-    <p style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:20px;">Settings</p>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <button class="back-btn" onclick="goBack()" style="margin:0;">←</button>
+      <h2 style="margin:0;flex:1;">⚙️ Paramètres</h2>
+      <button id="logout-btn" onclick="confirmLogout()" style="background:rgba(232,48,48,0.15);border:1px solid #E83030;border-radius:8px;color:#E87070;font-size:11px;padding:5px 10px;cursor:pointer;font-family:'DM Sans',sans-serif;display:none;">🚪 Quitter</button>
+    </div>
+    <p style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:16px;">Settings</p>
 
     <!-- Tabs -->
     <div class="tab-row">
@@ -339,6 +342,7 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
       </div>
       <button onclick="showInsights()" style="background:none;border:1px solid var(--faint);border-radius:8px;color:var(--muted);cursor:pointer;font-size:11px;padding:5px 9px;font-family:'DM Sans',sans-serif;">📋 Analyses</button>
       <button onclick="goPage('pg-settings')" style="background:none;border:1px solid var(--faint);border-radius:8px;color:var(--muted);cursor:pointer;font-size:11px;padding:5px 9px;font-family:'DM Sans',sans-serif;">⚙️</button>
+      <button onclick="confirmLogout()" style="background:rgba(232,48,48,0.12);border:1px solid rgba(232,48,48,0.3);border-radius:8px;color:#E87070;cursor:pointer;font-size:11px;padding:5px 9px;font-family:'DM Sans',sans-serif;">🚪</button>
     </div>
     <div class="status-row" id="cat-status"></div>
     
@@ -685,6 +689,38 @@ function renderCustomThemesList(){
     </div>`).join('');
 }
 
+function showLogoutBtn(){
+  const btn=document.getElementById('logout-btn');
+  if(btn)btn.style.display=roomCode?'block':'none';
+}
+
+function confirmLogout(){
+  const msg=myLang==='fr'
+    ?"Quitter la session ?
+
+Votre code personnel vous permettra de vous reconnecter."
+    :"Leave the session?
+
+Your personal code will let you reconnect later.";
+  if(!confirm(msg))return;
+  logout();
+}
+
+function logout(){
+  if(lastRoom&&myRole){
+    const s={...lastRoom};
+    if(myRole==='p1'&&s.p1)s.p1.ts=0;
+    if(myRole==='p2'&&s.p2)s.p2.ts=0;
+    saveRoom(s).catch(()=>{});
+  }
+  sessionStorage.removeItem('nd_session');
+  roomCode='';myName='';myRole='';myLang='fr';mySecret='';lastRoom=null;
+  currentCat=null;currentQi=0;currentQs=[];
+  if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
+  _navHistory=[];
+  goPage('pg-home',false);
+}
+
 function saveSettings() {
   localStorage.setItem('nd_settings', JSON.stringify(settings));
   const btn = document.querySelector('#pg-settings .btn-gold:last-child');
@@ -761,6 +797,7 @@ function switchTab(tab) {
     document.getElementById('tab-'+t).className = 'tab-btn'+(tab===t?' active':'');
   });
   if(tab==='themes'){renderCustomThemesList();initEmojiPicker();}
+  showLogoutBtn();
 }
 
 // ═══════════════════════════════════════
@@ -899,6 +936,7 @@ function goPage(id, addToHistory=true){
   document.getElementById(id).classList.add('active');
   window.scrollTo(0,0);
   setTimeout(()=>drawBanner(id.replace('pg-','')),50);
+  if(id==='pg-settings') setTimeout(showLogoutBtn,50);
 }
 
 function goBack(){
@@ -962,7 +1000,7 @@ async function joinRoom(){
     const sess=sessionStorage.getItem('nd_session');
     if(sess){
       const d=JSON.parse(sess);
-      if(d.roomCode===d.roomCode && d.mySecret){
+      if(d.mySecret && d.roomCode){
         // Chercher si ce code = roomCode ou partnerCode
         const s=await loadRoom(d.roomCode);
         if(s && (s.p1?.secret===d.mySecret || s.p1PartnerCode===d.mySecret || s.p2?.secret===d.mySecret)){
@@ -1097,16 +1135,27 @@ function detectPending(state){
 // WAITING
 // ═══════════════════════════════════════
 function showWaiting(state){
-  document.getElementById('wait-code').textContent=state.code;
-  document.getElementById('wait-share-msg').textContent=myLang==='fr'?'Partage ce code par WhatsApp ou SMS':'Share this code via WhatsApp or SMS';
+  // Code p1 = son code secret, code p2 = p1PartnerCode
+  document.getElementById('wait-code').textContent=state.p1?.secret||state.code;
+  const pc=document.getElementById('wait-partner-code');
+  if(pc)pc.textContent=state.p1PartnerCode||'——';
+  document.getElementById('wait-share-msg').textContent=myLang==='fr'?'Partage le code partenaire par WhatsApp':'Share the partner code via WhatsApp';
   renderStatus('wait-status',state);
   const box=document.getElementById('wait-spinner-box');
   if(state.p2){box.style.display='none';setTimeout(()=>showCats(),600);}
   else{box.style.display='block';document.getElementById('wait-msg').textContent=myLang==='fr'?"En attente que l'autre personne rejoigne...":'Waiting for the other person to join...';}
   goPage('pg-wait');
 }
-function copyCode(){
-  navigator.clipboard.writeText(roomCode).then(()=>{const b=document.getElementById('copy-btn');b.textContent='✅ Copié!';setTimeout(()=>b.textContent='📋 Copier / Copy',2000);});
+function copyCode(who){
+  const val = who==='p2'
+    ? (lastRoom?.p1PartnerCode||'')
+    : (lastRoom?.p1?.secret||roomCode);
+  const btnId = who==='p2'?'copy-btn-p2':'copy-btn-p1';
+  navigator.clipboard.writeText(val).then(()=>{
+    const b=document.getElementById(btnId);
+    if(b){const orig=b.textContent;b.textContent='✅ Copié!';setTimeout(()=>b.textContent=orig,2000);}
+  }).catch(()=>{});
+  // Ancien bouton copy pour compaty',2000);});
 }
 
 // ═══════════════════════════════════════
