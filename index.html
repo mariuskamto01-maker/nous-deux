@@ -2384,7 +2384,6 @@ function renderAI(result){
 }
 
 async function doAnalysis(){
-  // Bouton manuel ou auto
   const btn=document.getElementById('analysis-btn');
   if(btn){btn.disabled=true;btn.textContent=myLang==='fr'?'⏳ Analyse en cours...':'⏳ Analysing...';}
   const s=lastRoom||await loadRoom(roomCode);
@@ -2393,44 +2392,104 @@ async function doAnalysis(){
   const a1=s?.answers?.[qk+'_p1']||'—';
   const a2=s?.answers?.[qk+'_p2']||'—';
   const n1=s?.p1?.name||'P1'; const n2=s?.p2?.name||'P2';
-  const qFr=pair?.[0]||''; const qEn=pair?.[1]||'';
+
+  // Simuler un délai pour l'effet "analyse en cours"
+  await new Promise(r=>setTimeout(r,1200));
+
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'anthropic-dangerous-direct-browser-calls':'true'
-      },
-      body:JSON.stringify({
-        model:'claude-haiku-4-5-20251001',max_tokens:800,
-        messages:[{role:'user',content:`Tu es un coach de couple bienveillant et perspicace. Analyse ces deux réponses avec profondeur et bienveillance. Identifie les points communs, les différences enrichissantes, et donne des pistes de conversation. Réponds UNIQUEMENT avec un objet JSON strictement valide, sans markdown: {"fr":"...analyse en français (3-4 phrases chaleureuses)...","en":"...analysis in English (3-4 warm sentences)..."}
-
-Thème: ${currentCat.fr} / ${currentCat.en}
-Question FR: ${qFr}
-Question EN: ${qEn}
-
-${n1}: "${a1}"
-${n2}: "${a2}"`}]
-      })
-    });
-    const data=await resp.json();
-    if(data.error){throw new Error(data.error.message||'API error');}
-    const txt=data.content?.[0]?.text||'{}';
-    const clean=txt.replace(/```json|```/g,'').trim();
-    const result=JSON.parse(clean);
+    const result = localAnalyse(n1,a1,n2,a2,currentCat,currentQs[currentQi]);
     result.qk=qk;
     const sr=await loadRoom(roomCode)||lastRoom;
     sr.aiResult=result;
-    await saveRoom(sr);lastRoom=sr;
+    await saveRoom(sr); lastRoom=sr;
     renderAI(result);
   }catch(e){
     const el=document.getElementById('ai-zone');
-    const errMsg = e?.message||'';
-    if(el)el.innerHTML=`<div style="margin-top:8px;padding:10px;background:rgba(232,80,80,0.1);border:1px solid rgba(232,80,80,0.3);border-radius:10px;"><p style="color:#E87070;font-size:12px;">${myLang==='fr'?'⚠️ Analyse indisponible pour le moment':'⚠️ Analysis unavailable right now'}</p>${errMsg?`<p style="color:var(--muted);font-size:10px;margin-top:4px;">${errMsg}</p>`:''}</div>`;
+    if(el)el.innerHTML='<div style="margin-top:8px;padding:10px;background:rgba(232,80,80,0.1);border:1px solid rgba(232,80,80,0.3);border-radius:10px;"><p style="color:#E87070;font-size:12px;">⚠️ '+( myLang==='fr'?'Analyse indisponible':'Analysis unavailable')+'</p></div>';
     const retryBtn=document.getElementById('analysis-btn');
     if(retryBtn){retryBtn.style.display='block';retryBtn.disabled=false;retryBtn.textContent=myLang==='fr'?'🔍 Réessayer':'🔍 Retry';}
     _analysisInProgress=false;
   }
+}
+
+// ═══════════════════════════════════════
+// MOTEUR D'ANALYSE LOCAL (sans API)
+// ═══════════════════════════════════════
+function localAnalyse(n1,a1,n2,a2,cat,pair){
+  // Tokeniser et nettoyer
+  const tok = t => (t||'').toLowerCase().replace(/[.,!?;:'"«»]/g,'').split(/\s+/).filter(w=>w.length>3);
+  const w1=tok(a1), w2=tok(a2);
+
+  // Mots communs (hors mots vides)
+  const stop=new Set(['pour','dans','avec','cette','comme','mais','aussi','plus','très','bien','même','tout','être','avoir','faire','donc','chez','quand','parce','dont','ainsi','leur','leurs','votre','notre','sans','sous','entre','avant','après','toujours','encore','autre','autres','celui','celle','ceux','celles','chaque','quelque','souvent','jamais','déjà','peut','sont','était','been','that','this','with','have','from','they','them','were','what','when','will','your','would','about','there','their','some','than','just','into','also','only','then','very','well','most','more','than','much','each','such','even','both','over','here','every','where','which']);
+  const common = w1.filter(w=>!stop.has(w)&&w2.includes(w));
+  const commonSet = [...new Set(common)];
+
+  // Longueur et complexité
+  const long1=a1.length, long2=a2.length;
+  const ratio=Math.min(long1,long2)/Math.max(long1,long2||1);
+  const words1=a1.split(/\s+/).length, words2=a2.split(/\s+/).length;
+
+  // Ton émotionnel simplifié
+  const posWords=['bonheur','amour','joie','rire','aimer','heureux','heureuse','belle','beau','magnifique','wonderful','happy','love','joy','beautiful','amazing','great','good','enjoy','fun','warm','sweet','tender'];
+  const negWords=['difficile','peur','tristesse','douleur','hard','difficult','fear','sad','pain','struggle','miss','loss'];
+  const emo1=posWords.filter(w=>a1.toLowerCase().includes(w)).length - negWords.filter(w=>a1.toLowerCase().includes(w)).length;
+  const emo2=posWords.filter(w=>a2.toLowerCase().includes(w)).length - negWords.filter(w=>a2.toLowerCase().includes(w)).length;
+  const sameTone = (emo1>=0&&emo2>=0)||(emo1<0&&emo2<0);
+
+  // Construire l'analyse FR
+  let fr='', en='';
+
+  // Point commun
+  if(commonSet.length>=2){
+    const kw=commonSet.slice(0,3).join(', ');
+    fr+=`${n1} et ${n2} partagent des références communes — notamment autour de "${commonSet[0]}" — ce qui révèle une sensibilité profondément alignée. `;
+    en+=`${n1} and ${n2} share common ground — especially around "${commonSet[0]}" — revealing a deeply aligned sensitivity. `;
+  } else {
+    fr+=`Vos réponses viennent de chemins différents, ce qui est précieux : chacun apporte une perspective unique à l'autre. `;
+    en+=`Your responses come from different paths, which is precious — each brings a unique perspective to the other. `;
+  }
+
+  // Longueur / profondeur
+  if(ratio<0.4){
+    const more=long1>long2?n1:n2, less=long1<long2?n1:n2;
+    fr+=`${more} s'est exprimé·e avec beaucoup de détails, tandis que ${less} a été plus direct·e : ces deux styles se complètent parfaitement. `;
+    en+=`${more} expressed themselves with depth, while ${less} was more concise — these two styles complement each other beautifully. `;
+  } else if(words1>40&&words2>40){
+    fr+=`Vous avez tous les deux pris le temps d'aller en profondeur — c'est le signe d'une vraie volonté de se livrer. `;
+    en+=`You both took the time to go deep — a true sign of openness and willingness to be known. `;
+  } else {
+    fr+=`Vos réponses, concises mais sincères, montrent que l'essentiel se dit parfois en peu de mots. `;
+    en+=`Your responses, brief but sincere, show that what matters most is sometimes said in few words. `;
+  }
+
+  // Ton émotionnel
+  if(sameTone && emo1>=0){
+    fr+=`On sent chez vous deux une énergie positive et chaleureuse face à ce sujet — une belle base pour aller encore plus loin ensemble. `;
+    en+=`There's a warm, positive energy in both of you around this theme — a beautiful foundation to go deeper together. `;
+  } else if(!sameTone){
+    fr+=`Vos tonalités différentes sont une invitation à mieux se comprendre — la conversation qui suit pourrait être l'une des plus enrichissantes. `;
+    en+=`Your different tones are an invitation to understand each other better — the conversation ahead could be one of the most enriching. `;
+  } else {
+    fr+=`Ce sujet touche quelque chose de profond pour vous deux — c'est exactement pour ça qu'il mérite d'être exploré ensemble. `;
+    en+=`This topic touches something deep in both of you — which is exactly why it deserves to be explored together. `;
+  }
+
+  // Suggestion de conversation basée sur le thème
+  const catId=cat?.id||'';
+  const suggestions={
+    enfance:{fr:`💬 À explorer : "Y a-t-il un souvenir d'enfance que tu n'as jamais partagé avec personne ?"`,en:`💬 To explore: "Is there a childhood memory you've never shared with anyone?"`},
+    vie:{fr:`💬 À explorer : "Quelle expérience t'a le plus transformé·e en adulte ?"`,en:`💬 To explore: "What experience has transformed you the most as an adult?"`},
+    intimite:{fr:`💬 À explorer : "Comment sais-tu que tu te sens vraiment en sécurité avec quelqu'un ?"`,en:`💬 To explore: "How do you know you truly feel safe with someone?"`},
+    ambitions:{fr:`💬 À explorer : "Si tu pouvais tout réussir sans risque d'échec, que ferais-tu ?"`,en:`💬 To explore: "If you could succeed at anything without risk of failure, what would you do?"`},
+    communication:{fr:`💬 À explorer : "Qu'est-ce que l'autre peut faire pour que tu te sentes vraiment entendu·e ?"`,en:`💬 To explore: "What can your partner do so you feel truly heard?"`},
+    foi:{fr:`💬 À explorer : "Comment ta foi (ou son absence) guide-t-elle tes choix importants ?"`,en:`💬 To explore: "How does your faith (or absence of it) guide your important choices?"`},
+  };
+  const sug=suggestions[catId]||{fr:`💬 À explorer : "Qu'est-ce que la réponse de l'autre t'a révélé sur lui/elle ?"`,en:`💬 To explore: "What did your partner's answer reveal about them that surprised you?"`};
+  fr+=sug.fr;
+  en+=sug.en;
+
+  return {fr, en};
 }
 
 // ═══════════════════════════════════════
