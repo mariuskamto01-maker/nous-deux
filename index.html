@@ -2363,7 +2363,7 @@ function showReveal(s,qk){
       </div>`;
     }).join('')}
     <div style="margin-top:14px;">
-      ${!ardy?`<button onclick="doAnalysis()" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--goldD);background:rgba(200,148,59,0.15);color:var(--gold);font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">🔍 ${myLang==='fr'?'Analyser notre compatibilité':'Analyse our compatibility'}</button>`:''}
+      ${!ardy?`<button id="analysis-btn" onclick="doAnalysis()" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--goldD);background:rgba(200,148,59,0.15);color:var(--gold);font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">🔍 ${myLang==='fr'?'Analyser notre compatibilité':'Analyse our compatibility'}</button>`:''}
     </div>
     <div id="ai-zone"></div>
     <div id="nav-zone">${ardy?navHTML():''}</div>`;
@@ -2384,8 +2384,9 @@ function renderAI(result){
 }
 
 async function doAnalysis(){
-  const btn=document.querySelector('#reveal-zone button[onclick="doAnalysis()"]');
-  if(btn){btn.disabled=true;btn.textContent=myLang==='fr'?'Analyse en cours...':'Analysing...';}
+  // Bouton manuel ou auto
+  const btn=document.getElementById('analysis-btn');
+  if(btn){btn.disabled=true;btn.textContent=myLang==='fr'?'⏳ Analyse en cours...':'⏳ Analysing...';}
   const s=lastRoom||await loadRoom(roomCode);
   const qk=currentCat.id+'_'+currentQi;
   const pair=currentQs[currentQi];
@@ -2396,9 +2397,12 @@ async function doAnalysis(){
   try{
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{
+        'Content-Type':'application/json',
+        'anthropic-dangerous-direct-browser-calls':'true'
+      },
       body:JSON.stringify({
-        model:'claude-sonnet-4-6',max_tokens:1000,
+        model:'claude-haiku-4-5-20251001',max_tokens:800,
         messages:[{role:'user',content:`Tu es un coach de couple bienveillant et perspicace. Analyse ces deux réponses avec profondeur et bienveillance. Identifie les points communs, les différences enrichissantes, et donne des pistes de conversation. Réponds UNIQUEMENT avec un objet JSON strictement valide, sans markdown: {"fr":"...analyse en français (3-4 phrases chaleureuses)...","en":"...analysis in English (3-4 warm sentences)..."}
 
 Thème: ${currentCat.fr} / ${currentCat.en}
@@ -2423,7 +2427,8 @@ ${n2}: "${a2}"`}]
     const el=document.getElementById('ai-zone');
     const errMsg = e?.message||'';
     if(el)el.innerHTML=`<div style="margin-top:8px;padding:10px;background:rgba(232,80,80,0.1);border:1px solid rgba(232,80,80,0.3);border-radius:10px;"><p style="color:#E87070;font-size:12px;">${myLang==='fr'?'⚠️ Analyse indisponible pour le moment':'⚠️ Analysis unavailable right now'}</p>${errMsg?`<p style="color:var(--muted);font-size:10px;margin-top:4px;">${errMsg}</p>`:''}</div>`;
-    if(btn){btn.style.display='block';btn.disabled=false;btn.textContent=myLang==='fr'?'🔍 Réessayer':'🔍 Retry';}
+    const retryBtn=document.getElementById('analysis-btn');
+    if(retryBtn){retryBtn.style.display='block';retryBtn.disabled=false;retryBtn.textContent=myLang==='fr'?'🔍 Réessayer':'🔍 Retry';}
     _analysisInProgress=false;
   }
 }
@@ -2499,8 +2504,8 @@ async function _triggerAutoAnalysis(qk){
     <p style="color:var(--muted);font-size:11px;margin-top:4px;">${myLang==='fr'?'Inactivité détectée — analyse automatique':'Inactivity detected — auto analysis'}</p>
   </div>`;
   // Cacher le bouton manuel
-  const btn = document.querySelector('#reveal-zone button[onclick="doAnalysis()"]');
-  if(btn) btn.style.display='none';
+  const manualBtn = document.getElementById('analysis-btn');
+  if(manualBtn) manualBtn.style.display='none';
   await doAnalysis();
   _analysisInProgress = false;
 }
