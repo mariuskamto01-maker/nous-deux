@@ -340,7 +340,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
   font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;
   cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:6px;
 }
-.lang-btn.active{
+.lang-btn.active,.lang-btn.sel{
   border-color:var(--gold);color:var(--goldL);
   background:rgba(212,148,60,0.1);
   box-shadow:0 0 12px rgba(212,148,60,0.15);
@@ -1220,6 +1220,9 @@ function createTheme(){
 
 function deleteTheme(id){
   settings.customThemes=settings.customThemes.filter(t=>t.id!==id);
+  // Mémoriser l'ID supprimé pour ne pas le réimporter depuis Firebase
+  settings._deletedThemeIds = settings._deletedThemeIds || [];
+  if(!settings._deletedThemeIds.includes(id)) settings._deletedThemeIds.push(id);
   saveSettings();
   renderCustomThemesList();
 }
@@ -1284,10 +1287,49 @@ function logout(){
   goPage('pg-home',false);
 }
 
-function saveSettings() {
+async function saveSettings() {
   localStorage.setItem('nd_settings', JSON.stringify(settings));
   const btn = document.querySelector('#pg-settings .btn-gold:last-child');
   if(btn){ btn.textContent='✅ Sauvegardé !'; setTimeout(()=>btn.textContent='✅ Sauvegarder / Save',1500); }
+  // Synchroniser dans Firebase en fusionnant avec la version distante (évite les écrasements)
+  if(roomCode) {
+    try {
+      const fresh = await loadRoom(roomCode) || lastRoom;
+      if(!fresh) return;
+      // Fusionner customThemes : combiner par ID, la version locale fait foi pour ses propres thèmes
+      const remoteThemes = fresh.customThemes || [];
+      const mergedThemes = [...remoteThemes];
+      settings.customThemes.forEach(local => {
+        const idx = mergedThemes.findIndex(t => t.id === local.id);
+        if(idx >= 0) mergedThemes[idx] = local; // mettre à jour
+        else mergedThemes.push(local);           // ajouter
+      });
+      // Retirer les thèmes supprimés localement (qui étaient créés par moi = id contenant mon role ou timestamp récent)
+      // On garde tous les thèmes distants sauf ceux que j'ai explicitement supprimés de mon settings local
+      // Stratégie : si un thème distant n'est pas dans mon settings ET qu'il n'est pas dans ma liste d'IDs supprimés → le garder
+      const myThemeIds = settings.customThemes.map(t=>t.id);
+      const _deletedIds = settings._deletedThemeIds || [];
+      const finalThemes = mergedThemes.filter(t => myThemeIds.includes(t.id) || !_deletedIds.includes(t.id));
+      // Fusionner customQs : union par texte (fr+en), pas de doublon
+      const remoteQs = fresh.customQs || [];
+      const allQs = [...remoteQs];
+      settings.customQs.forEach(local => {
+        const exists = allQs.find(q => q.fr === local.fr && q.en === local.en);
+        if(!exists) allQs.push(local);
+      });
+      // Retirer les questions supprimées localement
+      const _deletedQs = settings._deletedQs || [];
+      const finalQs = allQs.filter(q => !_deletedQs.find(d => d.fr===q.fr && d.en===q.en));
+      fresh.customThemes = finalThemes;
+      fresh.customQs = finalQs;
+      lastRoom = fresh;
+      await saveRoom(fresh);
+      // Mettre à jour settings local avec la version fusionnée
+      settings.customThemes = finalThemes;
+      settings.customQs = finalQs;
+      localStorage.setItem('nd_settings', JSON.stringify(settings));
+    } catch(e){ console.error('saveSettings sync error', e); }
+  }
 }
 function applySettingsUI() {
   setQCount(settings.qCount, false);
@@ -1330,7 +1372,10 @@ function addCustomQ() {
   saveSettings();
 }
 function removeCustomQ(i) {
-  settings.customQs.splice(i,1);
+  const removed = settings.customQs.splice(i,1)[0];
+  // Mémoriser la question supprimée pour ne pas la réimporter depuis Firebase
+  settings._deletedQs = settings._deletedQs || [];
+  if(removed) settings._deletedQs.push(removed);
   renderCustomQList();
   saveSettings();
 }
@@ -1543,7 +1588,8 @@ async function createRoom(){
   myName=document.getElementById('c-name').value.trim();myLang=createLang;myRole='p1';
   roomCode=genCode();
   const btn=document.getElementById('c-btn');btn.textContent='Création...';btn.disabled=true;
-  const state={code:roomCode,p1:{name:myName,lang:myLang,ts:Date.now()},p2:null,answers:{},insights:[],aiResult:null};
+  const state={code:roomCode,p1:{name:myName,lang:myLang,ts:Date.now()},p2:null,answers:{},insights:[],aiResult:null,
+    customThemes:settings.customThemes, customQs:settings.customQs};
   await saveRoom(state);lastRoom=state;
   sessionStorage.setItem('nd_session',JSON.stringify({myRole,myName,myLang,roomCode}));
   window._wentToCats=false;
@@ -1613,6 +1659,7 @@ async function joinRoom(){
   roomCode=code;
   await saveRoom(state); lastRoom=state;
   sessionStorage.setItem('nd_session', JSON.stringify({myRole,myName,myLang,roomCode}));
+  mergeSharedSettings(state); // Charger les thèmes/questions partagés dès la connexion
   startPoll();
 
   const pending=detectPending(state);
@@ -1681,6 +1728,48 @@ function shareCode(){
 // compat
 
 // ═══════════════════════════════════════
+// SYNC THÈMES/QUESTIONS PARTAGÉS
+// ═══════════════════════════════════════
+function mergeSharedSettings(s){
+  let changed = false;
+  // Fusionner customThemes de la room dans settings local
+  if(s.customThemes && Array.isArray(s.customThemes)){
+    s.customThemes.forEach(remoteTheme => {
+      const exists = settings.customThemes.find(t => t.id === remoteTheme.id);
+      if(!exists){
+        settings.customThemes.push(remoteTheme);
+        changed = true;
+      } else {
+        // Mettre à jour si la version remote a plus de questions
+        if(remoteTheme.qs && remoteTheme.qs.length > exists.qs.length){
+          Object.assign(exists, remoteTheme);
+          changed = true;
+        }
+      }
+    });
+    // Supprimer les thèmes locaux qui ont été supprimés côté Firebase
+    const remoteIds = s.customThemes.map(t=>t.id);
+    const before = settings.customThemes.length;
+    settings.customThemes = settings.customThemes.filter(t=>remoteIds.includes(t.id));
+    if(settings.customThemes.length !== before) changed = true;
+  }
+  // Fusionner customQs de la room dans settings local
+  if(s.customQs && Array.isArray(s.customQs)){
+    if(s.customQs.length !== settings.customQs.length){
+      settings.customQs = s.customQs;
+      changed = true;
+    }
+  }
+  if(changed){
+    localStorage.setItem('nd_settings', JSON.stringify(settings));
+    applySettingsUI();
+    // Reconstruire la liste des catégories si on est dessus
+    const pg = document.querySelector('.page.active')?.id;
+    if(pg === 'pg-cats') renderCatList(s);
+  }
+}
+
+// ═══════════════════════════════════════
 // POLLING
 // ═══════════════════════════════════════
 function startPoll(){
@@ -1705,6 +1794,8 @@ function startPoll(){
         setTimeout(()=>showCats(), 800);
       }
     }
+    // Synchroniser thèmes/questions perso depuis Firebase vers settings local
+    mergeSharedSettings(s);
     if(pg==='pg-q'&&currentCat){
       const qk=currentCat.id+'_'+currentQi;
       // Rafraîchir le chat TOUJOURS (même si user écrit dans my-answer)
