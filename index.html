@@ -711,7 +711,32 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
     <div id="my-zone"></div>
     <div id="sent-zone"></div>
     <div id="reveal-zone"></div>
-    <div id="chat-zone" style="margin-top:8px;"></div>
+    <!-- Chat permanent - structure fixe, jamais reconstruite -->
+    <div id="chat-zone" style="margin-top:12px;background:var(--d3);border:1px solid var(--goldD);border-radius:16px;overflow:hidden;display:none;">
+      <div class="strip"><div style="background:var(--k1)"></div><div style="background:var(--k2)"></div><div style="background:var(--k3)"></div><div style="background:var(--k4)"></div><div style="background:var(--k1)"></div><div style="background:var(--k3)"></div><div style="background:var(--k2)"></div><div style="background:var(--k4)"></div></div>
+      <!-- En-tête avec avatars des deux participants -->
+      <div style="padding:10px 14px 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--faint);">
+        <div style="display:flex;align-items:center;gap:7px;">
+          <div id="chat-avatar-p1" style="width:30px;height:30px;border-radius:50%;background:var(--p1d);border:2px solid var(--p1b);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">🙂</div>
+          <span id="chat-name-p1" style="font-size:11px;font-weight:700;color:var(--p1);">—</span>
+        </div>
+        <p id="chat-title" style="font-size:10px;color:var(--gold);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;text-align:center;flex:1;padding:0 8px;">💬 Échange libre</p>
+        <div style="display:flex;align-items:center;gap:7px;flex-direction:row-reverse;">
+          <div id="chat-avatar-p2" style="width:30px;height:30px;border-radius:50%;background:var(--p2d);border:2px solid var(--p2b);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">🙂</div>
+          <span id="chat-name-p2" style="font-size:11px;font-weight:700;color:var(--p2);">—</span>
+        </div>
+      </div>
+      <!-- Zone messages -->
+      <div style="padding:10px 14px 0;">
+        <div id="chat-msgs" style="display:flex;flex-direction:column;min-height:60px;max-height:260px;overflow-y:auto;padding-bottom:4px;"></div>
+      </div>
+      <!-- Zone saisie avec avatar de l'utilisateur courant -->
+      <div style="padding:10px 14px 14px;display:flex;gap:8px;align-items:flex-end;border-top:1px solid var(--faint);margin-top:8px;">
+        <div id="chat-my-avatar" style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:2px solid var(--faint);">🙂</div>
+        <textarea id="chat-input" rows="2" placeholder="Ton message..." style="flex:1;font-size:13px;padding:10px 12px;border-radius:12px;resize:none;width:100%;background:var(--d2);border:1.5px solid var(--faint);color:var(--cream);font-family:'Outfit',sans-serif;outline:none;transition:border-color 0.2s;box-sizing:border-box;" onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--faint)'"></textarea>
+        <button id="chat-send-btn" style="background:linear-gradient(135deg,var(--goldD),var(--gold));border:none;border-radius:12px;color:#12090A;font-weight:700;font-size:18px;cursor:pointer;padding:10px 14px;flex-shrink:0;align-self:flex-end;">➤</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1660,6 +1685,7 @@ async function joinRoom(){
   await saveRoom(state); lastRoom=state;
   sessionStorage.setItem('nd_session', JSON.stringify({myRole,myName,myLang,roomCode}));
   mergeSharedSettings(state); // Charger les thèmes/questions partagés dès la connexion
+  initAvatars(state);
   startPoll();
 
   const pending=detectPending(state);
@@ -1989,6 +2015,7 @@ function renderCatList(s){
     return;
   }
   if(lastRoom)lastRoom.aiResult=null;
+  _currentChatQk = null; // Forcer la réinitialisation du chat pour la nouvelle question
   renderQ();
   goPage('pg-q');
   if(lastRoom&&roomCode) saveRoom(lastRoom).catch(()=>{});
@@ -2326,8 +2353,40 @@ let _lastMsgCount={};
 
 function getChatKey(qk){return 'chat_'+qk.replace(/[^a-zA-Z0-9]/g,'_');}
 
+// Avatars emoji par rôle (initialisé au démarrage de la session)
+const ROLE_AVATARS = {
+  p1: ['💙','🦁','🌊','🔵','🌙','❄️','🐬','💎'],
+  p2: ['🧡','🦊','🌺','🔶','☀️','🔥','🦋','✨']
+};
+let _avatarP1 = '💙';
+let _avatarP2 = '🧡';
+
+function getAvatar(role){ return role==='p1' ? _avatarP1 : _avatarP2; }
+
+function initAvatars(s){
+  // Choisir avatar basé sur le hash du prénom → stable et unique
+  function pick(name, pool){
+    if(!name) return pool[0];
+    let h=0; for(let c of name) h=(h*31+c.charCodeAt(0))%pool.length;
+    return pool[Math.abs(h)%pool.length];
+  }
+  _avatarP1 = pick(s?.p1?.name, ROLE_AVATARS.p1);
+  _avatarP2 = pick(s?.p2?.name, ROLE_AVATARS.p2);
+  // Mettre à jour les avatars statiques dans le DOM
+  const a1=document.getElementById('chat-avatar-p1');
+  const a2=document.getElementById('chat-avatar-p2');
+  const n1=document.getElementById('chat-name-p1');
+  const n2=document.getElementById('chat-name-p2');
+  const am=document.getElementById('chat-my-avatar');
+  if(a1) a1.textContent=_avatarP1;
+  if(a2) a2.textContent=_avatarP2;
+  if(n1) n1.textContent=s?.p1?.name||'—';
+  if(n2) n2.textContent=s?.p2?.name||'—';
+  if(am){ am.textContent=getAvatar(myRole); am.style.background=myRole==='p1'?'var(--p1d)':'var(--p2d)'; am.style.borderColor=myRole==='p1'?'var(--p1b)':'var(--p2b)'; }
+}
+
 function buildMsgHtml(s,msgs){
-  if(!msgs||msgs.length===0)return '<p style="font-size:12px;color:var(--muted);text-align:center;font-style:italic;padding:16px 0;">'+(myLang==='fr'?'Réagissez, posez des questions...':'React, ask questions, go deeper...')+'</p>';
+  if(!msgs||msgs.length===0)return '<p style="font-size:12px;color:var(--muted);text-align:center;font-style:italic;padding:20px 0;">'+(myLang==='fr'?'Réagissez, posez des questions...':'React, ask questions, go deeper...')+'</p>';
   return msgs.map(m=>{
     const isMe=m.role===myRole;
     const nm=s?.[m.role]?.name||'?';
@@ -2335,11 +2394,15 @@ function buildMsgHtml(s,msgs){
     const col=m.role==='p1'?'var(--p1)':'var(--p2)';
     const bg=m.role==='p1'?'#182A40':'#2E1810';
     const bd=m.role==='p1'?'var(--p1b)':'var(--p2b)';
+    const avatar=getAvatar(m.role);
     const time=new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    return '<div style="display:flex;flex-direction:'+(isMe?'row':'row-reverse')+';gap:8px;align-items:flex-end;margin-bottom:8px;">'
-      +'<div style="width:28px;height:28px;border-radius:50%;background:'+bg+';border:2px solid '+bd+';display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">👤</div>'
-      +'<div style="max-width:78%;background:'+bg+';border:1px solid '+bd+';border-radius:16px;border-bottom-'+(isMe?'left':'right')+'-radius:4px;padding:8px 12px;">'
-        +'<div style="font-size:10px;font-weight:700;color:'+col+';margin-bottom:4px;display:flex;align-items:center;gap:6px;">'
+    // Moi à gauche, l'autre à droite
+    const rowDir=isMe?'row':'row-reverse';
+    const radiusCorner=isMe?'border-bottom-left-radius:4px':'border-bottom-right-radius:4px';
+    return '<div style="display:flex;flex-direction:'+rowDir+';gap:8px;align-items:flex-end;margin-bottom:10px;">'
+      +'<div style="width:32px;height:32px;border-radius:50%;background:'+bg+';border:2px solid '+bd+';display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;">'+avatar+'</div>'
+      +'<div style="max-width:75%;background:'+bg+';border:1px solid '+bd+';border-radius:14px;'+radiusCorner+';padding:8px 12px;">'
+        +'<div style="font-size:10px;font-weight:700;color:'+col+';margin-bottom:4px;display:flex;align-items:center;gap:5px;">'
           +nm+' <span class="lang-chip '+lg+'">'+(lg==='fr'?'🇫🇷':'🇬🇧')+'</span>'
           +'<span style="font-size:9px;color:var(--muted);margin-left:auto;">'+time+'</span>'
         +'</div>'
@@ -2349,69 +2412,86 @@ function buildMsgHtml(s,msgs){
   }).join('');
 }
 
-function renderLiveChat(s,qk){
-  const chatZ=document.getElementById('chat-zone');
-  if(!chatZ)return;
-  const key=getChatKey(qk);
-  const msgs=s?.chat?.[key]||[];
-  const catLabel=currentCat?.[myLang==='fr'?'fr':'en']||'';
+// currentChatQk = la clé de question active pour le chat
+let _currentChatQk = null;
 
-  // Si le conteneur existe déjà et que l'utilisateur est en train de taper → ne PAS reconstruire
-  const existingInput=document.getElementById('chat-input');
-  if(existingInput && document.activeElement===existingInput){
-    // Juste mettre à jour les messages sans toucher au textarea
-    const msgsEl=document.getElementById('chat-msgs');
-    if(msgsEl && msgs.length>(_lastMsgCount[qk]||0)){
-      _lastMsgCount[qk]=msgs.length;
-      msgsEl.innerHTML=buildMsgHtml(s,msgs);
-      msgsEl.scrollTop=msgsEl.scrollHeight;
-    }
-    return;
+function renderLiveChat(s, qk){
+  const chatZ = document.getElementById('chat-zone');
+  if(!chatZ) return;
+
+  // Afficher le chat-zone (structure fixe déjà dans le DOM)
+  chatZ.style.display = 'block';
+  _currentChatQk = qk;
+
+  // Mettre à jour le titre
+  const titleEl = document.getElementById('chat-title');
+  const catLabel = currentCat?.[myLang==='fr'?'fr':'en'] || '';
+  if(titleEl) titleEl.textContent = '💬 ' + (myLang==='fr'?'Échange libre':'Free exchange') + (currentCat?.e ? ' — '+currentCat.e+' '+catLabel : '');
+
+  // Mettre à jour le placeholder selon la langue
+  const input = document.getElementById('chat-input');
+  if(input && !input.dataset.bound){
+    input.placeholder = myLang==='fr' ? 'Ton message...' : 'Your message...';
+    input.addEventListener('keydown', e=>{
+      if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChatMsg(_currentChatQk); }
+    });
+    input.dataset.bound = '1';
   }
 
-  // Si le conteneur existe déjà avec un texte en cours → préserver le texte
-  const draftText = existingInput ? existingInput.value : '';
-
-  _lastMsgCount[qk]=_lastMsgCount[qk]||0;
-  const onThisQ = document.getElementById('pg-q')?.classList.contains('active') && currentCat?.id === qk.split('_')[0];
-  if(msgs.length>_lastMsgCount[qk] && !onThisQ){
-    for(let i=_lastMsgCount[qk];i<msgs.length;i++){
-      if(msgs[i].role!==myRole) addBadge(currentCat.id,'chat');
-    }
+  // Bouton envoyer
+  const sendBtn = document.getElementById('chat-send-btn');
+  if(sendBtn && !sendBtn.dataset.bound){
+    sendBtn.addEventListener('click', ()=>sendChatMsg(_currentChatQk));
+    sendBtn.dataset.bound = '1';
   }
-  _lastMsgCount[qk]=msgs.length;
-  chatZ.innerHTML=`
-    <div style="background:var(--d3);border:1px solid var(--goldD);border-radius:16px;overflow:hidden;margin-top:4px;">
-      <div class="strip"><div style="background:var(--k1)"></div><div style="background:var(--k2)"></div><div style="background:var(--k3)"></div><div style="background:var(--k4)"></div><div style="background:var(--k1)"></div><div style="background:var(--k3)"></div><div style="background:var(--k2)"></div><div style="background:var(--k4)"></div></div>
-      <div style="padding:12px 14px 0;">
-        <p style="font-size:11px;color:var(--gold);font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px;">💬 ${myLang==='fr'?'Échange libre':'Free exchange'} — ${currentCat?.e||''} ${catLabel}</p>
-        <div id="chat-msgs" style="display:flex;flex-direction:column;min-height:40px;max-height:280px;overflow-y:auto;padding-bottom:4px;">${buildMsgHtml(s,msgs)}</div>
-      </div>
-      <div style="padding:10px 14px 14px;display:flex;gap:8px;align-items:flex-end;border-top:1px solid var(--faint);margin-top:10px;">
-        <textarea id="chat-input" rows="2" placeholder="${myLang==='fr'?'Ton message...':'Your message...'}" style="flex:1;font-size:13px;padding:10px 12px;border-radius:12px;resize:none;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMsg('${qk}');}">${draftText}</textarea>
-        <button onclick="sendChatMsg('${qk}')" style="background:linear-gradient(135deg,var(--goldD),var(--gold));border:none;border-radius:12px;color:#12090A;font-weight:700;font-size:18px;cursor:pointer;padding:10px 14px;flex-shrink:0;align-self:flex-end;">➤</button>
-      </div>
-    </div>`;
-  setTimeout(()=>{const el=document.getElementById('chat-msgs');if(el)el.scrollTop=el.scrollHeight;},80);
+
+  // Initialiser les avatars
+  initAvatars(s);
+
+  // Mettre à jour les messages
+  _updateChatMsgs(s, qk);
   markChatRead(qk).catch(()=>{});
 }
 
-function refreshLiveChat(s,qk){
-  const chatZ=document.getElementById('chat-zone');
-  if(!chatZ)return;
-  if(!document.getElementById('chat-msgs')){renderLiveChat(s,qk);return;}
-  const key=getChatKey(qk);
-  const msgs=s?.chat?.[key]||[];
-  const prevCount=_lastMsgCount[qk]||0;
-  // Ne jamais reconstruire si l'utilisateur est en train d'écrire
-  const input=document.getElementById('chat-input');
-  const isTyping = input && document.activeElement===input;
-  if(msgs.length>prevCount || (msgs.length>0 && prevCount===0)){
-    for(let i=prevCount;i<msgs.length;i++){if(msgs[i].role!==myRole)addBadge(currentCat.id,'chat');}
-    _lastMsgCount[qk]=msgs.length;
-    if(!isTyping){
-      const msgsEl=document.getElementById('chat-msgs');
-      if(msgsEl){msgsEl.innerHTML=buildMsgHtml(s,msgs);msgsEl.scrollTop=msgsEl.scrollHeight;}
+function _updateChatMsgs(s, qk){
+  const key = getChatKey(qk);
+  const msgs = s?.chat?.[key] || [];
+  const msgsEl = document.getElementById('chat-msgs');
+  if(!msgsEl) return;
+
+  const onThisQ = document.getElementById('pg-q')?.classList.contains('active') && currentCat?.id === qk.split('_')[0];
+  const prevCount = _lastMsgCount[qk] || 0;
+  if(msgs.length > prevCount && !onThisQ){
+    for(let i=prevCount; i<msgs.length; i++){
+      if(msgs[i].role !== myRole) addBadge(currentCat.id, 'chat');
+    }
+  }
+  _lastMsgCount[qk] = msgs.length;
+  msgsEl.innerHTML = buildMsgHtml(s, msgs);
+  setTimeout(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; }, 50);
+}
+
+function refreshLiveChat(s, qk){
+  const chatZ = document.getElementById('chat-zone');
+  if(!chatZ) return;
+  // Si le chat n'est pas encore initialisé pour cette question, le rendre
+  if(_currentChatQk !== qk || chatZ.style.display === 'none'){
+    renderLiveChat(s, qk); return;
+  }
+  const key = getChatKey(qk);
+  const msgs = s?.chat?.[key] || [];
+  const prevCount = _lastMsgCount[qk] || 0;
+  // Ne jamais interrompre la saisie de l'utilisateur
+  const input = document.getElementById('chat-input');
+  const isTyping = input && document.activeElement === input;
+  if(msgs.length > prevCount || (msgs.length > 0 && prevCount === 0)){
+    if(!isTyping) _updateChatMsgs(s, qk);
+    else {
+      // Compter quand même pour les badges
+      for(let i=prevCount; i<msgs.length; i++){
+        if(msgs[i].role !== myRole) addBadge(currentCat.id, 'chat');
+      }
+      _lastMsgCount[qk] = msgs.length;
     }
   }
 }
