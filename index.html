@@ -32,10 +32,15 @@ body{
   font-family:'Outfit',sans-serif;
   color:var(--text);
   overscroll-behavior:none;
-  background-image:
-    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(107,170,255,0.06) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(255,123,90,0.05) 0%, transparent 60%);
 }
+/* BG canvas fixe derrière tout */
+#bg-canvas{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  z-index:0;pointer-events:none;
+  opacity:0;transition:opacity 1.8s ease;
+}
+#bg-canvas.visible{opacity:1;}
+.page{position:relative;z-index:1;}
 
 /* ── PAGES ── */
 .page{display:none;flex-direction:column;align-items:center;min-height:100vh;padding-bottom:80px;}
@@ -465,6 +470,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
 </style>
 </head>
 <body>
+<canvas id="bg-canvas"></canvas>
 
 <!-- HOME -->
 <div id="pg-home" class="page active">
@@ -721,6 +727,192 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
 </div>
 
 <script>
+// ═══════════════════════════════════════
+// BACKGROUND ENGINE — change à chaque session
+// ═══════════════════════════════════════
+const BG_THEMES = [
+  // 1. Aurore africaine — ciel du matin rouge-orangé
+  {
+    name:'aurora',
+    draw(ctx,W,H){
+      const g=ctx.createRadialGradient(W*0.3,H*0.2,0,W*0.3,H*0.2,W*0.8);
+      g.addColorStop(0,'rgba(180,60,20,0.18)');
+      g.addColorStop(0.4,'rgba(120,30,60,0.12)');
+      g.addColorStop(1,'rgba(6,4,8,0)');
+      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+      const g2=ctx.createRadialGradient(W*0.8,H*0.7,0,W*0.8,H*0.7,W*0.6);
+      g2.addColorStop(0,'rgba(30,60,140,0.14)');
+      g2.addColorStop(1,'rgba(6,4,8,0)');
+      ctx.fillStyle=g2;ctx.fillRect(0,0,W,H);
+      // étoiles
+      for(let i=0;i<120;i++){
+        const x=Math.random()*W,y=Math.random()*H*0.7;
+        const r=Math.random()*1.2+0.2;
+        ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+        ctx.fillStyle=`rgba(255,240,200,${Math.random()*0.6+0.1})`;ctx.fill();
+      }
+    }
+  },
+  // 2. Tissu Kente — motifs géométriques dorés
+  {
+    name:'kente',
+    draw(ctx,W,H){
+      const colors=['rgba(212,148,60,0.06)','rgba(200,56,32,0.05)','rgba(26,104,48,0.05)','rgba(26,58,144,0.05)'];
+      const sz=Math.floor(W/14);
+      for(let y=0;y<H;y+=sz*2){
+        for(let x=0;x<W;x+=sz){
+          const ci=((x/sz)+(y/(sz*2)))%colors.length|0;
+          ctx.fillStyle=colors[ci];
+          ctx.fillRect(x,y,sz,sz*2);
+        }
+      }
+      // diagonales dorées subtiles
+      ctx.strokeStyle='rgba(212,148,60,0.06)';ctx.lineWidth=1;
+      for(let i=-H;i<W+H;i+=sz*4){
+        ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i+H,H);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i-H,H);ctx.stroke();
+      }
+    }
+  },
+  // 3. Nébuleuse violette — espace profond
+  {
+    name:'nebula',
+    draw(ctx,W,H){
+      const g=ctx.createRadialGradient(W*0.5,H*0.3,0,W*0.5,H*0.3,W*0.7);
+      g.addColorStop(0,'rgba(100,40,180,0.15)');
+      g.addColorStop(0.5,'rgba(40,20,80,0.08)');
+      g.addColorStop(1,'rgba(6,4,8,0)');
+      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+      const g2=ctx.createRadialGradient(W*0.1,H*0.8,0,W*0.1,H*0.8,W*0.5);
+      g2.addColorStop(0,'rgba(200,80,120,0.1)');
+      g2.addColorStop(1,'rgba(6,4,8,0)');
+      ctx.fillStyle=g2;ctx.fillRect(0,0,W,H);
+      // étoiles + poussière
+      for(let i=0;i<200;i++){
+        const x=Math.random()*W,y=Math.random()*H;
+        const r=Math.random()*0.9+0.1;
+        const a=Math.random()*0.7+0.1;
+        ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+        ctx.fillStyle=`rgba(220,200,255,${a})`;ctx.fill();
+      }
+    }
+  },
+  // 4. Savane au crépuscule — horizon chaud
+  {
+    name:'savane',
+    draw(ctx,W,H){
+      const sky=ctx.createLinearGradient(0,0,0,H*0.75);
+      sky.addColorStop(0,'rgba(10,8,20,0)');
+      sky.addColorStop(0.4,'rgba(80,20,10,0.1)');
+      sky.addColorStop(0.7,'rgba(160,60,10,0.12)');
+      sky.addColorStop(1,'rgba(200,80,10,0.06)');
+      ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+      // cercle soleil/lune à l'horizon
+      const sunX=W*0.75,sunY=H*0.55;
+      const sunG=ctx.createRadialGradient(sunX,sunY,0,sunX,sunY,W*0.25);
+      sunG.addColorStop(0,'rgba(240,160,40,0.18)');
+      sunG.addColorStop(0.4,'rgba(200,80,20,0.08)');
+      sunG.addColorStop(1,'rgba(6,4,8,0)');
+      ctx.fillStyle=sunG;ctx.fillRect(0,0,W,H);
+      // silhouettes arbres
+      ctx.fillStyle='rgba(8,5,14,0.5)';
+      [[0.1,0.85,18,120],[0.2,0.88,12,80],[0.35,0.82,22,150],[0.65,0.84,16,100],[0.85,0.87,14,90],[0.92,0.83,20,130]].forEach(([rx,ry,rw,rh])=>{
+        ctx.fillRect(W*rx-rw/2,H*ry-rh,rw,rh);
+        // branche arrondie haut
+        ctx.beginPath();ctx.arc(W*rx,H*ry-rh,rw*1.8,0,Math.PI*2);ctx.fill();
+      });
+    }
+  },
+  // 5. Océan atlantique — bleu profond avec reflets
+  {
+    name:'ocean',
+    draw(ctx,W,H){
+      const g=ctx.createLinearGradient(0,0,W,H);
+      g.addColorStop(0,'rgba(10,30,80,0.12)');
+      g.addColorStop(0.5,'rgba(20,60,120,0.08)');
+      g.addColorStop(1,'rgba(10,20,60,0.1)');
+      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+      // vagues horizontales subtiles
+      ctx.strokeStyle='rgba(107,170,255,0.06)';ctx.lineWidth=1;
+      for(let y=H*0.4;y<H;y+=30){
+        ctx.beginPath();
+        for(let x=0;x<=W;x+=20){
+          const wave=Math.sin((x+y*3)*0.04)*6;
+          x===0?ctx.moveTo(x,y+wave):ctx.lineTo(x,y+wave);
+        }
+        ctx.stroke();
+      }
+      // reflet lune sur l'eau
+      const moonG=ctx.createRadialGradient(W*0.5,H*0.6,0,W*0.5,H*0.6,W*0.3);
+      moonG.addColorStop(0,'rgba(180,200,255,0.08)');
+      moonG.addColorStop(1,'rgba(6,4,8,0)');
+      ctx.fillStyle=moonG;ctx.fillRect(0,0,W,H);
+    }
+  },
+  // 6. Tissu Ndop — formes géométriques Bamiléké
+  {
+    name:'ndop',
+    draw(ctx,W,H){
+      const sz=Math.floor(W/10);
+      ctx.strokeStyle='rgba(107,170,255,0.05)';ctx.lineWidth=1;
+      // grille losange
+      for(let y=-sz;y<H+sz;y+=sz){
+        for(let x=-sz;x<W+sz;x+=sz*2){
+          ctx.beginPath();
+          ctx.moveTo(x+(y%2?sz:0),y);
+          ctx.lineTo(x+sz+(y%2?sz:0),y+sz/2);
+          ctx.lineTo(x+(y%2?sz:0),y+sz);
+          ctx.lineTo(x-sz+(y%2?sz:0),y+sz/2);
+          ctx.closePath();ctx.stroke();
+        }
+      }
+      // cercles concentriques
+      for(let i=0;i<5;i++){
+        const cx=Math.random()*W,cy=Math.random()*H;
+        for(let r=20;r<120;r+=20){
+          ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+          ctx.strokeStyle=`rgba(212,148,60,${0.03+i*0.01})`;
+          ctx.lineWidth=1;ctx.stroke();
+        }
+      }
+    }
+  },
+];
+
+let _bgThemeIdx = -1;
+
+function initBackground(){
+  const canvas=document.getElementById('bg-canvas');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width=window.innerWidth;
+  const H=canvas.height=window.innerHeight;
+
+  // Choisir un thème différent du précédent
+  let idx;
+  do{ idx=Math.floor(Math.random()*BG_THEMES.length); }
+  while(idx===_bgThemeIdx && BG_THEMES.length>1);
+  _bgThemeIdx=idx;
+
+  // Fond de base
+  ctx.fillStyle='#060408';
+  ctx.fillRect(0,0,W,H);
+
+  // Dessiner le thème
+  BG_THEMES[idx].draw(ctx,W,H);
+
+  // Apparition progressive
+  canvas.classList.remove('visible');
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>canvas.classList.add('visible'));
+  });
+}
+
+// Lancer au chargement + resize
+window.addEventListener('load', initBackground);
+window.addEventListener('resize', ()=>{ initBackground(); });
+
+
 // ═══════════════════════════════════════
 // FIREBASE REST API
 // ═══════════════════════════════════════
@@ -1254,6 +1446,9 @@ window.addEventListener('resize',drawAll);
 let _navHistory = [];
 
 function goPage(id, addToHistory=true){
+  if(['pg-home','pg-cats','pg-wait'].includes(id)){
+    setTimeout(initBackground, 50);
+  }
   const current = document.querySelector('.page.active')?.id;
   if(current && addToHistory && current !== id){
     _navHistory.push(current);
@@ -1679,6 +1874,78 @@ function collapseGroup(id,animate=true){
 // ═══════════════════════════════════════
 // QUESTION — affichage input, sent, reveal
 // ═══════════════════════════════════════
+
+// ═══════════════════════════════════════
+// RENDER QUESTION
+// ═══════════════════════════════════════
+function renderQ(){
+  const pair=currentQs[currentQi];
+  if(!pair){console.warn('No pair for qi',currentQi);return;}
+  const s=lastRoom;
+  const total=currentQs.length;
+
+  // Progress bar
+  const barEl=document.getElementById('q-bar');
+  if(barEl)barEl.style.width=((currentQi+1)/total*100)+'%';
+
+  // Counter
+  const counterEl=document.getElementById('q-counter');
+  if(counterEl)counterEl.textContent=(currentQi+1)+' / '+total;
+
+  // Cat emoji + name
+  const emojiEl=document.getElementById('q-emoji');
+  const nameEl=document.getElementById('q-catname');
+  if(emojiEl)emojiEl.textContent=currentCat.e;
+  if(nameEl)nameEl.textContent=currentCat?.[myLang==='fr'?'fr':'en']||currentCat?.fr||'';
+
+  // Question text
+  const frEl=document.getElementById('q-fr');
+  const enEl=document.getElementById('q-en');
+  if(frEl)frEl.textContent=pair[0];
+  if(enEl)enEl.textContent=pair[1];
+
+  // Status
+  renderStatus('q-status',s);
+
+  // Reset answer zones
+  const myZ=document.getElementById('my-zone');
+  const sentZ=document.getElementById('sent-zone');
+  const revZ=document.getElementById('reveal-zone');
+  const chatZ=document.getElementById('chat-zone');
+  if(myZ){myZ.style.display='none';myZ.innerHTML='';}
+  if(sentZ){sentZ.style.display='none';sentZ.innerHTML='';}
+  if(revZ){revZ.style.display='none';revZ.innerHTML='';}
+  if(chatZ)chatZ.style.display='none';
+
+  checkQState(s);
+}
+
+function checkQState(s){
+  if(!s||!currentCat)return;
+  const qk=currentCat.id+'_'+currentQi;
+  const myA=s.answers?.[qk+'_'+myRole];
+  const thRole=myRole==='p1'?'p2':'p1';
+  const thA=s.answers?.[qk+'_'+thRole];
+
+  if(myA&&thA){
+    // Révélation
+    document.getElementById('sent-zone').style.display='none';
+    document.getElementById('my-zone').style.display='none';
+    showReveal(s,qk);
+    // Afficher le chat
+    const chatZ=document.getElementById('chat-zone');
+    if(chatZ)chatZ.style.display='block';
+    renderLiveChat(s,qk);
+  } else if(myA){
+    // En attente de l'autre
+    document.getElementById('my-zone').style.display='none';
+    showSent(s);
+  } else {
+    // Pas encore répondu
+    showMyInput();
+  }
+}
+
 function showMyInput(){
   const pair=currentQs[currentQi];
   const isP1=myRole==='p1';
