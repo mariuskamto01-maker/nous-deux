@@ -110,6 +110,26 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .fu{animation:fadeUp 0.4s ease both;}
 .mb8{margin-bottom:8px;}.mb12{margin-bottom:12px;}.mb16{margin-bottom:16px;}.mb20{margin-bottom:20px;}
+
+/* CATEGORY GROUPS + GRID */
+.cat-group{margin-bottom:8px;border-radius:14px;overflow:hidden;border:1px solid var(--faint);}
+.cat-group-header{width:100%;background:var(--d3);border:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:11px 14px;font-family:'DM Sans',sans-serif;}
+.cat-group-label{font-size:13px;font-weight:700;color:var(--gold);flex:1;text-align:left;}
+.cat-group-count{font-size:10px;color:var(--muted);}
+.cat-group-arrow{font-size:12px;color:var(--muted);transition:transform 0.2s;}
+.grp-badge{background:#E83030;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;box-shadow:0 0 6px rgba(232,48,48,0.5);}
+.grp-add-btn{background:none;border:1.5px solid var(--faint);border-radius:8px;color:var(--gold);cursor:pointer;font-size:14px;font-weight:700;padding:2px 8px;font-family:'DM Sans',sans-serif;margin-left:4px;}
+.cat-group-body{max-height:500px;overflow:hidden;transition:max-height 0.3s ease,opacity 0.25s ease;background:var(--d2);padding:10px;}
+.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
+@media(max-width:340px){.cat-grid{grid-template-columns:repeat(2,1fr);}}
+.cat-tile{background:var(--d3);border:1.5px solid var(--faint);border-radius:12px;padding:10px 6px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;position:relative;overflow:hidden;}
+.cat-tile:active{transform:scale(0.96);}
+.cat-tile-alert{border-color:#E83030;box-shadow:0 0 10px rgba(232,48,48,0.25);}
+.cat-tile-emoji{font-size:26px;position:relative;line-height:1.2;}
+.cat-tile-dot{position:absolute;top:-2px;right:-4px;width:9px;height:9px;background:#E83030;border-radius:50%;box-shadow:0 0 5px #E83030;border:1.5px solid var(--d3);}
+.cat-tile-name{font-size:10px;font-weight:600;color:var(--cream);text-align:center;line-height:1.3;max-width:80px;}
+.cat-tile-count{font-size:9px;color:var(--muted);}
+.cat-tile-badge{background:#E83030;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:99px;}
 </style>
 </head>
 <body>
@@ -151,7 +171,7 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
 <div id="pg-create" class="page">
   <div class="banner"><canvas id="banner-create"></canvas></div>
   <div class="inner" style="padding-top:20px;">
-    <button class="back-btn" onclick="goPage('pg-home')">←</button>
+    <button class="back-btn" onclick="goBack()">←</button>
     <h2 class="mb8">Créer une salle</h2>
     <p style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:20px;">Create a room</p>
     <div class="mb16"><div class="label">Ton prénom / Your name</div><input id="c-name" type="text" placeholder="Prénom / Name..." oninput="checkCreate()"></div>
@@ -169,7 +189,7 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
 <div id="pg-join" class="page">
   <div class="banner"><canvas id="banner-join"></canvas></div>
   <div class="inner" style="padding-top:20px;">
-    <button class="back-btn" onclick="goPage('pg-home')">←</button>
+    <button class="back-btn" onclick="goBack()">←</button>
     <h2 class="mb8">Rejoindre une salle</h2>
     <p style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:20px;">Join a room</p>
     <div class="mb14"><div class="label">Code de la salle / Room code</div>
@@ -217,7 +237,7 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
 <div id="pg-settings" class="page">
   <div class="banner"><canvas id="banner-settings"></canvas></div>
   <div class="inner" style="padding-top:20px;">
-    <button class="back-btn" onclick="goPage('pg-home')">←</button>
+    <button class="back-btn" onclick="goBack()">←</button>
     <h2 class="mb8">⚙️ Paramètres</h2>
     <p style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:20px;">Settings</p>
 
@@ -312,16 +332,16 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
 <div id="pg-cats" class="page">
   <div class="banner"><canvas id="banner-cats"></canvas></div>
   <div class="inner" style="padding-top:18px;">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-      <span id="cat-me-name" style="font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--cream);"></span>
-      <span id="cat-me-lang" class="lang-chip"></span>
-      <div style="margin-left:auto;display:flex;gap:6px;">
-        <button onclick="showInsights()" style="background:none;border:1px solid var(--faint);border-radius:8px;color:var(--muted);cursor:pointer;font-size:11px;padding:5px 10px;font-family:'DM Sans',sans-serif;">📋</button>
-        <button onclick="goPage('pg-settings')" style="background:none;border:1px solid var(--faint);border-radius:8px;color:var(--muted);cursor:pointer;font-size:11px;padding:5px 10px;font-family:'DM Sans',sans-serif;">⚙️</button>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:6px;flex:1;">
+        <span id="cat-me-name" style="font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--cream);"></span>
+        <span id="cat-me-lang" class="lang-chip"></span>
       </div>
+      <button onclick="showInsights()" style="background:none;border:1px solid var(--faint);border-radius:8px;color:var(--muted);cursor:pointer;font-size:11px;padding:5px 9px;font-family:'DM Sans',sans-serif;">📋 Analyses</button>
+      <button onclick="goPage('pg-settings')" style="background:none;border:1px solid var(--faint);border-radius:8px;color:var(--muted);cursor:pointer;font-size:11px;padding:5px 9px;font-family:'DM Sans',sans-serif;">⚙️</button>
     </div>
     <div class="status-row" id="cat-status"></div>
-    <h2 style="font-size:21px;margin-bottom:12px;">Thème / Theme</h2>
+    
     <div id="cat-list"></div>
   </div>
 </div>
@@ -794,13 +814,34 @@ window.addEventListener('load',()=>{
 window.addEventListener('resize',drawAll);
 
 // ═══════════════════════════════════════
-// NAVIGATION
+// NAVIGATION AVEC HISTORIQUE
 // ═══════════════════════════════════════
-function goPage(id){
+let _navHistory = [];
+
+function goPage(id, addToHistory=true){
+  const current = document.querySelector('.page.active')?.id;
+  if(current && addToHistory && current !== id){
+    _navHistory.push(current);
+    if(_navHistory.length > 20) _navHistory.shift();
+  }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo(0,0);
   setTimeout(()=>drawBanner(id.replace('pg-','')),50);
+}
+
+function goBack(){
+  // Chercher la dernière page qui a du sens
+  while(_navHistory.length > 0){
+    const prev = _navHistory.pop();
+    // Ne jamais revenir à home si on est en session active
+    if(prev === 'pg-home' && roomCode) continue;
+    goPage(prev, false);
+    return;
+  }
+  // Fallback: si en session → cats, sinon home
+  if(roomCode) goPage('pg-cats', false);
+  else goPage('pg-home', false);
 }
 function genCode(){
   const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -1019,18 +1060,17 @@ function showCats(){
 
 function renderCatList(s){
   const badges=getBadges(s);
-  // Construire la liste complète
+
+  // Construire les groupes
   const grouped={};
   CATS.forEach(c=>{
     if(!grouped[c.group])grouped[c.group]=[];
     grouped[c.group].push(c);
   });
-  // Ajouter questions perso dans groupe "perso"
   if(settings.customQs.length>0){
     if(!grouped.perso)grouped.perso=[];
     grouped.perso.push({id:'custom',e:'💬',fr:'Nos Questions',en:'Our Questions',group:'perso'});
   }
-  // Ajouter thèmes personnalisés dans groupe "perso"
   settings.customThemes.forEach(t=>{
     if(!grouped.perso)grouped.perso=[];
     grouped.perso.push({...t,group:'perso'});
@@ -1038,45 +1078,73 @@ function renderCatList(s){
 
   const order=['origine','couple','valeurs','famille','avenir','perso'];
   let html='';
+
   order.forEach(grpId=>{
     const cats=grouped[grpId];
     if(!cats||cats.length===0)return;
     const grp=CAT_GROUPS[grpId]||{fr:grpId,en:grpId};
     const grpLabel=myLang==='fr'?grp.fr:grp.en;
     const isPerso=grpId==='perso';
-    html+=`<div style="margin-bottom:18px;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:0 2px;">
-        <span style="font-size:13px;font-weight:700;color:var(--gold);letter-spacing:0.05em;">${grpLabel}</span>
-        <div style="flex:1;height:1px;background:var(--faint);"></div>
-        ${isPerso?`<button onclick="goPage('pg-settings');switchTab('themes')" style="background:none;border:1px solid var(--faint);border-radius:8px;color:var(--muted);cursor:pointer;font-size:10px;padding:3px 8px;font-family:'DM Sans',sans-serif;">+ Ajouter</button>`:''}
+    const totalBadge=cats.reduce((sum,c)=>sum+(badges[c.id]||0),0);
+
+    html+=`<div class="cat-group" id="grp-${grpId}">
+      <button class="cat-group-header" onclick="toggleGroup('${grpId}')">
+        <span class="cat-group-label">${grpLabel}</span>
+        ${totalBadge>0?`<span class="grp-badge">${totalBadge}</span>`:''}
+        <span class="cat-group-count">${cats.length} thème${cats.length>1?'s':''}</span>
+        <span class="cat-group-arrow" id="arrow-${grpId}">▾</span>
+        ${isPerso?`<button onclick="event.stopPropagation();goPage('pg-settings');switchTab('themes');initEmojiPicker();" class="grp-add-btn">+</button>`:''}
+      </button>
+      <div class="cat-group-body" id="body-${grpId}">
+        <div class="cat-grid">
+          ${cats.map(c=>{
+            const qCount=getQsForCat(c.id).length;
+            const badgeN=badges[c.id]||0;
+            return `<button class="cat-tile ${badgeN>0?'cat-tile-alert':''}" onclick="startCat('${c.id}')">
+              <span class="cat-tile-emoji">
+                ${c.e}
+                ${badgeN>0?'<span class="cat-tile-dot"></span>':''}
+              </span>
+              <span class="cat-tile-name">${myLang==='fr'?c.fr:c.en}</span>
+              <span class="cat-tile-count">${badgeN>0?`<span class="cat-tile-badge">${badgeN}</span>`:`${qCount}Q`}</span>
+            </button>`;
+          }).join('')}
+        </div>
       </div>
-      ${cats.map(c=>{
-        const qCount=getQsForCat(c.id).length;
-        const badgeN=badges[c.id]||0;
-        const badgeHtml=badgeN>0
-          ?`<span style="background:#E83030;color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;min-width:20px;text-align:center;box-shadow:0 0 8px rgba(232,48,48,0.6);">${badgeN}</span>`
-          :`<span style="font-size:10px;color:var(--muted);border:1px solid var(--faint);border-radius:99px;padding:2px 8px;">${qCount}Q</span>`;
-        const highlight=badgeN>0?'border-color:#E83030;box-shadow:0 0 12px rgba(232,48,48,0.2);':'';
-        return `<button class="cat-btn" onclick="startCat('${c.id}')" style="${highlight}">
-          ${strip()}
-          <div class="cat-btn-inner">
-            <span style="font-size:22px;flex-shrink:0;position:relative;">
-              ${c.e}
-              ${badgeN>0?'<span style="position:absolute;top:-4px;right:-4px;width:8px;height:8px;background:#E83030;border-radius:50%;box-shadow:0 0 6px #E83030;"></span>':''}
-            </span>
-            <div style="flex:1;">
-              <div class="cat-fr">${c.fr}</div>
-              <div class="cat-en">${c.en}</div>
-              ${badgeN>0?`<div style="font-size:10px;color:#E87070;margin-top:2px;font-weight:600;">${myLang==='fr'?'● Nouveau message':'● New message'}</div>`:''}
-            </div>
-            ${badgeHtml}
-          </div>
-        </button>`;
-      }).join('')}
     </div>`;
   });
 
-  document.getElementById('cat-list').innerHTML=html||'<p style="color:var(--muted);font-size:13px;">Aucun thème disponible</p>';
+  document.getElementById('cat-list').innerHTML=html;
+  // Ouvrir le premier groupe par défaut (ou ceux avec badges)
+  const hasAlert=order.find(g=>grouped[g]&&grouped[g].some(c=>badges[c.id]>0));
+  order.forEach(g=>{
+    if(grouped[g]&&grouped[g].length>0){
+      const shouldOpen = g===hasAlert || (!hasAlert && g===order.find(o=>grouped[o]&&grouped[o].length>0));
+      if(!shouldOpen) collapseGroup(g,false);
+    }
+  });
+}
+
+function toggleGroup(id){
+  const body=document.getElementById('body-'+id);
+  const arrow=document.getElementById('arrow-'+id);
+  if(!body)return;
+  const isOpen=body.style.maxHeight!=='0px'&&body.style.maxHeight!=='';
+  if(isOpen){collapseGroup(id,true);}
+  else{
+    body.style.maxHeight=body.scrollHeight+'px';
+    body.style.opacity='1';
+    if(arrow)arrow.textContent='▾';
+  }
+}
+
+function collapseGroup(id,animate=true){
+  const body=document.getElementById('body-'+id);
+  const arrow=document.getElementById('arrow-'+id);
+  if(!body)return;
+  if(animate){body.style.maxHeight='0px';body.style.opacity='0';}
+  else{body.style.maxHeight='0px';body.style.opacity='0';body.style.transition='none';setTimeout(()=>body.style.transition='',10);}
+  if(arrow)arrow.textContent='▸';
 }
 
 
