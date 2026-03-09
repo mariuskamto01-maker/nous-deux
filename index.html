@@ -712,6 +712,7 @@ function logout(){
   sessionStorage.removeItem('nd_session');
   roomCode='';myName='';myRole='';myLang='fr';mySecret='';lastRoom=null;
   currentCat=null;currentQi=0;currentQs=[];
+  window._wentToCats=false;
   if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
   _navHistory=[];
   goPage('pg-home',false);
@@ -976,6 +977,7 @@ async function createRoom(){
   const state={code:roomCode,p1:{name:myName,lang:myLang,ts:Date.now()},p2:null,answers:{},insights:[],aiResult:null};
   await saveRoom(state);lastRoom=state;
   sessionStorage.setItem('nd_session',JSON.stringify({myRole,myName,myLang,roomCode}));
+  window._wentToCats=false;
   startPoll();showWaiting(state);
 }
 async function joinRoom(){
@@ -1086,7 +1088,10 @@ function showWaiting(state){
   document.getElementById('wait-share-msg').textContent=myLang==='fr'?'Partage ce code par WhatsApp':'Share this code via WhatsApp';
   renderStatus('wait-status',state);
   const box=document.getElementById('wait-spinner-box');
-  if(state.p2){box.style.display='none';setTimeout(()=>showCats(),600);}
+  if(state.p2){
+    box.style.display='none';
+    if(!window._wentToCats){window._wentToCats=true;setTimeout(()=>showCats(),600);}
+  }
   else{box.style.display='block';document.getElementById('wait-msg').textContent=myLang==='fr'?"En attente que l'autre personne rejoigne...":'Waiting for the other person to join...';}
   goPage('pg-wait');
 }
@@ -1123,10 +1128,13 @@ function startPoll(){
     // Mettre à jour uniquement les badges sans reconstruire la liste
     if(document.querySelector('.page.active')?.id==='pg-cats') updateBadgesOnly(s);
     // Transitions de page
-    if(pg==='pg-wait'&&s.p2&&!window._wentToCats){
-      window._wentToCats=true;
-      const thName=s?.[myRole==='p1'?'p2':'p1']?.name||'Ton partenaire';
-      showCats();
+    if(pg==='pg-wait'&&s.p2){
+      if(!window._wentToCats){
+        window._wentToCats=true;
+        // Mettre à jour le statut d'abord puis rediriger
+        renderStatus('wait-status',s);
+        setTimeout(()=>showCats(), 800);
+      }
     }
     if(pg==='pg-q'&&currentCat){
       // TOUJOURS verifier l etat de la question en cours
