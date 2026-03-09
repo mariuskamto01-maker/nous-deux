@@ -40,10 +40,8 @@ body{
   opacity:0;transition:opacity 1.8s ease;
 }
 #bg-canvas.visible{opacity:1;}
-.page{position:relative;z-index:1;}
-
 /* ── PAGES ── */
-.page{display:none;flex-direction:column;align-items:center;min-height:100vh;padding-bottom:80px;}
+.page{position:relative;z-index:1;display:none;flex-direction:column;align-items:center;min-height:100vh;padding-bottom:80px;}
 .page.active{display:flex;animation:fadeUp 0.3s ease;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
 .inner{width:100%;max-width:520px;padding:0 18px;}
