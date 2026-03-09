@@ -187,6 +187,26 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
   transition:background 0.15s;
 }
 .cat-group-header:hover{background:rgba(255,255,255,0.03);}
+.avatar-cat-btn{
+  background:rgba(212,148,60,0.08);border:1px solid var(--goldD);
+  border-radius:99px;color:var(--muted);
+  font-size:11px;font-weight:600;padding:4px 10px;
+  cursor:pointer;font-family:'Outfit',sans-serif;
+  transition:all 0.15s;
+}
+.avatar-cat-btn.active,.avatar-cat-btn:hover{
+  background:rgba(212,148,60,0.2);border-color:var(--gold);color:var(--goldL);
+}
+.avatar-opt{
+  width:100%;aspect-ratio:1;border-radius:50%;
+  border:2.5px solid var(--faint);
+  background:var(--d2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;cursor:pointer;
+  transition:all 0.15s;
+}
+.avatar-opt:hover{border-color:var(--gold);transform:scale(1.12);}
+.avatar-opt.selected{border-color:var(--gold);background:rgba(212,148,60,0.15);box-shadow:0 0 12px var(--goldGlow);}
 .cat-group-label{
   font-size:13px;font-weight:700;color:var(--goldL);
   flex:1;text-align:left;letter-spacing:0.02em;
@@ -584,9 +604,59 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
 
     <!-- Tabs -->
     <div class="tab-row">
+      <button class="tab-btn" id="tab-profil" onclick="switchTab('profil')">🪪 Profil</button>
       <button class="tab-btn active" id="tab-nb" onclick="switchTab('nb')">📊 Nb Q</button>
       <button class="tab-btn" id="tab-custom" onclick="switchTab('custom')">✏️ Mes Q</button>
       <button class="tab-btn" id="tab-themes" onclick="switchTab('themes')">🎨 Thèmes</button>
+    </div>
+
+    <!-- Tab: Profil -->
+    <div id="tab-profil-content" style="display:none;">
+      <div class="card card-gold mb12">
+        <div class="strip"><div style="background:var(--k1)"></div><div style="background:var(--k2)"></div><div style="background:var(--k3)"></div><div style="background:var(--k4)"></div><div style="background:var(--k1)"></div><div style="background:var(--k3)"></div><div style="background:var(--k2)"></div><div style="background:var(--k4)"></div></div>
+        <div class="card-body">
+          <p style="font-size:13px;color:var(--cream);font-weight:600;margin-bottom:4px;">Mon avatar / My avatar</p>
+          <p style="font-size:11px;color:var(--muted);margin-bottom:16px;">Visible par les deux / Visible to both</p>
+
+          <!-- Aperçu avatar actuel -->
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+            <div id="prof-preview" style="width:72px;height:72px;border-radius:50%;background:var(--d2);border:3px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:38px;overflow:hidden;flex-shrink:0;position:relative;">🙂</div>
+            <div>
+              <div id="prof-name-display" style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--cream);margin-bottom:4px;">—</div>
+              <div style="font-size:11px;color:var(--muted);">Choisissez un avatar ou uploadez une photo</div>
+              <div style="font-size:11px;color:var(--muted);">Choose an avatar or upload a photo</div>
+            </div>
+          </div>
+
+          <!-- Upload photo -->
+          <div style="margin-bottom:18px;">
+            <p style="font-size:11px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">📷 Ma photo / My photo</p>
+            <label style="display:flex;align-items:center;gap:10px;background:rgba(212,148,60,0.1);border:1.5px dashed var(--goldD);border-radius:12px;padding:12px 16px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--goldD)'">
+              <span style="font-size:22px;">📤</span>
+              <div>
+                <div style="font-size:13px;color:var(--cream);font-weight:600;">Importer une photo</div>
+                <div style="font-size:11px;color:var(--muted);">JPG, PNG · max 500KB</div>
+              </div>
+              <input type="file" accept="image/*" id="prof-photo-input" style="display:none;" onchange="handlePhotoUpload(this)">
+            </label>
+          </div>
+
+          <!-- Grille avatars emoji -->
+          <p style="font-size:11px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">😊 Choisir un avatar</p>
+          
+          <!-- Catégories -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;" id="avatar-cat-row">
+            <button class="avatar-cat-btn active" onclick="showAvatarCat('visages')" id="acat-visages">😊 Visages</button>
+            <button class="avatar-cat-btn" onclick="showAvatarCat('nature')" id="acat-nature">🌿 Nature</button>
+            <button class="avatar-cat-btn" onclick="showAvatarCat('animaux')" id="acat-animaux">🦁 Animaux</button>
+            <button class="avatar-cat-btn" onclick="showAvatarCat('cosmos')" id="acat-cosmos">🌙 Cosmos</button>
+            <button class="avatar-cat-btn" onclick="showAvatarCat('art')" id="acat-art">🎨 Art</button>
+            <button class="avatar-cat-btn" onclick="showAvatarCat('sport')" id="acat-sport">⚽ Sport</button>
+          </div>
+
+          <div id="avatar-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:4px;"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Tab: Nombre de questions -->
@@ -1425,7 +1495,7 @@ function renderCustomQList() {
 }
 
 function switchTab(tab) {
-  ['nb','custom','themes'].forEach(t=>{
+  ['profil','nb','custom','themes'].forEach(t=>{
     document.getElementById('tab-'+t+'-content').style.display = tab===t?'block':'none';
     document.getElementById('tab-'+t).className = 'tab-btn'+(tab===t?' active':'');
   });
@@ -1572,7 +1642,7 @@ function goPage(id, addToHistory=true){
   document.getElementById(id).classList.add('active');
   window.scrollTo(0,0);
   setTimeout(()=>drawBanner(id.replace('pg-','')),50);
-  if(id==='pg-settings') setTimeout(showLogoutBtn,50);
+  if(id==='pg-settings'){ setTimeout(showLogoutBtn,50); setTimeout(initProfileTab,60); }
 }
 
 function goBack(){
@@ -1685,6 +1755,11 @@ async function joinRoom(){
   await saveRoom(state); lastRoom=state;
   sessionStorage.setItem('nd_session', JSON.stringify({myRole,myName,myLang,roomCode}));
   mergeSharedSettings(state); // Charger les thèmes/questions partagés dès la connexion
+  // Restaurer l'avatar depuis la room
+  if(state[myRole]?.avatar){
+    settings.avatar = state[myRole].avatar;
+    settings.avatarType = state[myRole].avatarType || 'emoji';
+  }
   initAvatars(state);
   startPoll();
 
@@ -2261,7 +2336,7 @@ function showReveal(s,qk){
         // Pas encore répondu - afficher zone de saisie si c'est moi, sinon placeholder
         if(isMe){
           return `<div class="bubble-row left">
-            <div class="avatar" style="background:${bg};border:2px solid ${bd};">👤</div>
+            ${getAvatarHtml(s,role,36)}
             <div class="bubble ${role}" style="flex:1;">
               <div class="bubble-name" style="color:${col};">${nm} <span style="font-size:9px;color:var(--gold);">(vous)</span> <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
               <textarea id="my-answer" rows="3" placeholder="${lg==='fr'?'Ta réponse...':'Your answer...'}" style="width:100%;box-sizing:border-box;font-size:13px;padding:8px 10px;resize:none;margin-top:6px;border-radius:8px;background:var(--d2);border:1px solid ${bd};color:var(--cream);font-family:'Outfit',sans-serif;"></textarea>
@@ -2269,8 +2344,8 @@ function showReveal(s,qk){
             </div>
           </div>`;
         } else {
-          return `<div class="bubble-row right">
-            <div class="avatar" style="background:${bg};border:2px solid ${bd};opacity:0.5;">👤</div>
+          return `<div class="bubble-row right" style="opacity:0.6;">
+            ${getAvatarHtml(s,role,36)}
             <div class="bubble ${role}" style="opacity:0.5;font-style:italic;">
               <div class="bubble-name" style="color:${col};">${nm} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
               <span style="color:var(--muted);font-size:12px;">${lg==='fr'?'⏳ Pas encore répondu...':'⏳ Hasn\'t answered yet...'}</span>
@@ -2279,7 +2354,7 @@ function showReveal(s,qk){
         }
       }
       return `<div class="bubble-row ${isMe?'left':'right'}">
-        <div class="avatar" style="background:${bg};border:2px solid ${bd};">👤</div>
+        ${getAvatarHtml(s,role,36)}
         <div class="bubble ${role}">
           <div class="bubble-name" style="color:${col};">${nm}${isMe?' <span style="font-size:9px;color:var(--gold);">(vous)</span>':''} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
           ${ans}
@@ -2446,25 +2521,150 @@ let _avatarP2 = '🧡';
 function getAvatar(role){ return role==='p1' ? _avatarP1 : _avatarP2; }
 
 function initAvatars(s){
-  // Choisir avatar basé sur le hash du prénom → stable et unique
+  // Fallback emoji basé sur le prénom
   function pick(name, pool){
     if(!name) return pool[0];
     let h=0; for(let c of name) h=(h*31+c.charCodeAt(0))%pool.length;
     return pool[Math.abs(h)%pool.length];
   }
-  _avatarP1 = pick(s?.p1?.name, ROLE_AVATARS.p1);
-  _avatarP2 = pick(s?.p2?.name, ROLE_AVATARS.p2);
-  // Mettre à jour les avatars statiques dans le DOM
+  _avatarP1 = s?.p1?.avatar || pick(s?.p1?.name, ROLE_AVATARS.p1);
+  _avatarP2 = s?.p2?.avatar || pick(s?.p2?.name, ROLE_AVATARS.p2);
+
+  // En-tête chat : avatar p1
   const a1=document.getElementById('chat-avatar-p1');
+  if(a1){
+    if(s?.p1?.avatarType==='photo' && s?.p1?.avatar?.startsWith('data:')){
+      a1.innerHTML=`<img src="${s.p1.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    } else { a1.textContent=_avatarP1; }
+  }
+  // En-tête chat : avatar p2
   const a2=document.getElementById('chat-avatar-p2');
+  if(a2){
+    if(s?.p2?.avatarType==='photo' && s?.p2?.avatar?.startsWith('data:')){
+      a2.innerHTML=`<img src="${s.p2.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    } else { a2.textContent=_avatarP2; }
+  }
   const n1=document.getElementById('chat-name-p1');
   const n2=document.getElementById('chat-name-p2');
-  const am=document.getElementById('chat-my-avatar');
-  if(a1) a1.textContent=_avatarP1;
-  if(a2) a2.textContent=_avatarP2;
   if(n1) n1.textContent=s?.p1?.name||'—';
   if(n2) n2.textContent=s?.p2?.name||'—';
-  if(am){ am.textContent=getAvatar(myRole); am.style.background=myRole==='p1'?'var(--p1d)':'var(--p2d)'; am.style.borderColor=myRole==='p1'?'var(--p1b)':'var(--p2b)'; }
+
+  // Avatar zone de saisie (moi)
+  const amEl=document.getElementById('chat-my-avatar');
+  if(amEl){
+    const myP = s?.[myRole];
+    if(myP?.avatarType==='photo' && myP?.avatar?.startsWith('data:')){
+      amEl.innerHTML=`<img src="${myP.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    } else {
+      amEl.textContent=getAvatar(myRole);
+    }
+    amEl.style.background=myRole==='p1'?'var(--p1d)':'var(--p2d)';
+    amEl.style.borderColor=myRole==='p1'?'var(--p1b)':'var(--p2b)';
+  }
+}
+
+// ═══════════════════════════════════════
+// AVATAR / PROFIL
+// ═══════════════════════════════════════
+const AVATAR_CATS = {
+  visages: ['😊','😄','😎','🥰','😍','🤩','😏','🧐','🤓','😌','🥳','😇','🤗','😜','🫡','🧑','👩','👨','🧕','👲','🧔','👱','🧑‍🦱','🧑‍🦰','🧑‍🦳','🧑‍🦲','👸','🤴','🧙','🧝'],
+  nature:  ['🌸','🌺','🌻','🌹','🌷','🍀','🌿','🍃','🌴','🌵','🎋','🌾','🍁','🍂','🍄','🌊','🔥','💧','⚡','🌈','❄️','☀️','🌙','⭐','🌟','💫','🌍','🌺','🏔️','🗻'],
+  animaux: ['🦁','🐯','🦊','🐺','🐻','🐼','🦄','🐬','🦋','🦅','🦚','🦜','🐙','🦈','🐉','🦁','🐆','🦓','🦒','🐘','🦏','🦛','🦔','🐿️','🦝','🦨','🦡','🦦','🦥','🐾'],
+  cosmos:  ['🌙','⭐','💫','✨','🌟','🌠','🌌','🪐','🌍','☄️','🔭','🛸','🚀','👽','🌀','💎','🔮','🪄','⚗️','🧿','🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘','🌑','🌟'],
+  art:     ['🎨','🎭','🎪','🎬','🎵','🎶','🎸','🎹','🎺','🥁','🎻','🪕','🎤','🎧','🖌️','✏️','📸','🎭','🃏','♟️','🎲','🧩','🪆','🎠','🎡','🎢','🎪','🎯','🪁','🎊'],
+  sport:   ['⚽','🏀','🏈','⚾','🎾','🏐','🏉','🥊','🏊','🚴','🏋️','⛷️','🏄','🧗','🤸','🏇','🎿','🛹','🤿','🏌️','🎯','🥋','🤼','🏆','🥇','🎖️','🏅','⚡','💪','🔥'],
+};
+let _currentAvatarCat = 'visages';
+
+function showAvatarCat(cat){
+  _currentAvatarCat = cat;
+  document.querySelectorAll('.avatar-cat-btn').forEach(b=>{
+    b.classList.toggle('active', b.id==='acat-'+cat);
+  });
+  renderAvatarGrid();
+}
+
+function renderAvatarGrid(){
+  const grid = document.getElementById('avatar-grid');
+  if(!grid) return;
+  const emojis = AVATAR_CATS[_currentAvatarCat] || [];
+  const cur = settings.avatar;
+  grid.innerHTML = emojis.map(e=>`
+    <button class="avatar-opt${cur===e?' selected':''}" onclick="pickAvatar('${e}')" title="${e}">${e}</button>
+  `).join('');
+}
+
+function pickAvatar(emoji){
+  settings.avatar = emoji;
+  settings.avatarType = 'emoji';
+  document.querySelectorAll('.avatar-opt').forEach(b=>{
+    b.classList.toggle('selected', b.textContent===emoji);
+  });
+  updateProfilePreview();
+  saveProfileToRoom();
+}
+
+function handlePhotoUpload(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(file.size > 600*1024){
+    alert(myLang==='fr'?'Photo trop lourde (max 500KB). Compressez-la d'abord.':'Photo too large (max 500KB). Please compress it first.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e=>{
+    settings.avatar = e.target.result; // base64
+    settings.avatarType = 'photo';
+    updateProfilePreview();
+    saveProfileToRoom();
+    // Désélectionner les emoji
+    document.querySelectorAll('.avatar-opt').forEach(b=>b.classList.remove('selected'));
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateProfilePreview(){
+  const prev = document.getElementById('prof-preview');
+  if(!prev) return;
+  if(settings.avatarType==='photo' && settings.avatar?.startsWith('data:')){
+    prev.innerHTML = `<img src="${settings.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  } else {
+    prev.textContent = settings.avatar || '🙂';
+    prev.innerHTML = `<span style="font-size:38px;">${settings.avatar||'🙂'}</span>`;
+  }
+}
+
+function initProfileTab(){
+  const nameEl = document.getElementById('prof-name-display');
+  if(nameEl) nameEl.textContent = myName || '—';
+  updateProfilePreview();
+  showAvatarCat('visages');
+}
+
+async function saveProfileToRoom(){
+  if(!roomCode || !lastRoom || !myRole) return;
+  lastRoom[myRole] = lastRoom[myRole] || {};
+  lastRoom[myRole].avatar = settings.avatar;
+  lastRoom[myRole].avatarType = settings.avatarType || 'emoji';
+  await saveRoom(lastRoom);
+  // Mettre à jour les avatars partout
+  initAvatars(lastRoom);
+  localStorage.setItem('nd_settings', JSON.stringify(settings));
+}
+
+function getAvatarHtml(s, role, size=32){
+  const p = s?.[role];
+  const av = p?.avatar;
+  const avType = p?.avatarType || 'emoji';
+  const bg = role==='p1'?'var(--p1d)':'var(--p2d)';
+  const bd = role==='p1'?'var(--p1b)':'var(--p2b)';
+  const style = `width:${size}px;height:${size}px;border-radius:50%;background:${bg};border:2px solid ${bd};display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;`;
+  if(avType==='photo' && av?.startsWith('data:')){
+    return `<div style="${style}"><img src="${av}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></div>`;
+  }
+  const emoji = av || (role==='p1' ? _avatarP1 : _avatarP2);
+  const fs = Math.round(size*0.55);
+  return `<div style="${style};font-size:${fs}px;">${emoji}</div>`;
 }
 
 function buildMsgHtml(s,msgs){
@@ -2476,13 +2676,12 @@ function buildMsgHtml(s,msgs){
     const col=m.role==='p1'?'var(--p1)':'var(--p2)';
     const bg=m.role==='p1'?'#182A40':'#2E1810';
     const bd=m.role==='p1'?'var(--p1b)':'var(--p2b)';
-    const avatar=getAvatar(m.role);
+    const avatarHtml=getAvatarHtml(s,m.role,32);
     const time=new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    // Moi à gauche, l'autre à droite
     const rowDir=isMe?'row':'row-reverse';
     const radiusCorner=isMe?'border-bottom-left-radius:4px':'border-bottom-right-radius:4px';
     return '<div style="display:flex;flex-direction:'+rowDir+';gap:8px;align-items:flex-end;margin-bottom:10px;">'
-      +'<div style="width:32px;height:32px;border-radius:50%;background:'+bg+';border:2px solid '+bd+';display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;">'+avatar+'</div>'
+      +avatarHtml
       +'<div style="max-width:75%;background:'+bg+';border:1px solid '+bd+';border-radius:14px;'+radiusCorner+';padding:8px 12px;">'
         +'<div style="font-size:10px;font-weight:700;color:'+col+';margin-bottom:4px;display:flex;align-items:center;gap:5px;">'
           +nm+' <span class="lang-chip '+lg+'">'+(lg==='fr'?'🇫🇷':'🇬🇧')+'</span>'
