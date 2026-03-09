@@ -2606,7 +2606,7 @@ function handlePhotoUpload(input){
   const file = input.files[0];
   if(!file) return;
   if(file.size > 600*1024){
-    alert(myLang==='fr'?'Photo trop lourde (max 500KB). Compressez-la d'abord.':'Photo too large (max 500KB). Please compress it first.');
+    alert(myLang==='fr'?'Photo trop lourde (max 500KB). Compressez-la avant.':'Photo too large (max 500KB). Please compress it first.');
     return;
   }
   const reader = new FileReader();
