@@ -1932,13 +1932,18 @@ function renderStatus(cid,s){
     const nameExtra=isMe?'<span style="font-size:9px;color:var(--goldL);font-weight:600;font-style:italic;">(vous)</span>':'';
     const statusTxt=d?(online?'Online ✓':'...'):'En attente...';
     const langChip=d?('<span class="lang-chip '+d.lang+'">'+(d.lang==='fr'?'🇫🇷 FR':'🇬🇧 EN')+'</span>'):'';
-    return '<div class="status-card '+cls+(online?' online':'')+'">'
+    // Avatar dans la carte
+    const avHtml = d ? getAvatarHtml(s, role, 42) : '<div style="width:42px;height:42px;border-radius:50%;background:var(--d2);border:2px solid var(--faint);flex-shrink:0;"></div>';
+    return '<div class="status-card '+cls+(online?' online':'')+'" style="display:flex;align-items:center;gap:10px;">'
       +strip()
-      +'<div class="status-name">'+(d?d.name:'—')+' '+nameExtra+'</div>'
-      +'<div class="status-line">'
-        +'<span class="dot '+dotCls+'"></span>'
-        +'<span style="font-size:10px;color:var(--muted);">'+statusTxt+'</span>'
-        +langChip
+      +avHtml
+      +'<div style="flex:1;min-width:0;">'
+        +'<div class="status-name">'+(d?d.name:'—')+' '+nameExtra+'</div>'
+        +'<div class="status-line">'
+          +'<span class="dot '+dotCls+'"></span>'
+          +'<span style="font-size:10px;color:var(--muted);">'+statusTxt+'</span>'
+          +langChip
+        +'</div>'
       +'</div>'
     +'</div>';
   }
