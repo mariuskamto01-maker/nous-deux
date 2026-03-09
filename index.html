@@ -1982,32 +1982,25 @@ function checkQState(s){
   const thRole=myRole==='p1'?'p2':'p1';
   const thA=s.answers?.[qk+'_'+thRole];
 
-  // ── Réponses ──
-  if(myA&&thA){
+  // ── Logique ouverte: on voit les réponses dès qu'elles existent ──
+  // Si l'autre a répondu → on affiche sa réponse immédiatement (pas besoin d'attendre)
+  if(myA || thA){
     const revZ=document.getElementById('reveal-zone');
     if(revZ&&revZ.style.display==='block'){
-      // Déjà en révélation → juste rafraîchir le chat
-      refreshLiveChat(s,qk);
+      // Déjà en révélation → mettre à jour si nouvelle réponse arrivée
+      showReveal(s,qk);
       return;
     }
     document.getElementById('sent-zone').style.display='none';
     document.getElementById('my-zone').style.display='none';
     showReveal(s,qk);
-  } else if(myA){
-    const sentZ=document.getElementById('sent-zone');
-    if(sentZ&&sentZ.style.display==='block'){
-      // Déjà en attente → juste rafraîchir le chat
-      refreshLiveChat(s,qk);
-      return;
-    }
-    document.getElementById('my-zone').style.display='none';
-    showSent(s);
   } else {
+    // Aucune réponse encore → zone de saisie
     if(document.getElementById('my-answer'))return;
     showMyInput();
   }
 
-  // ── Chat TOUJOURS visible dès qu on est sur cette question ──
+  // ── Chat TOUJOURS visible ──
   const chatZ=document.getElementById('chat-zone');
   if(chatZ){
     chatZ.style.display='block';
@@ -2078,8 +2071,8 @@ async function submitAnswer(){
   s.answers=s.answers||{};
   s.answers[qk+'_'+myRole]=val;
   await saveRoom(s);lastRoom=s;
-  showSent(s);
-  setTimeout(()=>checkQState(s),500);
+  // Rafraîchir l'affichage - maintenant la réponse est visible
+  checkQState(s);
 }
 
 async function forceCheck(){
@@ -2108,21 +2101,42 @@ function showReveal(s,qk){
   const z=document.getElementById('reveal-zone');
   z.innerHTML=`
     <div style="text-align:center;margin-bottom:14px;">
-      <div class="reveal-title">✨ Révélation / Reveal</div>
-      <p style="font-size:12px;color:var(--muted);">Lisez les réponses de l'autre · Read each other's answers</p>
+      <div class="reveal-title">✨ Réponses / Answers</div>
+      <p style="font-size:12px;color:var(--muted);">Les réponses apparaissent dès qu'elles sont envoyées · Answers appear as they're sent</p>
     </div>
     ${['p1','p2'].map(role=>{
       const isMe=role===myRole;
       const nm=s?.[role]?.name||'?';
       const lg=s?.[role]?.lang||'fr';
-      const ans=s?.answers?.[qk+'_'+role]||'—';
+      const ans=s?.answers?.[qk+'_'+role];
       const col=role==='p1'?'var(--p1)':'var(--p2)';
       const bg=role==='p1'?'var(--p1d)':'var(--p2d)';
       const bd=role==='p1'?'var(--p1b)':'var(--p2b)';
+      if(!ans){
+        // Pas encore répondu - afficher zone de saisie si c'est moi, sinon placeholder
+        if(isMe){
+          return `<div class="bubble-row left">
+            <div class="avatar" style="background:${bg};border:2px solid ${bd};">👤</div>
+            <div class="bubble ${role}" style="flex:1;">
+              <div class="bubble-name" style="color:${col};">${nm} <span style="font-size:9px;color:var(--gold);">(vous)</span> <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
+              <textarea id="my-answer" rows="3" placeholder="${lg==='fr'?'Ta réponse...':'Your answer...'}" style="width:100%;box-sizing:border-box;font-size:13px;padding:8px 10px;resize:none;margin-top:6px;border-radius:8px;background:var(--d2);border:1px solid ${bd};color:var(--cream);font-family:'Outfit',sans-serif;"></textarea>
+              <button onclick="submitAnswer()" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,${bg},${col});color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">${lg==='fr'?'Envoyer →':'Send →'}</button>
+            </div>
+          </div>`;
+        } else {
+          return `<div class="bubble-row right">
+            <div class="avatar" style="background:${bg};border:2px solid ${bd};opacity:0.5;">👤</div>
+            <div class="bubble ${role}" style="opacity:0.5;font-style:italic;">
+              <div class="bubble-name" style="color:${col};">${nm} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
+              <span style="color:var(--muted);font-size:12px;">${lg==='fr'?'⏳ Pas encore répondu...':'⏳ Hasn\'t answered yet...'}</span>
+            </div>
+          </div>`;
+        }
+      }
       return `<div class="bubble-row ${isMe?'left':'right'}">
         <div class="avatar" style="background:${bg};border:2px solid ${bd};">👤</div>
         <div class="bubble ${role}">
-          <div class="bubble-name" style="color:${col};">${nm}${isMe?' <span style="font-size:9px;color:var(--gold);">(Vous)</span>':''} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
+          <div class="bubble-name" style="color:${col};">${nm}${isMe?' <span style="font-size:9px;color:var(--gold);">(vous)</span>':''} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
           ${ans}
         </div>
       </div>`;
