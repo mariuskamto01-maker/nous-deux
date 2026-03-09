@@ -223,8 +223,9 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
 
     <!-- Tabs -->
     <div class="tab-row">
-      <button class="tab-btn active" id="tab-nb" onclick="switchTab('nb')">📊 Nombre de Q</button>
-      <button class="tab-btn" id="tab-custom" onclick="switchTab('custom')">✏️ Mes questions</button>
+      <button class="tab-btn active" id="tab-nb" onclick="switchTab('nb')">📊 Nb Q</button>
+      <button class="tab-btn" id="tab-custom" onclick="switchTab('custom')">✏️ Mes Q</button>
+      <button class="tab-btn" id="tab-themes" onclick="switchTab('themes')">🎨 Thèmes</button>
     </div>
 
     <!-- Tab: Nombre de questions -->
@@ -259,6 +260,42 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
       </div>
       <div id="custom-q-list"></div>
       <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px;" id="custom-q-count"></p>
+    </div>
+
+    <!-- Tab: Mes Thèmes -->
+    <div id="tab-themes-content" style="display:none;">
+      <div class="card card-gold mb12">
+        <div class="strip"><div style="background:var(--k1)"></div><div style="background:var(--k2)"></div><div style="background:var(--k3)"></div><div style="background:var(--k4)"></div><div style="background:var(--k1)"></div><div style="background:var(--k3)"></div><div style="background:var(--k2)"></div><div style="background:var(--k4)"></div></div>
+        <div class="card-body">
+          <p style="font-size:13px;color:var(--cream);font-weight:600;margin-bottom:4px;">Créer un thème / Create a theme</p>
+          <p style="font-size:11px;color:var(--muted);margin-bottom:12px;">Votre thème apparaîtra dans la liste avec vos questions</p>
+          <div class="mb8">
+            <div class="label">Emoji du thème</div>
+            <input id="th-emoji" type="text" placeholder="🌙" maxlength="2" style="width:70px;text-align:center;font-size:22px;">
+          </div>
+          <div class="mb8">
+            <div class="label">🇫🇷 Nom en français</div>
+            <input id="th-fr" type="text" placeholder="ex: Nos Rêves...">
+          </div>
+          <div class="mb12">
+            <div class="label">🇬🇧 Name in English</div>
+            <input id="th-en" type="text" placeholder="ex: Our Dreams...">
+          </div>
+          <p style="font-size:11px;color:var(--gold);margin-bottom:8px;">Questions du thème / Theme questions :</p>
+          <div id="th-qs-list" style="margin-bottom:8px;"></div>
+          <div class="mb8">
+            <div class="label">🇫🇷 Question en français</div>
+            <input id="th-q-fr" type="text" placeholder="Ta question...">
+          </div>
+          <div class="mb10">
+            <div class="label">🇬🇧 Question in English</div>
+            <input id="th-q-en" type="text" placeholder="Your question...">
+          </div>
+          <button class="btn btn-ghost" style="margin-bottom:12px;" onclick="addThemeQ()">+ Ajouter cette question / Add question</button>
+          <button class="btn btn-gold" onclick="createTheme()">✨ Créer ce thème / Create theme</button>
+        </div>
+      </div>
+      <div id="custom-themes-list"></div>
     </div>
 
     <button class="btn btn-gold" style="margin-top:16px;" onclick="saveSettings()">✅ Sauvegarder / Save</button>
@@ -347,9 +384,13 @@ async function loadRoom(code) {
 // SETTINGS (localStorage)
 // ═══════════════════════════════════════
 let settings = {
-  qCount: 5,       // 0 = all
-  customQs: []     // [{fr, en}]
+  qCount: 5,
+  customQs: [],
+  customThemes: []  // [{id, e, fr, en, qs:[{fr,en}]}]
 };
+
+// Temp buffer for theme being created
+let _themeQsBuf = [];
 
 function loadSettings() {
   try {
@@ -362,31 +403,59 @@ function loadSettings() {
 // ═══════════════════════════════════════
 // NOTIFICATIONS
 // ═══════════════════════════════════════
-async function requestNotifPermission(){
-  if(!('Notification' in window))return false;
-  if(Notification.permission==='granted')return true;
-  if(Notification.permission==='denied')return false;
-  const perm=await Notification.requestPermission();
-  return perm==='granted';
-}
-
-function sendNotif(title, body, emoji='💬'){
-  if(!('Notification' in window)||Notification.permission!=='granted')return;
-  try{
-    const n=new Notification(emoji+' '+title,{
-      body,
-      icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="%23C8943B"/><text y="48" font-size="40" x="12">💛</text></svg>',
-      badge:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="%23C8943B"/></svg>',
-      tag:'nous-deux',
-      renotify:true,
-      vibrate:[200,100,200]
-    });
-    setTimeout(()=>n.close(),6000);
-  }catch(e){}
-}
-
-// Tracker pour eviter les notifs en double
+// ═══════════════════════════════════════
+// BADGES IN-APP (notifications visuelles dans la liste des thèmes)
+// ═══════════════════════════════════════
 const _notified={};
+const _badges={}; // catId -> {count, type: 'answer'|'chat'|'reveal'}
+
+function addBadge(catId, type){
+  if(!_badges[catId]) _badges[catId]={count:0,type};
+  _badges[catId].count++;
+  _badges[catId].type=type;
+  refreshCatBadges();
+}
+
+function clearBadge(catId){
+  delete _badges[catId];
+  refreshCatBadges();
+}
+
+function refreshCatBadges(){
+  // Mettre à jour les badges sur les boutons de catégorie visibles
+  Object.keys(_badges).forEach(catId=>{
+    const el=document.getElementById('badge-'+catId);
+    if(el){
+      const b=_badges[catId];
+      const emoji=b.type==='reveal'?'✨':b.type==='chat'?'💬':'✍️';
+      el.textContent=emoji;
+      el.style.display='flex';
+    }
+  });
+}
+
+function sendNotif(title, body, emoji, catId){
+  // Juste un badge in-app, pas de notification système
+  if(catId) addBadge(catId, emoji==='✨'?'reveal':emoji==='💬'?'chat':'answer');
+}
+
+function checkAllBadges(s){
+  if(!s||!s.answers)return;
+  CATS.forEach(c=>{
+    const qs=getQsForCat(c.id);
+    qs.forEach((_,qi)=>{
+      const qk=c.id+'_'+qi;
+      const myA=s.answers?.[qk+'_'+myRole];
+      const thA=s.answers?.[qk+'_'+(myRole==='p1'?'p2':'p1')];
+      const key=getChatKey(qk);
+      const chatMsgs=s.chat?.[key]||[];
+      const hasNewChat=chatMsgs.some(m=>m.role!==myRole);
+      if(!myA&&thA) addBadge(c.id,'answer');
+      else if(myA&&thA&&!_badges[c.id]) {/* revelation deja vue */}
+      if(hasNewChat) addBadge(c.id,'chat');
+    });
+  });
+}
 
 function checkAndNotify(s){
   if(!currentCat||!currentQs.length)return;
@@ -395,26 +464,94 @@ function checkAndNotify(s){
   const myA=s?.answers?.[qk+'_'+myRole];
   const thRole=myRole==='p1'?'p2':'p1';
   const thA=s?.answers?.[qk+'_'+thRole];
-  const thName=s?.[thRole]?.name||'Ton partenaire';
-  const catName=currentCat?.[myLang==='fr'?'fr':'en']||'';
-
   if(!myA&&thA){
     _notified[qk]=true;
-    const qText = currentQs[currentQi]?.[myLang==='fr'?0:1]||'';
-    sendNotif(
-      myLang==='fr'? thName+' a répondu !': thName+' answered!',
-      (currentCat?.e||'') + ' ' + catName + '\n"' + qText.substring(0,50) + (qText.length>50?'...':'"'),
-      '✍️'
-    );
+    addBadge(currentCat.id,'answer');
   } else if(myA&&thA){
     _notified[qk]=true;
-    sendNotif(
-      myLang==='fr'?'✨ Révélation disponible !':'✨ Reveal ready!',
-      (currentCat?.e||'') + ' ' + catName + ' — ' + (myLang==='fr'?'Découvrez vos réponses !':'Discover your answers!'),
-      '✨'
-    );
+    addBadge(currentCat.id,'reveal');
   }
 }
+// ═══════════════════════════════════════
+// GESTION DES THÈMES PERSONNALISÉS
+// ═══════════════════════════════════════
+function addThemeQ(){
+  const fr=document.getElementById('th-q-fr').value.trim();
+  const en=document.getElementById('th-q-en').value.trim();
+  if(!fr&&!en)return;
+  _themeQsBuf.push({fr:fr||en, en:en||fr});
+  document.getElementById('th-q-fr').value='';
+  document.getElementById('th-q-en').value='';
+  renderThemeQsBuf();
+}
+
+function renderThemeQsBuf(){
+  const el=document.getElementById('th-qs-list');
+  if(!el)return;
+  if(!_themeQsBuf.length){el.innerHTML='<p style="font-size:11px;color:var(--muted);margin-bottom:4px;">Aucune question encore / No questions yet</p>';return;}
+  el.innerHTML=_themeQsBuf.map((q,i)=>`
+    <div class="custom-q-item" style="margin-bottom:6px;">
+      <div class="custom-q-text">
+        <div style="color:#7EB8F7;font-size:11px;">🇫🇷 ${q.fr}</div>
+        <div style="color:#E8C878;font-size:11px;">🇬🇧 ${q.en}</div>
+      </div>
+      <button class="del-btn" onclick="_themeQsBuf.splice(${i},1);renderThemeQsBuf();">🗑️</button>
+    </div>`).join('');
+}
+
+function createTheme(){
+  const emoji=document.getElementById('th-emoji').value.trim()||'🌟';
+  const fr=document.getElementById('th-fr').value.trim();
+  const en=document.getElementById('th-en').value.trim();
+  if(!fr&&!en){alert('Donnez un nom au thème / Give the theme a name');return;}
+  if(!_themeQsBuf.length){alert('Ajoutez au moins une question / Add at least one question');return;}
+  const id='custom_'+Date.now();
+  settings.customThemes.push({id, e:emoji, fr:fr||en, en:en||fr, qs:[..._themeQsBuf]});
+  _themeQsBuf=[];
+  // Reset form
+  ['th-emoji','th-fr','th-en'].forEach(x=>{const el=document.getElementById(x);if(el)el.value='';});
+  document.getElementById('th-qs-list').innerHTML='';
+  saveSettings();
+  renderCustomThemesList();
+}
+
+function deleteTheme(id){
+  settings.customThemes=settings.customThemes.filter(t=>t.id!==id);
+  saveSettings();
+  renderCustomThemesList();
+}
+
+function renderCustomThemesList(){
+  const el=document.getElementById('custom-themes-list');
+  if(!el)return;
+  renderThemeQsBuf();
+  if(!settings.customThemes.length){
+    el.innerHTML='<p style="font-size:12px;color:var(--muted);text-align:center;padding:12px 0;">Aucun thème créé / No themes created yet</p>';
+    return;
+  }
+  el.innerHTML=settings.customThemes.map(t=>`
+    <div class="card mb8" style="border-color:var(--goldD);">
+      <div class="strip"><div style="background:var(--k1)"></div><div style="background:var(--k2)"></div><div style="background:var(--k3)"></div><div style="background:var(--k4)"></div><div style="background:var(--k1)"></div><div style="background:var(--k3)"></div><div style="background:var(--k2)"></div><div style="background:var(--k4)"></div></div>
+      <div class="card-body">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <span style="font-size:22px;">${t.e}</span>
+          <div style="flex:1;">
+            <div style="font-weight:700;font-size:14px;color:#7EB8F7;">${t.fr}</div>
+            <div style="font-size:11px;color:#E8C878;font-style:italic;">${t.en}</div>
+          </div>
+          <span style="font-size:10px;color:var(--muted);border:1px solid var(--faint);border-radius:99px;padding:2px 8px;">${t.qs.length}Q</span>
+          <button onclick="deleteTheme('${t.id}')" style="background:none;border:none;color:#E87070;cursor:pointer;font-size:16px;padding:2px 6px;">🗑️</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          ${t.qs.slice(0,3).map(q=>`
+            <div style="font-size:11px;color:var(--muted);padding:4px 8px;background:var(--d4);border-radius:6px;border-left:2px solid var(--gold);">🇫🇷 ${q.fr}</div>
+          `).join('')}
+          ${t.qs.length>3?`<div style="font-size:10px;color:var(--muted);text-align:center;">+ ${t.qs.length-3} autres...</div>`:''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
 function saveSettings() {
   localStorage.setItem('nd_settings', JSON.stringify(settings));
   const btn = document.querySelector('#pg-settings .btn-gold:last-child');
@@ -423,6 +560,7 @@ function saveSettings() {
 function applySettingsUI() {
   setQCount(settings.qCount, false);
   renderCustomQList();
+  renderCustomThemesList();
 }
 
 // Q Count
@@ -439,9 +577,11 @@ function setQCount(n, save=true) {
 
 // Get questions for a category (respecting qCount)
 function getQsForCat(catId) {
-  let qs = [...(QS[catId]||[])];
-  // Add custom questions if category is "custom"
   if(catId === 'custom') return settings.customQs.map(q=>[q.fr, q.en]);
+  // Thème personnalisé
+  const customTheme = settings.customThemes.find(t=>t.id===catId);
+  if(customTheme) return customTheme.qs.map(q=>[q.fr, q.en]);
+  let qs = [...(QS[catId]||[])];
   if(settings.qCount > 0) qs = qs.slice(0, settings.qCount);
   return qs;
 }
@@ -483,10 +623,11 @@ function renderCustomQList() {
 }
 
 function switchTab(tab) {
-  document.getElementById('tab-nb-content').style.display = tab==='nb'?'block':'none';
-  document.getElementById('tab-custom-content').style.display = tab==='custom'?'block':'none';
-  document.getElementById('tab-nb').className = 'tab-btn'+(tab==='nb'?' active':'');
-  document.getElementById('tab-custom').className = 'tab-btn'+(tab==='custom'?' active':'');
+  ['nb','custom','themes'].forEach(t=>{
+    document.getElementById('tab-'+t+'-content').style.display = tab===t?'block':'none';
+    document.getElementById('tab-'+t).className = 'tab-btn'+(tab===t?' active':'');
+  });
+  if(tab==='themes') renderCustomThemesList();
 }
 
 // ═══════════════════════════════════════
@@ -570,6 +711,7 @@ function drawBanner(id) {
 function drawAll(){['home','create','join','wait','settings','cats','q','insights'].forEach(drawBanner);}
 window.addEventListener('load',()=>{
   drawAll();loadSettings();
+  _themeQsBuf=[];
   // Restaurer session si page rechargée
   try{
     const sess=sessionStorage.getItem('nd_session');
@@ -667,7 +809,6 @@ async function joinRoom(){
   }
 
   roomCode=code;
-  await requestNotifPermission();
   await saveRoom(state);lastRoom=state;
   sessionStorage.setItem('nd_session',JSON.stringify({myRole,myName,myLang,roomCode}));
   startPoll();
@@ -742,11 +883,6 @@ function startPoll(){
     if(pg==='pg-wait'&&s.p2&&!window._wentToCats){
       window._wentToCats=true;
       const thName=s?.[myRole==='p1'?'p2':'p1']?.name||'Ton partenaire';
-      sendNotif(
-        myLang==='fr'?thName+' a rejoint !':thName+' joined!',
-        myLang==='fr'?'La session peut commencer !':'The session can begin!',
-        '🎉'
-      );
       showCats();
     }
     if(pg==='pg-q'&&currentCat){
@@ -825,12 +961,16 @@ function showCats(){
   const lc=document.getElementById('cat-me-lang');lc.textContent=myLang==='fr'?'🇫🇷 FR':'🇬🇧 EN';lc.className='lang-chip '+myLang;
   renderCatList(lastRoom);
   if(lastRoom)renderStatus('cat-status',lastRoom);
+  // Vérifier les badges pour toutes les catégories
+  checkAllBadges(lastRoom);
   goPage('pg-cats');
 }
 
 function renderCatList(s){
   const allCats=[...CATS];
   if(settings.customQs.length>0)allCats.push({id:'custom',e:'💬',fr:'Nos Questions',en:'Our Questions'});
+  // Ajouter les thèmes personnalisés
+  settings.customThemes.forEach(t=>allCats.push(t));
   const badges=getBadges(s);
   document.getElementById('cat-list').innerHTML=allCats.map(c=>{
     const qCount=getQsForCat(c.id).length;
@@ -858,6 +998,7 @@ function renderCatList(s){
 }
 
 async function startCat(catId){
+  clearBadge(catId);
   currentCat = catId==='custom'
     ? {id:'custom',e:'💬',fr:'Nos Questions',en:'Our Questions'}
     : CATS.find(c=>c.id===catId);
@@ -991,17 +1132,13 @@ function renderLiveChat(s, qk){
   const thName = s?.[thRole]?.name || '?';
   const catLabel = currentCat?.[myLang==='fr'?'fr':'en'] || '';
 
-  // Notifier nouveaux messages
+  // Badge in-app si nouveaux messages de l'autre
   const prevCount = _lastMsgCount[qk]||0;
   if(msgs.length > prevCount){
     for(let i=prevCount; i<msgs.length; i++){
       const m = msgs[i];
       if(m.role !== myRole){
-        sendNotif(
-          (myLang==='fr'? thName+' vous a écrit !' : thName+' wrote to you!'),
-          catLabel + ' — "' + m.text.substring(0,60) + (m.text.length>60?'...':'"'),
-          '💬'
-        );
+        addBadge(currentCat.id,'chat');
       }
     }
   }
