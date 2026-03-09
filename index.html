@@ -27,7 +27,7 @@ h2{font-family:'Cormorant Garamond',serif;font-weight:400;font-size:26px;color:v
 .strip{height:3px;width:100%;display:flex;flex-shrink:0;}
 .strip div{flex:1;}
 .card{background:var(--d3);border:1px solid var(--faint);border-radius:16px;overflow:hidden;width:100%;margin-bottom:12px;}
-.card-body{padding:16px;}
+.card-body{padding:14px 16px 16px;}
 .card-gold{border-color:var(--goldD);}
 .code-box{background:var(--d2);border:2px solid var(--goldD);border-radius:18px;overflow:hidden;width:100%;margin-bottom:16px;text-align:center;}
 .code-big{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:600;color:var(--goldL);letter-spacing:0.25em;padding:8px 0 4px;}
@@ -36,7 +36,7 @@ h2{font-family:'Cormorant Garamond',serif;font-weight:400;font-size:26px;color:v
 .status-card{flex:1;border-radius:12px;overflow:hidden;text-align:center;}
 .status-card.p1{background:var(--p1d);border:1.5px solid var(--p1b);}
 .status-card.p2{background:var(--p2d);border:1.5px solid var(--p2b);}
-.status-name{font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--cream);padding:8px 8px 4px;}
+.status-name{font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--cream);padding:6px 8px 3px;}
 .status-line{display:flex;align-items:center;justify-content:center;gap:5px;padding-bottom:8px;}
 .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 .dot.on{background:var(--green);box-shadow:0 0 5px var(--green);}
@@ -79,9 +79,9 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
 .ai-lang-btn{padding:3px 10px;border:none;border-radius:99px;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif;background:transparent;color:var(--muted);transition:all 0.2s;}
 .ai-lang-btn.fr.active{background:var(--fr);color:#fff;}
 .ai-lang-btn.en.active{background:var(--en);color:#12090A;}
-.cat-btn{background:var(--d3);border:1.5px solid var(--faint);border-radius:13px;padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;text-align:left;width:100%;margin-bottom:8px;position:relative;overflow:hidden;}
-.cat-fr{font-weight:700;font-size:13px;color:var(--fr);}
-.cat-en{font-size:11px;color:var(--en);font-style:italic;}
+.cat-btn{background:var(--d3);border:1.5px solid var(--faint);border-radius:13px;padding:0;display:flex;flex-direction:column;cursor:pointer;text-align:left;width:100%;margin-bottom:8px;position:relative;overflow:hidden;}.cat-btn-inner{display:flex;align-items:center;gap:10px;padding:10px 14px;width:100%;}
+.cat-fr{font-weight:700;font-size:15px;color:#7EB8F7;}
+.cat-en{font-size:12px;color:#E8C878;font-style:italic;margin-top:2px;}
 .prog-track{width:100%;height:2px;background:var(--faint);border-radius:99px;margin-bottom:12px;}
 .prog-fill{height:100%;border-radius:99px;transition:width 0.5s;background:linear-gradient(90deg,var(--k3),var(--gold));}
 .back-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;padding:0;align-self:flex-start;margin-bottom:14px;}
@@ -513,10 +513,13 @@ function showCats(){
   document.getElementById('cat-list').innerHTML=CATS.map(c=>`
     <button class="cat-btn" onclick="startCat('${c.id}')">
       ${strip()}
-      <div style="display:flex;align-items:center;gap:10px;padding:2px 0;width:100%;">
-        <span style="font-size:18px;flex-shrink:0;">${c.e}</span>
-        <div style="flex:1;"><div class="cat-fr">${c.fr}</div><div class="cat-en">${c.en}</div></div>
-        <span style="font-size:10px;color:var(--faint);border:1px solid var(--faint);border-radius:99px;padding:2px 6px;flex-shrink:0;">${QS[c.id].length}Q</span>
+      <div class="cat-btn-inner">
+        <span style="font-size:22px;flex-shrink:0;">${c.e}</span>
+        <div style="flex:1;">
+          <div class="cat-fr">${c.fr}</div>
+          <div class="cat-en">${c.en}</div>
+        </div>
+        <span style="font-size:10px;color:var(--muted);border:1px solid var(--faint);border-radius:99px;padding:2px 8px;flex-shrink:0;">${QS[c.id].length}Q</span>
       </div>
     </button>`).join('');
   if(lastRoom)renderStatus('cat-status',lastRoom);
