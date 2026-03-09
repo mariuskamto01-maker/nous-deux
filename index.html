@@ -269,9 +269,15 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
         <div class="card-body">
           <p style="font-size:13px;color:var(--cream);font-weight:600;margin-bottom:4px;">Créer un thème / Create a theme</p>
           <p style="font-size:11px;color:var(--muted);margin-bottom:12px;">Votre thème apparaîtra dans la liste avec vos questions</p>
-          <div class="mb8">
-            <div class="label">Emoji du thème</div>
-            <input id="th-emoji" type="text" placeholder="🌙" maxlength="2" style="width:70px;text-align:center;font-size:22px;">
+          <div class="mb12">
+            <div class="label">Icône du thème / Theme icon</div>
+            <div id="emoji-picker" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div id="emoji-selected" style="width:44px;height:44px;border-radius:10px;background:var(--d4);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:24px;">🌟</div>
+              <input id="th-emoji-custom" type="text" placeholder="Autre..." maxlength="2" style="width:90px;font-size:18px;text-align:center;" oninput="pickEmoji(this.value||'🌟')">
+            </div>
+            <input type="hidden" id="th-emoji" value="🌟">
           </div>
           <div class="mb8">
             <div class="label">🇫🇷 Nom en français</div>
@@ -345,6 +351,7 @@ textarea{resize:none;line-height:1.65;font-size:14px;}
     <div id="my-zone"></div>
     <div id="sent-zone"></div>
     <div id="reveal-zone"></div>
+    <div id="chat-zone" style="margin-top:8px;"></div>
   </div>
 </div>
 
@@ -441,7 +448,9 @@ function sendNotif(title, body, emoji, catId){
 
 function checkAllBadges(s){
   if(!s||!s.answers)return;
-  CATS.forEach(c=>{
+  const allCats=[...CATS,...settings.customThemes,
+    ...(settings.customQs.length>0?[{id:'custom'}]:[])];
+  allCats.forEach(c=>{
     const qs=getQsForCat(c.id);
     qs.forEach((_,qi)=>{
       const qk=c.id+'_'+qi;
@@ -451,7 +460,6 @@ function checkAllBadges(s){
       const chatMsgs=s.chat?.[key]||[];
       const hasNewChat=chatMsgs.some(m=>m.role!==myRole);
       if(!myA&&thA) addBadge(c.id,'answer');
-      else if(myA&&thA&&!_badges[c.id]) {/* revelation deja vue */}
       if(hasNewChat) addBadge(c.id,'chat');
     });
   });
@@ -472,6 +480,40 @@ function checkAndNotify(s){
     addBadge(currentCat.id,'reveal');
   }
 }
+// ═══════════════════════════════════════
+// EMOJI PICKER
+// ═══════════════════════════════════════
+const EMOJI_LIST=[
+  '🌟','🌙','💫','🌸','🌊','🔮','💎','🌈','🏔️','🌴',
+  '🎭','🎨','🎵','📚','🧩','🏆','🎯','🚀','🌍','🏡',
+  '❤️','💜','🧡','💛','💚','🩵','🤍','🖤','💔','💝',
+  '🌺','🦋','🦁','🐦','🌻','🍃','🌾','🕊️','🦚','🌹',
+  '⚡','🔥','💧','🌬️','🌿','🍀','🌱','🌞','🌛','⭐',
+  '🙏','✨','🕯️','🪬','🧿','☯️','🌀','💠','🔷','🔸',
+];
+
+function initEmojiPicker(){
+  const picker=document.getElementById('emoji-picker');
+  if(!picker)return;
+  picker.innerHTML=EMOJI_LIST.map(e=>
+    `<button onclick="pickEmoji('${e}')" style="width:36px;height:36px;border:1.5px solid var(--faint);border-radius:8px;background:var(--d4);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;" id="ep-${e.codePointAt(0)}">${e}</button>`
+  ).join('');
+  pickEmoji('🌟');
+}
+
+function pickEmoji(e){
+  const val=e||'🌟';
+  document.getElementById('th-emoji').value=val;
+  const sel=document.getElementById('emoji-selected');
+  if(sel)sel.textContent=val;
+  // Highlight selected
+  EMOJI_LIST.forEach(em=>{
+    const btn=document.getElementById('ep-'+em.codePointAt(0));
+    if(btn)btn.style.borderColor=em===val?'var(--gold)':' var(--faint)';
+    if(btn)btn.style.background=em===val?'rgba(200,148,59,0.2)':'var(--d4)';
+  });
+}
+
 // ═══════════════════════════════════════
 // GESTION DES THÈMES PERSONNALISÉS
 // ═══════════════════════════════════════
@@ -506,7 +548,7 @@ function createTheme(){
   if(!fr&&!en){alert('Donnez un nom au thème / Give the theme a name');return;}
   if(!_themeQsBuf.length){alert('Ajoutez au moins une question / Add at least one question');return;}
   const id='custom_'+Date.now();
-  settings.customThemes.push({id, e:emoji, fr:fr||en, en:en||fr, qs:[..._themeQsBuf]});
+  settings.customThemes.push({id, e:emoji, fr:fr||en, en:en||fr, qs:[..._themeQsBuf], group:'perso'});
   _themeQsBuf=[];
   // Reset form
   ['th-emoji','th-fr','th-en'].forEach(x=>{const el=document.getElementById(x);if(el)el.value='';});
@@ -627,28 +669,37 @@ function switchTab(tab) {
     document.getElementById('tab-'+t+'-content').style.display = tab===t?'block':'none';
     document.getElementById('tab-'+t).className = 'tab-btn'+(tab===t?' active':'');
   });
-  if(tab==='themes') renderCustomThemesList();
+  if(tab==='themes'){renderCustomThemesList();initEmojiPicker();}
 }
 
 // ═══════════════════════════════════════
 // QUESTIONS
 // ═══════════════════════════════════════
 const CATS=[
-  {id:"enfance",e:"👶",fr:"L'Enfance",en:"Childhood"},
-  {id:"vie",e:"📖",fr:"Expériences de Vie",en:"Life Experiences"},
-  {id:"finances",e:"💰",fr:"Argent & Finances",en:"Money & Finances"},
-  {id:"roles",e:"⚖️",fr:"Rôles dans le Couple",en:"Roles in the Couple"},
-  {id:"foi",e:"🙏",fr:"Foi & Croyances",en:"Faith & Beliefs"},
-  {id:"passe",e:"💔",fr:"Blessures & Passé",en:"Wounds & Past"},
-  {id:"enfants",e:"👨‍👧",fr:"Enfants & Parentalité",en:"Children & Parenting"},
-  {id:"intimite",e:"🔥",fr:"Intimité & Amour",en:"Intimacy & Love"},
-  {id:"famille",e:"👨‍👩‍👧‍👦",fr:"Famille Élargie",en:"Extended Family"},
-  {id:"ambitions",e:"🎯",fr:"Ambitions & Carrière",en:"Ambitions & Career"},
-  {id:"communication",e:"🗣️",fr:"Communication",en:"Communication"},
-  {id:"valeurs",e:"🌿",fr:"Valeurs Fondamentales",en:"Core Values"},
-  {id:"craintes",e:"⚠️",fr:"Peurs & Limites",en:"Fears & Limits"},
-  {id:"vision",e:"🌅",fr:"Vision de Vie",en:"Life Vision"},
+  {id:"enfance",e:"👶",fr:"L'Enfance",en:"Childhood",group:"origine"},
+  {id:"vie",e:"📖",fr:"Expériences de Vie",en:"Life Experiences",group:"origine"},
+  {id:"passe",e:"💔",fr:"Blessures & Passé",en:"Wounds & Past",group:"origine"},
+  {id:"finances",e:"💰",fr:"Argent & Finances",en:"Money & Finances",group:"couple"},
+  {id:"roles",e:"⚖️",fr:"Rôles dans le Couple",en:"Roles in the Couple",group:"couple"},
+  {id:"intimite",e:"🔥",fr:"Intimité & Amour",en:"Intimacy & Love",group:"couple"},
+  {id:"communication",e:"🗣️",fr:"Communication",en:"Communication",group:"couple"},
+  {id:"foi",e:"🙏",fr:"Foi & Croyances",en:"Faith & Beliefs",group:"valeurs"},
+  {id:"valeurs",e:"🌿",fr:"Valeurs Fondamentales",en:"Core Values",group:"valeurs"},
+  {id:"craintes",e:"⚠️",fr:"Peurs & Limites",en:"Fears & Limits",group:"valeurs"},
+  {id:"enfants",e:"👨‍👧",fr:"Enfants & Parentalité",en:"Children & Parenting",group:"famille"},
+  {id:"famille",e:"👨‍👩‍👧‍👦",fr:"Famille Élargie",en:"Extended Family",group:"famille"},
+  {id:"ambitions",e:"🎯",fr:"Ambitions & Carrière",en:"Ambitions & Career",group:"avenir"},
+  {id:"vision",e:"🌅",fr:"Vision de Vie",en:"Life Vision",group:"avenir"},
 ];
+
+const CAT_GROUPS={
+  origine:{fr:"🌱 Origines & Passé",en:"🌱 Origins & Past"},
+  couple:{fr:"💑 Vie de Couple",en:"💑 Couple Life"},
+  valeurs:{fr:"🌿 Valeurs & Croyances",en:"🌿 Values & Beliefs"},
+  famille:{fr:"👨‍👩‍👧‍👦 Famille & Enfants",en:"👨‍👩‍👧‍👦 Family & Children"},
+  avenir:{fr:"🌅 Avenir & Ambitions",en:"🌅 Future & Ambitions"},
+  perso:{fr:"✨ Mes Thèmes",en:"✨ My Themes"},
+};
 const QS={
   enfance:[["Quel est ton souvenir d'enfance le plus heureux ?","What is your happiest childhood memory?"],["Quelle ambiance émotionnelle régnait dans ta maison en grandissant ?","What was the emotional atmosphere in your home growing up?"],["Ton père était-il présent — émotionnellement et physiquement ?","Was your father present — emotionally and physically?"],["Ta mère était-elle présente — émotionnellement et physiquement ?","Was your mother present — emotionally and physically?"],["Y avait-il de la violence dans ta maison d'enfance ?","Was there violence in your childhood home?"],["Comment l'argent était-il vécu dans ta famille ?","How was money treated in your family growing up?"],["Quel rôle jouais-tu dans ta fratrie ?","What role did you play among your siblings?"],["Comment tes parents géraient-ils leurs conflits ?","How did your parents handle conflicts?"],["Quelle phrase de tes parents résonne encore en toi ?","What phrase from your parents still echoes in you?"],["Y a-t-il un traumatisme d'enfance que tu portes encore ?","Is there a childhood trauma you still carry?"],["Quelle peur d'enfance t'accompagne encore adulte ?","What childhood fear still accompanies you as an adult?"],["Qu'aurais-tu voulu que tes parents fassent différemment ?","What do you wish your parents had done differently?"]],
   vie:[["Quelle est l'expérience la plus difficile de ta vie adulte ?","What is the most difficult experience of your adult life?"],["Quelle décision regrettes-tu le plus profondément ?","What decision do you regret most deeply?"],["As-tu déjà touché le fond ? Qu'est-ce qui t'a fait remonter ?","Have you ever hit rock bottom? What brought you back?"],["As-tu été trahi·e par quelqu'un de confiance absolue ?","Have you been betrayed by someone you trusted completely?"],["As-tu souffert de dépression ou d'anxiété profonde ?","Have you suffered from depression or deep anxiety?"],["As-tu vécu une migration ou un déracinement ?","Have you experienced migration or uprooting?"],["Quelle expérience t'a forcé·e à te réinventer ?","What experience forced you to reinvent yourself?"],["As-tu vécu une discrimination à cause de ta race ou religion ?","Have you experienced discrimination because of race or religion?"],["Quelle a été ton expérience réelle du mariage ?","What was your real experience of marriage?"],["Y a-t-il quelque chose que tu as vécu que tu n'as dit à personne ?","Is there something you experienced you've told no one?"]],
@@ -967,35 +1018,67 @@ function showCats(){
 }
 
 function renderCatList(s){
-  const allCats=[...CATS];
-  if(settings.customQs.length>0)allCats.push({id:'custom',e:'💬',fr:'Nos Questions',en:'Our Questions'});
-  // Ajouter les thèmes personnalisés
-  settings.customThemes.forEach(t=>allCats.push(t));
   const badges=getBadges(s);
-  document.getElementById('cat-list').innerHTML=allCats.map(c=>{
-    const qCount=getQsForCat(c.id).length;
-    const badgeN=badges[c.id]||0;
-    const badgeHtml=badgeN>0
-      ?`<span style="background:#E83030;color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;min-width:20px;text-align:center;box-shadow:0 0 8px rgba(232,48,48,0.6);">${badgeN}</span>`
-      :`<span style="font-size:10px;color:var(--muted);border:1px solid var(--faint);border-radius:99px;padding:2px 8px;">${qCount}Q</span>`;
-    const highlight=badgeN>0?'border-color:#E83030;box-shadow:0 0 12px rgba(232,48,48,0.2);':'';
-    return `<button class="cat-btn" onclick="startCat('${c.id}')" style="${highlight}">
-      ${strip()}
-      <div class="cat-btn-inner">
-        <span style="font-size:22px;flex-shrink:0;position:relative;">
-          ${c.e}
-          ${badgeN>0?'<span style="position:absolute;top:-4px;right:-4px;width:8px;height:8px;background:#E83030;border-radius:50%;box-shadow:0 0 6px #E83030;"></span>':''}
-        </span>
-        <div style="flex:1;">
-          <div class="cat-fr">${c.fr}</div>
-          <div class="cat-en">${c.en}</div>
-          ${badgeN>0?`<div style="font-size:10px;color:#E87070;margin-top:2px;font-weight:600;">${myLang==='fr'?'● Nouveau message en attente':'● New message waiting'}</div>`:''}
-        </div>
-        ${badgeHtml}
+  // Construire la liste complète
+  const grouped={};
+  CATS.forEach(c=>{
+    if(!grouped[c.group])grouped[c.group]=[];
+    grouped[c.group].push(c);
+  });
+  // Ajouter questions perso dans groupe "perso"
+  if(settings.customQs.length>0){
+    if(!grouped.perso)grouped.perso=[];
+    grouped.perso.push({id:'custom',e:'💬',fr:'Nos Questions',en:'Our Questions',group:'perso'});
+  }
+  // Ajouter thèmes personnalisés dans groupe "perso"
+  settings.customThemes.forEach(t=>{
+    if(!grouped.perso)grouped.perso=[];
+    grouped.perso.push({...t,group:'perso'});
+  });
+
+  const order=['origine','couple','valeurs','famille','avenir','perso'];
+  let html='';
+  order.forEach(grpId=>{
+    const cats=grouped[grpId];
+    if(!cats||cats.length===0)return;
+    const grp=CAT_GROUPS[grpId]||{fr:grpId,en:grpId};
+    const grpLabel=myLang==='fr'?grp.fr:grp.en;
+    const isPerso=grpId==='perso';
+    html+=`<div style="margin-bottom:18px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:0 2px;">
+        <span style="font-size:13px;font-weight:700;color:var(--gold);letter-spacing:0.05em;">${grpLabel}</span>
+        <div style="flex:1;height:1px;background:var(--faint);"></div>
+        ${isPerso?`<button onclick="goPage('pg-settings');switchTab('themes')" style="background:none;border:1px solid var(--faint);border-radius:8px;color:var(--muted);cursor:pointer;font-size:10px;padding:3px 8px;font-family:'DM Sans',sans-serif;">+ Ajouter</button>`:''}
       </div>
-    </button>`;
-  }).join('');
+      ${cats.map(c=>{
+        const qCount=getQsForCat(c.id).length;
+        const badgeN=badges[c.id]||0;
+        const badgeHtml=badgeN>0
+          ?`<span style="background:#E83030;color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;min-width:20px;text-align:center;box-shadow:0 0 8px rgba(232,48,48,0.6);">${badgeN}</span>`
+          :`<span style="font-size:10px;color:var(--muted);border:1px solid var(--faint);border-radius:99px;padding:2px 8px;">${qCount}Q</span>`;
+        const highlight=badgeN>0?'border-color:#E83030;box-shadow:0 0 12px rgba(232,48,48,0.2);':'';
+        return `<button class="cat-btn" onclick="startCat('${c.id}')" style="${highlight}">
+          ${strip()}
+          <div class="cat-btn-inner">
+            <span style="font-size:22px;flex-shrink:0;position:relative;">
+              ${c.e}
+              ${badgeN>0?'<span style="position:absolute;top:-4px;right:-4px;width:8px;height:8px;background:#E83030;border-radius:50%;box-shadow:0 0 6px #E83030;"></span>':''}
+            </span>
+            <div style="flex:1;">
+              <div class="cat-fr">${c.fr}</div>
+              <div class="cat-en">${c.en}</div>
+              ${badgeN>0?`<div style="font-size:10px;color:#E87070;margin-top:2px;font-weight:600;">${myLang==='fr'?'● Nouveau message':'● New message'}</div>`:''}
+            </div>
+            ${badgeHtml}
+          </div>
+        </button>`;
+      }).join('')}
+    </div>`;
+  });
+
+  document.getElementById('cat-list').innerHTML=html||'<p style="color:var(--muted);font-size:13px;">Aucun thème disponible</p>';
 }
+
 
 async function startCat(catId){
   clearBadge(catId);
@@ -1022,7 +1105,13 @@ function renderQ(){
   document.getElementById('q-en').textContent=pair[1];
   if(lastRoom)renderStatus('q-status',lastRoom);
   ['my-zone','sent-zone','reveal-zone'].forEach(z=>{const el=document.getElementById(z);el.innerHTML='';el.style.display='none';});
+  // Vider le chat et le re-rendre immédiatement avec les messages existants
+  const chatZ=document.getElementById('chat-zone');
+  if(chatZ) chatZ.innerHTML='';
   checkQState(lastRoom||{answers:{},insights:[]});
+  // Afficher le chat dès l'ouverture si messages existants
+  const qk=currentCat.id+'_'+currentQi;
+  if(lastRoom) renderLiveChat(lastRoom, qk);
 }
 
 function checkQState(s){
@@ -1199,47 +1288,46 @@ let _chatFocused = false;
 
 function refreshLiveChat(s, qk){
   const chatZ = document.getElementById('chat-zone');
-  if(!chatZ||!chatZ.querySelector('#chat-msgs'))return;
-
+  if(!chatZ) return;
+  // Si chat pas encore rendu → rendre complètement
+  if(!document.getElementById('chat-msgs')){
+    renderLiveChat(s, qk);
+    return;
+  }
+  // Sinon, juste mettre à jour les messages sans perturber le textarea
   const key = getChatKey(qk);
   const msgs = s?.chat?.[key]||[];
-  const thRole = myRole==='p1'?'p2':'p1';
-  const thName = s?.[thRole]?.name||'?';
-  const catLabel = currentCat?.[myLang==='fr'?'fr':'en']||'';
-
-  // Notifier nouveaux messages sans re-rendre si on est en train de taper
   const prevCount = _lastMsgCount[qk]||0;
   if(msgs.length > prevCount){
-    for(let i=prevCount; i<msgs.length; i++){
-      const m=msgs[i];
-      if(m.role!==myRole){
-        sendNotif(
-          myLang==='fr'? thName+' vous a écrit !': thName+' wrote to you!',
-          (currentCat?.e||'')+' '+catLabel+' — "'+m.text.substring(0,60)+(m.text.length>60?'...':'"'),
-          '💬'
-        );
-      }
-    }
     _lastMsgCount[qk]=msgs.length;
-    // Mettre à jour uniquement la zone des messages, pas le textarea
-    updateChatMsgsOnly(s, qk, msgs);
+    // Badge in-app si message de l'autre
+    for(let i=prevCount;i<msgs.length;i++){
+      if(msgs[i].role!==myRole) addBadge(currentCat.id,'chat');
+    }
+    // Mettre à jour seulement la zone messages
+    const msgsEl=document.getElementById('chat-msgs');
+    if(msgsEl){
+      msgsEl.innerHTML=buildMsgHtml(s,msgs);
+      msgsEl.scrollTop=msgsEl.scrollHeight;
+    }
   }
 }
 
-function updateChatMsgsOnly(s, qk, msgs){
-  const msgsEl = document.getElementById('chat-msgs');
-  if(!msgsEl) return;
-  if(!msgs||msgs.length===0) return;
-
-  msgsEl.innerHTML = msgs.map(m=>{
-    const isMe = m.role===myRole;
-    const nm = s?.[m.role]?.name||'?';
-    const lg = s?.[m.role]?.lang||'fr';
-    const col = m.role==='p1'?'var(--p1)':'var(--p2)';
-    const bg = m.role==='p1'?'#182A40':'#2E1810';
-    const bd = m.role==='p1'?'var(--p1b)':'var(--p2b)';
-    const time = new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    return '<div style="display:flex;flex-direction:'+(isMe?'row':'row-reverse')+';gap:8px;align-items:flex-end;">'
+function buildMsgHtml(s, msgs){
+  if(!msgs||msgs.length===0){
+    return '<p style="font-size:12px;color:var(--muted);text-align:center;font-style:italic;padding:16px 0;">'
+      +(myLang==='fr'?'Réagissez, posez des questions, approfondissez...':'React, ask questions, go deeper...')
+      +'</p>';
+  }
+  return msgs.map(m=>{
+    const isMe=m.role===myRole;
+    const nm=s?.[m.role]?.name||'?';
+    const lg=s?.[m.role]?.lang||'fr';
+    const col=m.role==='p1'?'var(--p1)':'var(--p2)';
+    const bg=m.role==='p1'?'#182A40':'#2E1810';
+    const bd=m.role==='p1'?'var(--p1b)':'var(--p2b)';
+    const time=new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    return '<div style="display:flex;flex-direction:'+(isMe?'row':'row-reverse')+';gap:8px;align-items:flex-end;margin-bottom:8px;">'
       +'<div style="width:28px;height:28px;border-radius:50%;background:'+bg+';border:2px solid '+bd+';display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">👤</div>'
       +'<div style="max-width:78%;background:'+bg+';border:1px solid '+bd+';border-radius:16px;border-bottom-'+(isMe?'left':'right')+'-radius:4px;padding:8px 12px;">'
         +'<div style="font-size:10px;font-weight:700;color:'+col+';margin-bottom:4px;display:flex;align-items:center;gap:6px;">'
@@ -1250,29 +1338,8 @@ function updateChatMsgsOnly(s, qk, msgs){
       +'</div>'
     +'</div>';
   }).join('');
-
-  // Scroll to bottom seulement si pas en train de taper
-  if(!_chatFocused){
-    msgsEl.scrollTop = msgsEl.scrollHeight;
-  }
 }
 
-async function markChatRead(qk){
-  try{
-    const s=await loadRoom(roomCode)||lastRoom;
-    if(!s||!s.chat)return;
-    const key=getChatKey(qk);
-    if(!s.chat[key])return;
-    let changed=false;
-    s.chat[key]=s.chat[key].map(m=>{
-      if(m.role!==myRole&&(!m.readBy||!m.readBy[myRole])){
-        m.readBy=m.readBy||{};m.readBy[myRole]=Date.now();changed=true;
-      }
-      return m;
-    });
-    if(changed){await saveRoom(s);lastRoom=s;}
-  }catch(e){}
-}
 
 async function sendChatMsg(qk){
   const input = document.getElementById('chat-input');
@@ -1321,7 +1388,7 @@ function showReveal(s,qk){
     ${!ardy?`<button class="btn btn-gold" style="margin-top:10px;margin-bottom:10px;" onclick="doAnalysis()">🔍 ${myLang==='fr'?'Analyser notre compatibilité':'Analyse our compatibility'}</button>`:''}
     <div id="ai-zone"></div>
     <div id="nav-zone">${ardy?navHTML():''}</div>
-    <div id="chat-zone" style="margin-top:12px;"></div>`;
+`;
   z.style.display='block';
   if(ardy)renderAI(s.aiResult);
   renderLiveChat(s,qk);
