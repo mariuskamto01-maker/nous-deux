@@ -1896,6 +1896,9 @@ function renderCatList(s){
   renderQ();
   goPage('pg-q');
   if(lastRoom&&roomCode) saveRoom(lastRoom).catch(()=>{});
+  // Marquer les messages chat comme lus
+  const _qkRead=currentCat.id+'_'+currentQi;
+  markChatRead(_qkRead).catch(()=>{});
 }
 
 function toggleGroup(id){
@@ -2246,6 +2249,8 @@ function renderLiveChat(s,qk){
       </div>
     </div>`;
   setTimeout(()=>{const el=document.getElementById('chat-msgs');if(el)el.scrollTop=el.scrollHeight;},80);
+  // Marquer comme lus silencieusement
+  markChatRead(qk).catch(()=>{});
 }
 
 function refreshLiveChat(s,qk){
@@ -2273,8 +2278,27 @@ async function sendChatMsg(qk){
   const key=getChatKey(qk);
   s.chat[key]=s.chat[key]||[];
   s.chat[key].push({role:myRole,text,ts:Date.now()});
+  // Marquer tous les messages de l'autre comme lus
+  s.chat[key].forEach(m=>{ if(m.role!==myRole){m.readBy=m.readBy||{};m.readBy[myRole]=true;} });
   await saveRoom(s);lastRoom=s;
   renderLiveChat(s,qk);
+}
+
+async function markChatRead(qk){
+  // Appelé quand on ouvre une question - marque tous msgs de l'autre comme lus
+  const s=lastRoom||await loadRoom(roomCode);
+  if(!s||!s.chat)return;
+  const key=getChatKey(qk);
+  const msgs=s.chat[key]||[];
+  let changed=false;
+  msgs.forEach(m=>{
+    if(m.role!==myRole&&(!m.readBy||!m.readBy[myRole])){
+      m.readBy=m.readBy||{};
+      m.readBy[myRole]=true;
+      changed=true;
+    }
+  });
+  if(changed){await saveRoom(s);lastRoom=s;}
 }
 
 // ═══════════════════════════════════════
