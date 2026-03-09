@@ -1733,20 +1733,28 @@ function startPoll(){
 function isOnline(p){return p&&(Date.now()-p.ts)<15000;}
 function renderStatus(cid,s){
   const el=document.getElementById(cid);if(!el)return;
-  const cards=[{d:s?.p1,cls:'p1',role:'p1'},{d:s?.p2,cls:'p2',role:'p2'}].map(({d,cls,role})=>{
+  function cardHtml(d,cls,role){
     const isMe=role===myRole;
     const online=d&&isOnline(d);
-    return `<div class="status-card ${cls} ${online?'online':''}">
-      ${strip()}
-      <div class="status-name">${d?.name||'—'}${isMe?` <span style="font-size:9px;color:var(--goldL);font-weight:600;font-style:italic;">(vous)</span>`:''}</div>
-      <div class="status-line">
-        <span class="dot ${d?(online?'on':'off'):'wait'}"></span>
-        <span style="font-size:10px;color:var(--muted);">${d?(online?'Online ✓':'...'):'En attente...'}</span>
-        ${d?`<span class="lang-chip ${d.lang}">${d.lang==='fr'?'🇫🇷 FR':'🇬🇧 EN'}</span>`:''}
-      </div>
-    </div>`;
-  });
-  el.innerHTML=`<div class="status-wrap">${cards[0]}<div class="status-heart">♡</div>${cards[1]}</div>`;
+    const dotCls=d?(online?'on':'off'):'wait';
+    const nameExtra=isMe?'<span style="font-size:9px;color:var(--goldL);font-weight:600;font-style:italic;">(vous)</span>':'';
+    const statusTxt=d?(online?'Online ✓':'...'):'En attente...';
+    const langChip=d?('<span class="lang-chip '+d.lang+'">'+(d.lang==='fr'?'🇫🇷 FR':'🇬🇧 EN')+'</span>'):'';
+    return '<div class="status-card '+cls+(online?' online':'')+'">'
+      +strip()
+      +'<div class="status-name">'+(d?d.name:'—')+' '+nameExtra+'</div>'
+      +'<div class="status-line">'
+        +'<span class="dot '+dotCls+'"></span>'
+        +'<span style="font-size:10px;color:var(--muted);">'+statusTxt+'</span>'
+        +langChip
+      +'</div>'
+    +'</div>';
+  }
+  el.innerHTML='<div class="status-wrap">'
+    +cardHtml(s?.p1,'p1','p1')
+    +'<div class="status-heart">♡</div>'
+    +cardHtml(s?.p2,'p2','p2')
+    +'</div>';
 }
 
 // ═══════════════════════════════════════
@@ -2085,12 +2093,18 @@ async function forceCheck(){
 // ═══════════════════════════════════════
 function navHTML(){
   const isLast=currentQi>=currentQs.length-1;
-  return `<div style="display:flex;gap:8px;margin-top:12px;">
-    ${currentQi>0?`<button onclick="prevQ()" style="flex:1;padding:12px;border-radius:12px;border:1px solid var(--faint);background:transparent;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;">← ${myLang==='fr'?'Précédent':'Previous'}</button>`:''}
-    <button onclick="${isLast?'goPage(\'pg-cats\')':'nextQ()'}" style="flex:2;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--goldD),var(--gold));color:#12090A;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">${isLast?(myLang==='fr'?'✅ Retour aux thèmes':'✅ Back to themes'):(myLang==='fr'?'Question suivante →':'Next question →')}</button>
-  </div>`;
+  const prevBtn=currentQi>0
+    ?'<button onclick="prevQ()" style="flex:1;padding:12px;border-radius:12px;border:1px solid #2A2238;background:transparent;color:#7A6E8A;cursor:pointer;">← '+(myLang==='fr'?'Précédent':'Previous')+'</button>'
+    :'';
+  const nextLabel=isLast
+    ?(myLang==='fr'?'✅ Retour aux thèmes':'✅ Back to themes')
+    :(myLang==='fr'?'Question suivante →':'Next question →');
+  const nextAction=isLast?"goPage('pg-cats')":'nextQ()';
+  return '<div style="display:flex;gap:8px;margin-top:12px;">'
+    +prevBtn
+    +'<button onclick="'+nextAction+'" style="flex:2;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#4A3010,#D4943C);color:#0D0A06;font-weight:700;cursor:pointer;">'+nextLabel+'</button>'
+    +'</div>';
 }
-
 function prevQ(){if(currentQi>0){currentQi--;renderQ();}}
 function nextQ(){if(currentQi<currentQs.length-1){currentQi++;renderQ();}}
 
