@@ -399,19 +399,18 @@ function checkAndNotify(s){
   const catName=currentCat?.[myLang==='fr'?'fr':'en']||'';
 
   if(!myA&&thA){
-    // L'autre a repondu et j'attends encore — notifier
     _notified[qk]=true;
+    const qText = currentQs[currentQi]?.[myLang==='fr'?0:1]||'';
     sendNotif(
-      myLang==='fr'?thName+' a répondu !':thName+' answered!',
-      myLang==='fr'?'Thème: '+catName+' — À ton tour de répondre !':'Theme: '+catName+' — Your turn to answer!',
+      myLang==='fr'? thName+' a répondu !': thName+' answered!',
+      (currentCat?.e||'') + ' ' + catName + '\n"' + qText.substring(0,50) + (qText.length>50?'...':'"'),
       '✍️'
     );
   } else if(myA&&thA){
-    // Les deux ont repondu — notifier pour la revelation
     _notified[qk]=true;
     sendNotif(
-      myLang==='fr'?'Révélation disponible !':'Reveal ready!',
-      myLang==='fr'?thName+' a aussi répondu — découvrez vos réponses !':thName+' also answered — discover your answers!',
+      myLang==='fr'?'✨ Révélation disponible !':'✨ Reveal ready!',
+      (currentCat?.e||'') + ' ' + catName + ' — ' + (myLang==='fr'?'Découvrez vos réponses !':'Discover your answers!'),
       '✨'
     );
   }
@@ -578,12 +577,26 @@ window.addEventListener('load',()=>{
       const d=JSON.parse(sess);
       myRole=d.myRole;myName=d.myName;myLang=d.myLang;roomCode=d.roomCode;
       if(roomCode){
-        loadRoom(roomCode).then(s=>{
-          if(s){lastRoom=s;startPoll();showCats();}
+        loadRoom(roomCode).then(async s=>{
+          if(!s)return;
+          // Mettre à jour timestamp de présence
+          if(myRole==='p1')s.p1.ts=Date.now();
+          else if(s.p2)s.p2.ts=Date.now();
+          await saveRoom(s);
+          lastRoom=s;window._wentToCats=true;
+          startPoll();
+          // Reprendre là où on était
+          const pending=detectPending(s);
+          if(pending&&pending.cat){
+            currentCat=pending.cat;currentQi=pending.qi;currentQs=getQsForCat(pending.cat.id);
+            renderQ();goPage('pg-q');
+          } else {
+            showCats();
+          }
         });
       }
     }
-  }catch(e){}
+  }catch(e){console.log('restore err',e);}
 });
 window.addEventListener('resize',drawAll);
 
@@ -629,11 +642,37 @@ async function joinRoom(){
   const errEl=document.getElementById('j-err');errEl.style.display='none';
   const btn=document.getElementById('j-btn');btn.textContent='Connexion...';btn.disabled=true;
   const state=await loadRoom(code);
-  if(!state){errEl.textContent='Salle introuvable — verifiez le code / Room not found';errEl.style.display='block';btn.textContent='Rejoindre / Join';btn.disabled=false;return;}
-  myName=name;myLang=joinLang;myRole='p2';roomCode=code;
-  state.p2={name:myName,lang:myLang,ts:Date.now()};
-  await saveRoom(state);lastRoom=state;startPoll();
-  // RECONNEXION INTELLIGENTE: detecter si p1 attend une reponse
+  if(!state){
+    errEl.textContent='Salle introuvable / Room not found';
+    errEl.style.display='block';btn.textContent='Rejoindre / Join';btn.disabled=false;return;
+  }
+
+  // SECURITE: salle privee, max 2 personnes
+  const isP1Back = state.p1 && state.p1.name.toLowerCase()===name.toLowerCase();
+  const isP2Back = state.p2 && state.p2.name.toLowerCase()===name.toLowerCase();
+  const p2Active = state.p2 && (Date.now()-state.p2.ts)<30*60*1000;
+
+  if(!isP1Back && !isP2Back && p2Active){
+    errEl.textContent='Cette salle est privee et complete / This room is private and full';
+    errEl.style.display='block';btn.textContent='Rejoindre / Join';btn.disabled=false;return;
+  }
+
+  // Determiner le role
+  if(isP1Back){
+    myRole='p1';myName=state.p1.name;myLang=joinLang||state.p1.lang||'fr';
+    state.p1.ts=Date.now();state.p1.lang=myLang;
+  } else {
+    myRole='p2';myName=name;myLang=joinLang;
+    state.p2={name:myName,lang:myLang,ts:Date.now()};
+  }
+
+  roomCode=code;
+  await requestNotifPermission();
+  await saveRoom(state);lastRoom=state;
+  sessionStorage.setItem('nd_session',JSON.stringify({myRole,myName,myLang,roomCode}));
+  startPoll();
+
+  // Aller au bon endroit
   const pending=detectPending(state);
   if(pending){
     window._wentToCats=true;
@@ -642,10 +681,13 @@ async function joinRoom(){
     const lc=document.getElementById('cat-me-lang');lc.textContent=myLang==='fr'?'FR':'EN';lc.className='lang-chip '+myLang;
     renderStatus('cat-status',state);
     setTimeout(()=>{renderQ();goPage('pg-q');},300);
+  } else if(state.p1&&state.p2){
+    showCats();
   } else {
     showWaiting(state);
   }
 }
+
 
 function detectPending(state){
   if(!state||!state.answers)return null;
@@ -884,67 +926,94 @@ function showSent(s){
 }
 
 // ═══════════════════════════════════════
-// CHAT EN DIRECT (échange libre après révélation)
+// CHAT EN DIRECT
 // ═══════════════════════════════════════
-let _lastMsgCount = 0;
+let _lastMsgCount = {};
+
+function getChatKey(qk){ return 'chat_'+qk.replace(/[^a-zA-Z0-9]/g,'_'); }
 
 function renderLiveChat(s, qk){
   const chatZ = document.getElementById('chat-zone');
   if(!chatZ) return;
-  const msgs = s?.chat?.[qk.replace(/[^a-zA-Z0-9]/g,'_')] || [];
-  const isP1 = myRole==='p1';
-  const thRole = isP1?'p2':'p1';
+  const key = getChatKey(qk);
+  const msgs = s?.chat?.[key] || [];
+  const thRole = myRole==='p1'?'p2':'p1';
   const thName = s?.[thRole]?.name || '?';
+  const catLabel = currentCat?.[myLang==='fr'?'fr':'en'] || '';
 
-  // Notifier si nouveaux messages
-  if(msgs.length > _lastMsgCount && _lastMsgCount > 0){
-    const last = msgs[msgs.length-1];
-    if(last.role !== myRole){
-      sendNotif(
-        myLang==='fr'? thName+' a envoyé un message !': thName+' sent a message!',
-        last.text,
-        '💬'
-      );
+  // Notifier nouveaux messages
+  const prevCount = _lastMsgCount[qk]||0;
+  if(msgs.length > prevCount){
+    for(let i=prevCount; i<msgs.length; i++){
+      const m = msgs[i];
+      if(m.role !== myRole){
+        sendNotif(
+          (myLang==='fr'? thName+' vous a écrit !' : thName+' wrote to you!'),
+          catLabel + ' — "' + m.text.substring(0,60) + (m.text.length>60?'...':'"'),
+          '💬'
+        );
+      }
     }
   }
-  _lastMsgCount = msgs.length;
+  _lastMsgCount[qk] = msgs.length;
 
   chatZ.innerHTML = `
-    <div class="card" style="border-color:var(--goldD);overflow:hidden;">
+    <div style="background:var(--d3);border:1px solid var(--goldD);border-radius:16px;overflow:hidden;margin-top:4px;">
       <div class="strip"><div style="background:var(--k1)"></div><div style="background:var(--k2)"></div><div style="background:var(--k3)"></div><div style="background:var(--k4)"></div><div style="background:var(--k1)"></div><div style="background:var(--k3)"></div><div style="background:var(--k2)"></div><div style="background:var(--k4)"></div></div>
-      <div class="card-body">
-        <p style="font-size:11px;color:var(--gold);font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px;">💬 ${myLang==='fr'?'Échange libre / Free exchange':' Free exchange / Échange libre'}</p>
-        <div id="chat-msgs" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;max-height:300px;overflow-y:auto;">
+      <div style="padding:12px 14px 0;">
+        <p style="font-size:11px;color:var(--gold);font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px;">
+          💬 ${myLang==='fr'?'Échange libre':'Free exchange'} — ${currentCat?.e||''} ${catLabel}
+        </p>
+        <div id="chat-msgs" style="display:flex;flex-direction:column;gap:10px;min-height:60px;max-height:320px;overflow-y:auto;padding-bottom:4px;">
           ${msgs.length===0
-            ? '<p style="font-size:12px;color:var(--muted);text-align:center;font-style:italic;">'+(myLang==='fr'?'Échangez librement sur ce sujet...':'Exchange freely on this topic...')+'</p>'
+            ? '<p style="font-size:12px;color:var(--muted);text-align:center;font-style:italic;padding:16px 0;">'
+              +(myLang==='fr'
+                ?'Réagissez, posez des questions, approfondissez...'
+                :'React, ask questions, go deeper...')
+              +'</p>'
             : msgs.map(m=>{
                 const isMe = m.role===myRole;
                 const nm = s?.[m.role]?.name||'?';
                 const lg = s?.[m.role]?.lang||'fr';
-                return '<div class="bubble-row '+(isMe?'left':'right')+'" style="margin-bottom:0;">' +
-                  '<div class="avatar" style="background:var(--'+m.role+'d);border:2px solid var(--'+m.role+');width:28px;height:28px;font-size:12px;">👤</div>' +
-                  '<div class="bubble '+m.role+'" style="border-top-left-radius:'+(isMe?3:16)+'px;border-top-right-radius:'+(isMe?16:3)+'px;max-width:80%;">' +
-                    '<div class="bubble-name" style="color:var(--'+m.role+');">'+nm+' <span class="lang-chip '+lg+'">'+(lg==='fr'?'🇫🇷':'🇬🇧')+'</span></div>'+
-                    m.text+
-                  '</div></div>';
+                const col = m.role==='p1'?'var(--p1)':'var(--p2)';
+                const bg = m.role==='p1'?'#182A40':'#2E1810';
+                const bd = m.role==='p1'?'var(--p1b)':'var(--p2b)';
+                const time = new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+                return '<div style="display:flex;flex-direction:'+(isMe?'row':'row-reverse')+';gap:8px;align-items:flex-end;">'
+                  +'<div style="width:28px;height:28px;border-radius:50%;background:'+bg+';border:2px solid '+bd+';display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">'+(m.role==='p1'?'👤':'👤')+'</div>'
+                  +'<div style="max-width:78%;background:'+bg+';border:1px solid '+bd+';border-radius:16px;border-bottom-'+(isMe?'left':'right')+'-radius:4px;padding:8px 12px;position:relative;">'
+                    +'<div style="font-size:10px;font-weight:700;color:'+col+';margin-bottom:4px;display:flex;align-items:center;gap:6px;">'
+                      +nm+' <span class="lang-chip '+lg+'">'+(lg==='fr'?'🇫🇷':'🇬🇧')+'</span>'
+                      +'<span style="font-size:9px;color:var(--muted);margin-left:auto;">'+time+'</span>'
+                    +'</div>'
+                    +'<div style="font-size:13px;line-height:1.6;color:var(--cream);">'+m.text+'</div>'
+                  +'</div>'
+                +'</div>';
               }).join('')
           }
         </div>
-        <div style="display:flex;gap:8px;">
-          <textarea id="chat-input" rows="2" placeholder="${myLang==='fr'?'Ton message...':'Your message...'}" style="flex:1;font-size:13px;padding:10px 12px;"></textarea>
-          <button onclick="sendChatMsg('${qk}')" style="background:linear-gradient(135deg,var(--goldD),var(--gold));border:none;border-radius:10px;color:#12090A;font-weight:700;font-size:20px;cursor:pointer;padding:0 14px;flex-shrink:0;">➤</button>
-        </div>
+      </div>
+      <div style="padding:10px 14px 14px;display:flex;gap:8px;align-items:flex-end;border-top:1px solid var(--faint);margin-top:10px;">
+        <textarea id="chat-input" rows="2" placeholder="${myLang==='fr'?'Ton message...':'Your message...'}" style="flex:1;font-size:13px;padding:10px 12px;border-radius:12px;resize:none;"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMsg('${qk}');}"></textarea>
+        <button onclick="sendChatMsg('${qk}')" style="background:linear-gradient(135deg,var(--goldD),var(--gold));border:none;border-radius:12px;color:#12090A;font-weight:700;font-size:18px;cursor:pointer;padding:10px 14px;flex-shrink:0;align-self:flex-end;">➤</button>
       </div>
     </div>`;
 
   // Scroll to bottom
-  setTimeout(()=>{const el=document.getElementById('chat-msgs');if(el)el.scrollTop=el.scrollHeight;},100);
+  setTimeout(()=>{const el=document.getElementById('chat-msgs');if(el)el.scrollTop=el.scrollHeight;},80);
 }
 
 function refreshLiveChat(s, qk){
   const chatZ = document.getElementById('chat-zone');
-  if(!chatZ || chatZ.innerHTML==='') return;
+  if(!chatZ||!chatZ.querySelector('#chat-msgs'))return;
+  // Sauvegarder le texte en cours de frappe
+  const input = document.getElementById('chat-input');
+  const draft = input?.value||'';
   renderLiveChat(s, qk);
+  // Restaurer le brouillon
+  const newInput = document.getElementById('chat-input');
+  if(newInput&&draft) newInput.value=draft;
 }
 
 async function sendChatMsg(qk){
@@ -952,15 +1021,15 @@ async function sendChatMsg(qk){
   const text = input?.value.trim();
   if(!text) return;
   input.value='';
-  const s = await loadRoom(roomCode) || lastRoom;
-  s.chat = s.chat || {};
-  const key = qk.replace(/[^a-zA-Z0-9]/g,'_');
-  s.chat[key] = s.chat[key] || [];
-  s.chat[key].push({role:myRole, text, ts:Date.now()});
-  await saveRoom(s);
-  lastRoom=s;
-  renderLiveChat(s, qk);
+  const s = await loadRoom(roomCode)||lastRoom;
+  s.chat = s.chat||{};
+  const key = getChatKey(qk);
+  s.chat[key] = s.chat[key]||[];
+  s.chat[key].push({role:myRole,text,ts:Date.now()});
+  await saveRoom(s);lastRoom=s;
+  renderLiveChat(s,qk);
 }
+
 
 async function forceCheck(){
   const s=await loadRoom(roomCode);
