@@ -1832,6 +1832,8 @@ function startPoll(){
       if(!document.getElementById('my-answer') && !userIsTypingChat){
         checkQState(s);
       }
+      // Programmer l'analyse automatique si les deux ont répondu
+      scheduleAutoAnalysis(s, qk);
       checkAndNotify(s);
     }
     // Notifier meme si l'app est en arriere-plan (autre page)
@@ -2016,6 +2018,8 @@ function renderCatList(s){
   }
   if(lastRoom)lastRoom.aiResult=null;
   _currentChatQk = null; // Forcer la réinitialisation du chat pour la nouvelle question
+  cancelAutoAnalysis(); // Annuler l'analyse auto de la question précédente
+  _analysisInProgress = false;
   renderQ();
   goPage('pg-q');
   if(lastRoom&&roomCode) saveRoom(lastRoom).catch(()=>{});
@@ -2288,7 +2292,8 @@ function showReveal(s,qk){
     <div id="ai-zone"></div>
     <div id="nav-zone">${ardy?navHTML():''}</div>`;
   z.style.display='block';
-  if(ardy)renderAI(s.aiResult);
+  if(ardy) renderAI(s.aiResult);
+  else scheduleAutoAnalysis(s, qk); // Déclencher l'analyse auto si pas encore faite
   renderLiveChat(s,qk);
 }
 
@@ -2344,6 +2349,83 @@ Réponds UNIQUEMENT avec le JSON, rien d'autre.`}]
     if(el)el.innerHTML=`<p style="color:#E87070;font-size:12px;margin-top:8px;">${myLang==='fr'?'Erreur / Error — réessayez / try again':' Error — try again'}</p>`;
     if(btn){btn.disabled=false;btn.textContent=myLang==='fr'?'🔍 Réessayer':'🔍 Retry';}
   }
+}
+
+// ═══════════════════════════════════════
+// ANALYSE AUTOMATIQUE PAR INACTIVITÉ
+// ═══════════════════════════════════════
+const INACTIVITY_DELAY_MS = 90 * 1000; // 90 secondes d'inactivité → analyse auto
+let _autoAnalysisTimer = null;
+let _analysisInProgress = false;
+
+function getLastChatTs(s, qk){
+  const key = getChatKey(qk);
+  const msgs = s?.chat?.[key] || [];
+  if(!msgs.length) return 0;
+  return msgs[msgs.length - 1].ts || 0;
+}
+
+function scheduleAutoAnalysis(s, qk){
+  // Conditions : les deux ont répondu, pas d'analyse déjà faite/en cours
+  if(!s) return;
+  const a1 = s.answers?.[qk+'_p1'];
+  const a2 = s.answers?.[qk+'_p2'];
+  if(!a1 || !a2) return; // Les deux doivent avoir répondu
+  if(s.aiResult?.qk === qk) return; // Analyse déjà faite
+  if(_analysisInProgress) return;
+
+  const lastTs = getLastChatTs(s, qk);
+  const now = Date.now();
+  const sinceLastMsg = now - lastTs;
+
+  // Annuler le timer précédent
+  if(_autoAnalysisTimer) clearTimeout(_autoAnalysisTimer);
+
+  if(lastTs === 0){
+    // Pas encore de messages chat → attendre INACTIVITY_DELAY_MS depuis maintenant
+    _autoAnalysisTimer = setTimeout(()=>_triggerAutoAnalysis(qk), INACTIVITY_DELAY_MS);
+  } else if(sinceLastMsg >= INACTIVITY_DELAY_MS){
+    // Déjà inactif assez longtemps → lancer immédiatement
+    _triggerAutoAnalysis(qk);
+  } else {
+    // Lancer dans le temps restant
+    _autoAnalysisTimer = setTimeout(()=>_triggerAutoAnalysis(qk), INACTIVITY_DELAY_MS - sinceLastMsg);
+  }
+}
+
+function cancelAutoAnalysis(){
+  if(_autoAnalysisTimer){ clearTimeout(_autoAnalysisTimer); _autoAnalysisTimer=null; }
+}
+
+function _showAutoAnalysisCountdown(qk, remainingMs){
+  const btn = document.querySelector('#reveal-zone button[onclick="doAnalysis()"]');
+  if(!btn) return;
+  const secs = Math.ceil(remainingMs / 1000);
+  btn.textContent = myLang==='fr'
+    ? `⏳ Analyse automatique dans ${secs}s...`
+    : `⏳ Auto-analysis in ${secs}s...`;
+  btn.style.opacity = '0.7';
+}
+
+async function _triggerAutoAnalysis(qk){
+  if(_analysisInProgress) return;
+  const s = lastRoom || await loadRoom(roomCode);
+  if(!s) return;
+  if(s.aiResult?.qk === qk) return; // Déjà fait entre temps
+  if(currentCat?.id+'_'+currentQi !== qk) return; // Question changée
+  _analysisInProgress = true;
+  // Afficher l'indicateur de chargement dans ai-zone
+  const aiEl = document.getElementById('ai-zone');
+  if(aiEl) aiEl.innerHTML = `<div style="margin-top:14px;text-align:center;padding:16px;background:rgba(212,148,60,0.08);border:1px solid var(--goldD);border-radius:12px;">
+    <div style="width:28px;height:28px;border:3px solid var(--gold);border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px;"></div>
+    <p style="color:var(--gold);font-size:12px;font-weight:600;">${myLang==='fr'?'🤖 Analyse de votre compatibilité...':'🤖 Analysing your compatibility...'}</p>
+    <p style="color:var(--muted);font-size:11px;margin-top:4px;">${myLang==='fr'?'Inactivité détectée — analyse automatique':'Inactivity detected — auto analysis'}</p>
+  </div>`;
+  // Cacher le bouton manuel
+  const btn = document.querySelector('#reveal-zone button[onclick="doAnalysis()"]');
+  if(btn) btn.style.display='none';
+  await doAnalysis();
+  _analysisInProgress = false;
 }
 
 // ═══════════════════════════════════════
@@ -2509,7 +2591,10 @@ async function sendChatMsg(qk){
   // Marquer tous les messages de l'autre comme lus
   s.chat[key].forEach(m=>{ if(m.role!==myRole){m.readBy=m.readBy||{};m.readBy[myRole]=true;} });
   await saveRoom(s);lastRoom=s;
-  renderLiveChat(s,qk);
+  _updateChatMsgs(s, qk);
+  // Réinitialiser le timer d'inactivité — quelqu'un vient d'écrire
+  cancelAutoAnalysis();
+  scheduleAutoAnalysis(s, qk);
 }
 
 async function markChatRead(qk){
