@@ -736,6 +736,8 @@ function startPoll(){
     const pg=document.querySelector('.page.active')?.id;
     // Mettre a jour les indicateurs de presence partout
     renderStatus('wait-status',s);renderStatus('cat-status',s);renderStatus('q-status',s);
+    // Mettre à jour les badges sur l'écran des catégories
+    if(document.querySelector('.page.active')?.id==='pg-cats') renderCatList(s);
     // Transitions de page
     if(pg==='pg-wait'&&s.p2&&!window._wentToCats){
       window._wentToCats=true;
@@ -785,26 +787,74 @@ function renderStatus(cid,s){
 // ═══════════════════════════════════════
 // CATEGORIES
 // ═══════════════════════════════════════
+// Calcule les badges (réponses en attente + messages non lus) par thème
+function getBadges(s){
+  const badges={};
+  if(!s||!s.answers)return badges;
+  const thRole=myRole==='p1'?'p2':'p1';
+  // Badge réponse: l'autre a répondu mais pas moi
+  Object.keys(s.answers).forEach(k=>{
+    if(k.endsWith('_'+thRole)){
+      const base=k.replace('_'+thRole,'');
+      if(!s.answers[base+'_'+myRole]){
+        const parts=base.split('_');
+        const catId=parts.slice(0,-1).join('_');
+        badges[catId]=(badges[catId]||0)+1;
+      }
+    }
+  });
+  // Badge chat: messages non lus
+  if(s.chat){
+    Object.keys(s.chat).forEach(key=>{
+      const msgs=s.chat[key]||[];
+      const unread=msgs.filter(m=>m.role!==myRole&&!m.readBy?.[myRole]);
+      if(unread.length>0){
+        // Extraire catId du key: chat_catId_qi
+        const parts=key.replace('chat_','').split('_');
+        const catId=parts.slice(0,-1).join('_');
+        badges[catId]=(badges[catId]||0)+unread.length;
+      }
+    });
+  }
+  return badges;
+}
+
 function showCats(){
   window._wentToCats=true;
   document.getElementById('cat-me-name').textContent=myName;
   const lc=document.getElementById('cat-me-lang');lc.textContent=myLang==='fr'?'🇫🇷 FR':'🇬🇧 EN';lc.className='lang-chip '+myLang;
-  // Build list — add custom category if questions exist
-  const allCats = [...CATS];
-  if(settings.customQs.length > 0) allCats.push({id:'custom',e:'💬',fr:'Nos Questions',en:'Our Questions'});
+  renderCatList(lastRoom);
+  if(lastRoom)renderStatus('cat-status',lastRoom);
+  goPage('pg-cats');
+}
+
+function renderCatList(s){
+  const allCats=[...CATS];
+  if(settings.customQs.length>0)allCats.push({id:'custom',e:'💬',fr:'Nos Questions',en:'Our Questions'});
+  const badges=getBadges(s);
   document.getElementById('cat-list').innerHTML=allCats.map(c=>{
-    const qCount = getQsForCat(c.id).length;
-    return `<button class="cat-btn" onclick="startCat('${c.id}')">
+    const qCount=getQsForCat(c.id).length;
+    const badgeN=badges[c.id]||0;
+    const badgeHtml=badgeN>0
+      ?`<span style="background:#E83030;color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;min-width:20px;text-align:center;box-shadow:0 0 8px rgba(232,48,48,0.6);">${badgeN}</span>`
+      :`<span style="font-size:10px;color:var(--muted);border:1px solid var(--faint);border-radius:99px;padding:2px 8px;">${qCount}Q</span>`;
+    const highlight=badgeN>0?'border-color:#E83030;box-shadow:0 0 12px rgba(232,48,48,0.2);':'';
+    return `<button class="cat-btn" onclick="startCat('${c.id}')" style="${highlight}">
       ${strip()}
       <div class="cat-btn-inner">
-        <span style="font-size:22px;flex-shrink:0;">${c.e}</span>
-        <div style="flex:1;"><div class="cat-fr">${c.fr}</div><div class="cat-en">${c.en}</div></div>
-        <span style="font-size:10px;color:var(--muted);border:1px solid var(--faint);border-radius:99px;padding:2px 8px;flex-shrink:0;">${qCount}Q</span>
+        <span style="font-size:22px;flex-shrink:0;position:relative;">
+          ${c.e}
+          ${badgeN>0?'<span style="position:absolute;top:-4px;right:-4px;width:8px;height:8px;background:#E83030;border-radius:50%;box-shadow:0 0 6px #E83030;"></span>':''}
+        </span>
+        <div style="flex:1;">
+          <div class="cat-fr">${c.fr}</div>
+          <div class="cat-en">${c.en}</div>
+          ${badgeN>0?`<div style="font-size:10px;color:#E87070;margin-top:2px;font-weight:600;">${myLang==='fr'?'● Nouveau message en attente':'● New message waiting'}</div>`:''}
+        </div>
+        ${badgeHtml}
       </div>
     </button>`;
   }).join('');
-  if(lastRoom)renderStatus('cat-status',lastRoom);
-  goPage('pg-cats');
 }
 
 async function startCat(catId){
@@ -1004,6 +1054,8 @@ function renderLiveChat(s, qk){
 
   // Scroll to bottom
   setTimeout(()=>{const el=document.getElementById('chat-msgs');if(el)el.scrollTop=el.scrollHeight;},80);
+  // Marquer comme lus
+  markChatRead(qk);
 }
 
 let _chatFocused = false;
@@ -1066,6 +1118,23 @@ function updateChatMsgsOnly(s, qk, msgs){
   if(!_chatFocused){
     msgsEl.scrollTop = msgsEl.scrollHeight;
   }
+}
+
+async function markChatRead(qk){
+  try{
+    const s=await loadRoom(roomCode)||lastRoom;
+    if(!s||!s.chat)return;
+    const key=getChatKey(qk);
+    if(!s.chat[key])return;
+    let changed=false;
+    s.chat[key]=s.chat[key].map(m=>{
+      if(m.role!==myRole&&(!m.readBy||!m.readBy[myRole])){
+        m.readBy=m.readBy||{};m.readBy[myRole]=Date.now();changed=true;
+      }
+      return m;
+    });
+    if(changed){await saveRoom(s);lastRoom=s;}
+  }catch(e){}
 }
 
 async function sendChatMsg(qk){
