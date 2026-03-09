@@ -972,36 +972,27 @@ function checkJoin(){document.getElementById('j-btn').disabled=!(document.getEle
 async function createRoom(){
   myName=document.getElementById('c-name').value.trim();myLang=createLang;myRole='p1';
   roomCode=genCode();
-  const myCode=genCode(); // code personnel secret de p1
-  const partnerCode=genCode(); // code à donner au partenaire
   const btn=document.getElementById('c-btn');btn.textContent='Création...';btn.disabled=true;
-  const state={
-    code:roomCode,
-    p1:{name:myName,lang:myLang,ts:Date.now(),secret:myCode},
-    p1PartnerCode:partnerCode, // code que p2 utilisera
-    p2:null,answers:{},insights:[],aiResult:null
-  };
+  const state={code:roomCode,p1:{name:myName,lang:myLang,ts:Date.now()},p2:null,answers:{},insights:[],aiResult:null};
   await saveRoom(state);lastRoom=state;
-  mySecret=myCode;
-  sessionStorage.setItem('nd_session',JSON.stringify({myRole,myName,myLang,roomCode,mySecret}));
+  sessionStorage.setItem('nd_session',JSON.stringify({myRole,myName,myLang,roomCode}));
   startPoll();showWaiting(state);
 }
 async function joinRoom(){
-  const code=document.getElementById('j-code').value.trim().toUpperCase();
-  const errEl=document.getElementById('j-err');errEl.style.display='none';
-  const btn=document.getElementById('j-btn');btn.textContent='Connexion...';btn.disabled=true;
+  const code = document.getElementById('j-code').value.trim().toUpperCase();
+  const name = document.getElementById('j-name').value.trim();
+  const errEl = document.getElementById('j-err'); errEl.style.display='none';
+  const btn = document.getElementById('j-btn'); btn.textContent='Connexion...'; btn.disabled=true;
 
-  // Vérifier d'abord si session existante avec ce code
+  // Déjà en session avec ce code → reprendre directement
   try{
-    const sess=sessionStorage.getItem('nd_session');
+    const sess = sessionStorage.getItem('nd_session');
     if(sess){
-      const d=JSON.parse(sess);
-      if(d.mySecret && d.roomCode){
-        // Chercher si ce code = roomCode ou partnerCode
-        const s=await loadRoom(d.roomCode);
-        if(s && (s.p1?.secret===d.mySecret || s.p1PartnerCode===d.mySecret || s.p2?.secret===d.mySecret)){
-          myRole=d.myRole;myName=d.myName;myLang=d.myLang;roomCode=d.roomCode;mySecret=d.mySecret;
-          lastRoom=s;startPoll();
+      const d = JSON.parse(sess);
+      if(d.roomCode === code){
+        myRole=d.myRole; myName=d.myName; myLang=d.myLang; roomCode=d.roomCode;
+        const s = await loadRoom(roomCode);
+        if(s){ lastRoom=s; startPoll();
           const pending=detectPending(s);
           if(pending){currentCat=pending.cat;currentQi=pending.qi;currentQs=getQsForCat(pending.cat.id);renderQ();goPage('pg-q');}
           else if(s.p1&&s.p2){showCats();}
@@ -1012,101 +1003,60 @@ async function joinRoom(){
     }
   }catch(e){}
 
-  // Nouveau: identifier par code secret
-  // Essayer comme code de salle (p1 qui revient sans session)
-  // OU comme partnerCode (p2 qui rejoint)
-  const name=document.getElementById('j-name')?.value.trim()||'';
-
-  // Chercher par roomCode direct
-  let state=await loadRoom(code);
-  let resolvedRole=null;
-  let resolvedSecret=null;
-  let resolvedName=name;
-  let resolvedLang=joinLang;
-
-  if(state){
-    // C'est un code de salle direct → p1 qui revient
-    if(state.p1?.name.toLowerCase()===name.toLowerCase()){
-      resolvedRole='p1';
-      resolvedSecret=state.p1.secret||genCode();
-      resolvedName=state.p1.name;
-      resolvedLang=state.p1.lang||joinLang;
-      state.p1.ts=Date.now();state.p1.lang=resolvedLang;
-      if(!state.p1.secret)state.p1.secret=resolvedSecret;
-    } else {
-      errEl.textContent='❌ Code non reconnu / Code not recognized';
-      errEl.style.display='block';btn.textContent='Rejoindre / Join →';btn.disabled=false;return;
-    }
-  } else {
-    // Chercher si c'est un p1PartnerCode dans n'importe quelle salle
-    state=await findRoomByPartnerCode(code);
-    if(state){
-      // C'est p2 qui rejoint
-      const p2Active=state.p2&&(Date.now()-state.p2.ts)<30*60*1000;
-      const isP2Back=state.p2&&state.p2.secret===code;
-      if(p2Active&&!isP2Back){
-        errEl.textContent='🔒 Salle complète / Room already full';
-        errEl.style.display='block';btn.textContent='Rejoindre / Join →';btn.disabled=false;return;
-      }
-      if(isP2Back){
-        // p2 revient avec son code
-        resolvedRole='p2';
-        resolvedSecret=state.p2.secret;
-        resolvedName=state.p2.name;
-        resolvedLang=state.p2.lang||joinLang;
-        state.p2.ts=Date.now();
-      } else {
-        // Nouveau p2
-        if(!name){errEl.textContent='Entre ton prénom / Enter your name';errEl.style.display='block';btn.textContent='Rejoindre / Join →';btn.disabled=false;return;}
-        resolvedRole='p2';
-        resolvedSecret=genCode();
-        resolvedName=name;
-        resolvedLang=joinLang;
-        state.p2={name:resolvedName,lang:resolvedLang,ts:Date.now(),secret:resolvedSecret};
-      }
-      roomCode=state.code;
-    } else {
-      errEl.textContent='❌ Code introuvable / Code not found';
-      errEl.style.display='block';btn.textContent='Rejoindre / Join →';btn.disabled=false;return;
-    }
+  // Charger la salle par code
+  const state = await loadRoom(code);
+  if(!state){
+    errEl.textContent='❌ Code introuvable. Vérifiez le code / Code not found. Check the code';
+    errEl.style.display='block'; btn.textContent='Rejoindre / Join →'; btn.disabled=false; return;
   }
 
-  myRole=resolvedRole;myName=resolvedName;myLang=resolvedLang;mySecret=resolvedSecret;
-  if(!roomCode)roomCode=state.code;
+  // Identifier le rôle
+  const isP1 = state.p1 && state.p1.name.toLowerCase() === name.toLowerCase();
+  const isP2 = state.p2 && state.p2.name.toLowerCase() === name.toLowerCase();
+  const p2Active = state.p2 && (Date.now()-state.p2.ts) < 30*60*1000;
 
-  await saveRoom(state);lastRoom=state;
-  sessionStorage.setItem('nd_session',JSON.stringify({myRole,myName,myLang,roomCode,mySecret}));
+  if(!name){
+    errEl.textContent='Entre ton prénom / Enter your name';
+    errEl.style.display='block'; btn.textContent='Rejoindre / Join →'; btn.disabled=false; return;
+  }
+
+  if(!isP1 && !isP2 && p2Active){
+    errEl.textContent='🔒 Salle privée et complète / Private room - already full';
+    errEl.style.display='block'; btn.textContent='Rejoindre / Join →'; btn.disabled=false; return;
+  }
+
+  if(isP1){
+    // p1 revient
+    myRole='p1'; myName=state.p1.name; myLang=joinLang||state.p1.lang||'fr';
+    state.p1.ts=Date.now(); state.p1.lang=myLang;
+  } else if(isP2){
+    // p2 revient
+    myRole='p2'; myName=state.p2.name; myLang=joinLang||state.p2.lang||'en';
+    state.p2.ts=Date.now(); state.p2.lang=myLang;
+  } else {
+    // Nouveau p2
+    myRole='p2'; myName=name; myLang=joinLang||'en';
+    state.p2={name:myName, lang:myLang, ts:Date.now()};
+  }
+
+  roomCode=code;
+  await saveRoom(state); lastRoom=state;
+  sessionStorage.setItem('nd_session', JSON.stringify({myRole,myName,myLang,roomCode}));
   startPoll();
 
   const pending=detectPending(state);
   if(pending){
     window._wentToCats=true;
-    currentCat=pending.cat;currentQi=pending.qi;currentQs=getQsForCat(pending.cat.id);
+    currentCat=pending.cat; currentQi=pending.qi; currentQs=getQsForCat(pending.cat.id);
     document.getElementById('cat-me-name').textContent=myName;
-    const lc=document.getElementById('cat-me-lang');lc.textContent=myLang==='fr'?'🇫🇷 FR':'🇬🇧 EN';lc.className='lang-chip '+myLang;
+    const lc=document.getElementById('cat-me-lang'); lc.textContent=myLang==='fr'?'🇫🇷 FR':'🇬🇧 EN'; lc.className='lang-chip '+myLang;
     renderStatus('cat-status',state);
-    setTimeout(()=>{renderQ();goPage('pg-q');},300);
+    setTimeout(()=>{renderQ(); goPage('pg-q');},300);
   } else if(state.p1&&state.p2){
     showCats();
   } else {
     showWaiting(state);
   }
-}
-
-async function findRoomByPartnerCode(code){
-  // Cherche dans Firebase une salle dont p1PartnerCode = code ou p2.secret = code
-  // On utilise une requête REST limitée
-  try{
-    const r=await fetch(DB_URL+'/.json?shallow=true');
-    const keys=await r.json();
-    if(!keys)return null;
-    for(const k of Object.keys(keys).slice(-50)){ // Chercher parmi les 50 dernières salles
-      const sr=await fetch(DB_URL+'/'+k+'.json');
-      const s=await sr.json();
-      if(s&&(s.p1PartnerCode===code||s.p2?.secret===code))return s;
-    }
-  }catch(e){}
-  return null;
 }
 
 
@@ -1132,27 +1082,29 @@ function detectPending(state){
 // ═══════════════════════════════════════
 function showWaiting(state){
   // Code p1 = son code secret, code p2 = p1PartnerCode
-  document.getElementById('wait-code').textContent=state.p1?.secret||state.code;
-  const pc=document.getElementById('wait-partner-code');
-  if(pc)pc.textContent=state.p1PartnerCode||'——';
-  document.getElementById('wait-share-msg').textContent=myLang==='fr'?'Partage le code partenaire par WhatsApp':'Share the partner code via WhatsApp';
+  document.getElementById('wait-code').textContent=state.code;
+  document.getElementById('wait-share-msg').textContent=myLang==='fr'?'Partage ce code par WhatsApp':'Share this code via WhatsApp';
   renderStatus('wait-status',state);
   const box=document.getElementById('wait-spinner-box');
   if(state.p2){box.style.display='none';setTimeout(()=>showCats(),600);}
   else{box.style.display='block';document.getElementById('wait-msg').textContent=myLang==='fr'?"En attente que l'autre personne rejoigne...":'Waiting for the other person to join...';}
   goPage('pg-wait');
 }
-function copyCode(who){
-  const val = who==='p2'
-    ? (lastRoom?.p1PartnerCode||'')
-    : (lastRoom?.p1?.secret||roomCode);
-  const btnId = who==='p2'?'copy-btn-p2':'copy-btn-p1';
-  navigator.clipboard.writeText(val).then(()=>{
-    const b=document.getElementById(btnId);
+function copyCode(){
+  navigator.clipboard.writeText(roomCode).then(()=>{
+    const b=document.getElementById('copy-btn');
     if(b){const orig=b.textContent;b.textContent='✅ Copié!';setTimeout(()=>b.textContent=orig,2000);}
   }).catch(()=>{});
-  // Ancien bouton copy pour compaty',2000);});
 }
+
+function shareCode(){
+  const msg = myLang==='fr'
+    ? 'Rejoins-moi sur Nous Deux ! Code: '+roomCode+' — '+window.location.href
+    : 'Join me on We Two! Code: '+roomCode+' — '+window.location.href;
+  if(navigator.share){navigator.share({text:msg});}
+  else{window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');}
+}
+// compat
 
 // ═══════════════════════════════════════
 // POLLING
