@@ -1662,9 +1662,20 @@ function startPoll(){
       }
     }
     if(pg==='pg-q'&&currentCat){
-      // TOUJOURS verifier l etat de la question en cours
-      checkQState(s);
-      // Notifier si l'autre a répondu
+      // Ne mettre à jour le statut que si user n'est pas en train d'écrire
+      const activeEl=document.activeElement;
+      const userTyping=activeEl&&(activeEl.id==='my-answer'||activeEl.id==='chat-input');
+      if(!userTyping){
+        checkQState(s);
+      } else {
+        // Quand user écrit: juste vérifier si l'autre a répondu (pour révélation auto)
+        const qk=currentCat.id+'_'+currentQi;
+        const thRole=myRole==='p1'?'p2':'p1';
+        // Si l'autre vient de répondre pendant qu'on tape → on le signale discrètement
+        if(s.answers?.[qk+'_'+thRole]&&!lastRoom?.answers?.[qk+'_'+thRole]){
+          checkQState(s); // révélation seulement si les deux ont répondu
+        }
+      }
       checkAndNotify(s);
     }
     // Notifier meme si l'app est en arriere-plan (autre page)
@@ -1904,8 +1915,8 @@ function renderQ(){
   if(frEl)frEl.textContent=pair[0];
   if(enEl)enEl.textContent=pair[1];
 
-  // Status
-  renderStatus('q-status',s);
+  // Status (seulement si pas de saisie active)
+  if(document.activeElement?.id !== 'my-answer') renderStatus('q-status',s);
 
   // Reset answer zones
   const myZ=document.getElementById('my-zone');
@@ -1928,20 +1939,27 @@ function checkQState(s){
   const thA=s.answers?.[qk+'_'+thRole];
 
   if(myA&&thA){
-    // Révélation
+    // Révélation - seulement si pas déjà affichée
+    const revZ=document.getElementById('reveal-zone');
+    if(revZ&&revZ.style.display==='block')return; // déjà en révélation
     document.getElementById('sent-zone').style.display='none';
     document.getElementById('my-zone').style.display='none';
     showReveal(s,qk);
-    // Afficher le chat
     const chatZ=document.getElementById('chat-zone');
     if(chatZ)chatZ.style.display='block';
     renderLiveChat(s,qk);
   } else if(myA){
-    // En attente de l'autre
+    // En attente - seulement si pas déjà affiché
+    const sentZ=document.getElementById('sent-zone');
+    if(sentZ&&sentZ.style.display==='block')return; // déjà en attente
     document.getElementById('my-zone').style.display='none';
     showSent(s);
   } else {
-    // Pas encore répondu
+    // Zone de saisie - NE PAS reconstruire si le textarea est actif (user en train d écrire)
+    const activeEl=document.activeElement;
+    if(activeEl&&(activeEl.id==='my-answer'||activeEl.id==='chat-input'))return;
+    const myZone=document.getElementById('my-zone');
+    if(myZone&&myZone.style.display==='block')return; // déjà affiché, ne pas recréer
     showMyInput();
   }
 }
