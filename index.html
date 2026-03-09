@@ -1904,6 +1904,18 @@ function renderCatList(s){
   renderQ();
   goPage('pg-q');
   if(lastRoom&&roomCode) saveRoom(lastRoom).catch(()=>{});
+  // Charger données fraîches depuis Firebase pour afficher les messages existants
+  if(roomCode){
+    loadRoom(roomCode).then(s=>{
+      if(s){
+        lastRoom=s;
+        const _qkFresh=currentCat.id+'_'+currentQi;
+        _lastMsgCount[_qkFresh]=0; // Forcer le re-rendu
+        renderLiveChat(s,_qkFresh);
+        checkQState(s);
+      }
+    }).catch(()=>{});
+  }
   // Marquer les messages chat comme lus
   const _qkRead=currentCat.id+'_'+currentQi;
   markChatRead(_qkRead).catch(()=>{});
@@ -2288,9 +2300,10 @@ function refreshLiveChat(s,qk){
   const key=getChatKey(qk);
   const msgs=s?.chat?.[key]||[];
   const prevCount=_lastMsgCount[qk]||0;
-  if(msgs.length>prevCount){
-    _lastMsgCount[qk]=msgs.length;
+  // Toujours rafraîchir si des messages existent et n'ont pas encore été affichés
+  if(msgs.length>prevCount || (msgs.length>0 && prevCount===0)){
     for(let i=prevCount;i<msgs.length;i++){if(msgs[i].role!==myRole)addBadge(currentCat.id,'chat');}
+    _lastMsgCount[qk]=msgs.length;
     const msgsEl=document.getElementById('chat-msgs');
     if(msgsEl){msgsEl.innerHTML=buildMsgHtml(s,msgs);msgsEl.scrollTop=msgsEl.scrollHeight;}
   }
