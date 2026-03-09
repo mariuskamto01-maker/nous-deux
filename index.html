@@ -802,9 +802,8 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
       <div style="padding:10px 14px 0;">
         <div id="chat-msgs" style="display:flex;flex-direction:column;min-height:60px;max-height:260px;overflow-y:auto;padding-bottom:4px;"></div>
       </div>
-      <!-- Zone saisie avec avatar de l'utilisateur courant -->
+      <!-- Zone saisie -->
       <div style="padding:10px 14px 14px;display:flex;gap:8px;align-items:flex-end;border-top:1px solid var(--faint);margin-top:8px;">
-        <div id="chat-my-avatar" style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:2px solid var(--faint);">🙂</div>
         <textarea id="chat-input" rows="2" placeholder="Ton message..." style="flex:1;font-size:13px;padding:10px 12px;border-radius:12px;resize:none;width:100%;background:var(--d2);border:1.5px solid var(--faint);color:var(--cream);font-family:'Outfit',sans-serif;outline:none;transition:border-color 0.2s;box-sizing:border-box;" onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--faint)'"></textarea>
         <button id="chat-send-btn" style="background:linear-gradient(135deg,var(--goldD),var(--gold));border:none;border-radius:12px;color:#12090A;font-weight:700;font-size:18px;cursor:pointer;padding:10px 14px;flex-shrink:0;align-self:flex-end;">➤</button>
       </div>
@@ -2399,20 +2398,19 @@ async function doAnalysis(){
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',max_tokens:1000,
-        messages:[{role:'user',content:`Tu es un coach de couple bienveillant. Analyse ces deux réponses et donne des insights sur la compatibilité et les points à explorer. Réponds avec un objet JSON: {"fr":"...analyse en français...","en":"...analysis in English..."}
+        model:'claude-sonnet-4-6',max_tokens:1000,
+        messages:[{role:'user',content:`Tu es un coach de couple bienveillant et perspicace. Analyse ces deux réponses avec profondeur et bienveillance. Identifie les points communs, les différences enrichissantes, et donne des pistes de conversation. Réponds UNIQUEMENT avec un objet JSON strictement valide, sans markdown: {"fr":"...analyse en français (3-4 phrases chaleureuses)...","en":"...analysis in English (3-4 warm sentences)..."}
 
 Thème: ${currentCat.fr} / ${currentCat.en}
 Question FR: ${qFr}
 Question EN: ${qEn}
 
 ${n1}: "${a1}"
-${n2}: "${a2}"
-
-Réponds UNIQUEMENT avec le JSON, rien d'autre.`}]
+${n2}: "${a2}"`}]
       })
     });
     const data=await resp.json();
+    if(data.error){throw new Error(data.error.message||'API error');}
     const txt=data.content?.[0]?.text||'{}';
     const clean=txt.replace(/```json|```/g,'').trim();
     const result=JSON.parse(clean);
@@ -2423,8 +2421,10 @@ Réponds UNIQUEMENT avec le JSON, rien d'autre.`}]
     renderAI(result);
   }catch(e){
     const el=document.getElementById('ai-zone');
-    if(el)el.innerHTML=`<p style="color:#E87070;font-size:12px;margin-top:8px;">${myLang==='fr'?'Erreur / Error — réessayez / try again':' Error — try again'}</p>`;
-    if(btn){btn.disabled=false;btn.textContent=myLang==='fr'?'🔍 Réessayer':'🔍 Retry';}
+    const errMsg = e?.message||'';
+    if(el)el.innerHTML=`<div style="margin-top:8px;padding:10px;background:rgba(232,80,80,0.1);border:1px solid rgba(232,80,80,0.3);border-radius:10px;"><p style="color:#E87070;font-size:12px;">${myLang==='fr'?'⚠️ Analyse indisponible pour le moment':'⚠️ Analysis unavailable right now'}</p>${errMsg?`<p style="color:var(--muted);font-size:10px;margin-top:4px;">${errMsg}</p>`:''}</div>`;
+    if(btn){btn.style.display='block';btn.disabled=false;btn.textContent=myLang==='fr'?'🔍 Réessayer':'🔍 Retry';}
+    _analysisInProgress=false;
   }
 }
 
