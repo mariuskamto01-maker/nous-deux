@@ -569,7 +569,22 @@ function drawBanner(id) {
   ctx.fillStyle=g;ctx.fillRect(0,0,W*2,84);
 }
 function drawAll(){['home','create','join','wait','settings','cats','q','insights'].forEach(drawBanner);}
-window.addEventListener('load',()=>{drawAll();loadSettings();});
+window.addEventListener('load',()=>{
+  drawAll();loadSettings();
+  // Restaurer session si page rechargée
+  try{
+    const sess=sessionStorage.getItem('nd_session');
+    if(sess){
+      const d=JSON.parse(sess);
+      myRole=d.myRole;myName=d.myName;myLang=d.myLang;roomCode=d.roomCode;
+      if(roomCode){
+        loadRoom(roomCode).then(s=>{
+          if(s){lastRoom=s;startPoll();showCats();}
+        });
+      }
+    }
+  }catch(e){}
+});
 window.addEventListener('resize',drawAll);
 
 // ═══════════════════════════════════════
@@ -700,6 +715,11 @@ function startPoll(){
     if(pg!=='pg-q'&&currentCat){
       checkAndNotify(s);
     }
+    // Notifier nouveaux messages chat
+    if(currentCat){
+      const qk=currentCat.id+'_'+currentQi;
+      refreshLiveChat(s, qk);
+    }
   },2000);
 }
 
@@ -776,18 +796,27 @@ function checkQState(s){
   if(!currentCat||!currentQs.length)return;
   const qk=currentCat.id+'_'+currentQi;
   const myA=s?.answers?.[qk+'_'+myRole];
-  const thA=s?.answers?.[qk+'_'+(myRole==='p1'?'p2':'p1')];
+  const thRole=myRole==='p1'?'p2':'p1';
+  const thA=s?.answers?.[qk+'_'+thRole];
   const ardy=s?.aiResult?.qk===qk;
-  const revealShown=document.getElementById('reveal-zone')?.style.display!=='none'
-    &&document.getElementById('reveal-zone')?.innerHTML.length>10;
-  // Si revelation deja affichee, ne pas re-rendre (eviter flash)
+  const revealZ=document.getElementById('reveal-zone');
+  const revealShown=revealZ?.style.display!=='none'&&revealZ?.innerHTML.length>10;
+  // Les deux ont repondu ou analyse deja faite → revelation
   if(ardy||!!(myA&&thA)){
-    if(!revealShown) showReveal(s,qk);
+    if(!revealShown){
+      // Cacher les autres zones avant d'afficher la revelation
+      document.getElementById('sent-zone').style.display='none';
+      document.getElementById('my-zone').style.display='none';
+      showReveal(s,qk);
+    } else {
+      // Revelation deja affichee: mettre a jour le chat en direct
+      refreshLiveChat(s,qk);
+    }
     return;
   }
   const sentShown=document.getElementById('sent-zone')?.style.display!=='none';
   if(myA&&!thA){
-    if(!sentShown) showSent(s);
+    if(!sentShown){showSent(s);}
     return;
   }
   const inputShown=document.getElementById('my-zone')?.style.display!=='none';
@@ -854,6 +883,85 @@ function showSent(s){
   document.getElementById('my-zone').style.display='none';
 }
 
+// ═══════════════════════════════════════
+// CHAT EN DIRECT (échange libre après révélation)
+// ═══════════════════════════════════════
+let _lastMsgCount = 0;
+
+function renderLiveChat(s, qk){
+  const chatZ = document.getElementById('chat-zone');
+  if(!chatZ) return;
+  const msgs = s?.chat?.[qk.replace(/[^a-zA-Z0-9]/g,'_')] || [];
+  const isP1 = myRole==='p1';
+  const thRole = isP1?'p2':'p1';
+  const thName = s?.[thRole]?.name || '?';
+
+  // Notifier si nouveaux messages
+  if(msgs.length > _lastMsgCount && _lastMsgCount > 0){
+    const last = msgs[msgs.length-1];
+    if(last.role !== myRole){
+      sendNotif(
+        myLang==='fr'? thName+' a envoyé un message !': thName+' sent a message!',
+        last.text,
+        '💬'
+      );
+    }
+  }
+  _lastMsgCount = msgs.length;
+
+  chatZ.innerHTML = `
+    <div class="card" style="border-color:var(--goldD);overflow:hidden;">
+      <div class="strip"><div style="background:var(--k1)"></div><div style="background:var(--k2)"></div><div style="background:var(--k3)"></div><div style="background:var(--k4)"></div><div style="background:var(--k1)"></div><div style="background:var(--k3)"></div><div style="background:var(--k2)"></div><div style="background:var(--k4)"></div></div>
+      <div class="card-body">
+        <p style="font-size:11px;color:var(--gold);font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px;">💬 ${myLang==='fr'?'Échange libre / Free exchange':' Free exchange / Échange libre'}</p>
+        <div id="chat-msgs" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;max-height:300px;overflow-y:auto;">
+          ${msgs.length===0
+            ? '<p style="font-size:12px;color:var(--muted);text-align:center;font-style:italic;">'+(myLang==='fr'?'Échangez librement sur ce sujet...':'Exchange freely on this topic...')+'</p>'
+            : msgs.map(m=>{
+                const isMe = m.role===myRole;
+                const nm = s?.[m.role]?.name||'?';
+                const lg = s?.[m.role]?.lang||'fr';
+                return '<div class="bubble-row '+(isMe?'left':'right')+'" style="margin-bottom:0;">' +
+                  '<div class="avatar" style="background:var(--'+m.role+'d);border:2px solid var(--'+m.role+');width:28px;height:28px;font-size:12px;">👤</div>' +
+                  '<div class="bubble '+m.role+'" style="border-top-left-radius:'+(isMe?3:16)+'px;border-top-right-radius:'+(isMe?16:3)+'px;max-width:80%;">' +
+                    '<div class="bubble-name" style="color:var(--'+m.role+');">'+nm+' <span class="lang-chip '+lg+'">'+(lg==='fr'?'🇫🇷':'🇬🇧')+'</span></div>'+
+                    m.text+
+                  '</div></div>';
+              }).join('')
+          }
+        </div>
+        <div style="display:flex;gap:8px;">
+          <textarea id="chat-input" rows="2" placeholder="${myLang==='fr'?'Ton message...':'Your message...'}" style="flex:1;font-size:13px;padding:10px 12px;"></textarea>
+          <button onclick="sendChatMsg('${qk}')" style="background:linear-gradient(135deg,var(--goldD),var(--gold));border:none;border-radius:10px;color:#12090A;font-weight:700;font-size:20px;cursor:pointer;padding:0 14px;flex-shrink:0;">➤</button>
+        </div>
+      </div>
+    </div>`;
+
+  // Scroll to bottom
+  setTimeout(()=>{const el=document.getElementById('chat-msgs');if(el)el.scrollTop=el.scrollHeight;},100);
+}
+
+function refreshLiveChat(s, qk){
+  const chatZ = document.getElementById('chat-zone');
+  if(!chatZ || chatZ.innerHTML==='') return;
+  renderLiveChat(s, qk);
+}
+
+async function sendChatMsg(qk){
+  const input = document.getElementById('chat-input');
+  const text = input?.value.trim();
+  if(!text) return;
+  input.value='';
+  const s = await loadRoom(roomCode) || lastRoom;
+  s.chat = s.chat || {};
+  const key = qk.replace(/[^a-zA-Z0-9]/g,'_');
+  s.chat[key] = s.chat[key] || [];
+  s.chat[key].push({role:myRole, text, ts:Date.now()});
+  await saveRoom(s);
+  lastRoom=s;
+  renderLiveChat(s, qk);
+}
+
 async function forceCheck(){
   const s=await loadRoom(roomCode);
   if(s){lastRoom=s;checkQState(s);}
@@ -884,9 +992,11 @@ function showReveal(s,qk){
     }).join('')}
     ${!ardy?`<button class="btn btn-gold" style="margin-top:10px;margin-bottom:10px;" onclick="doAnalysis()">🔍 ${myLang==='fr'?'Analyser notre compatibilité':'Analyse our compatibility'}</button>`:''}
     <div id="ai-zone"></div>
-    <div id="nav-zone">${ardy?navHTML():''}</div>`;
+    <div id="nav-zone">${ardy?navHTML():''}</div>
+    <div id="chat-zone" style="margin-top:12px;"></div>`;
   z.style.display='block';
   if(ardy)renderAI(s.aiResult);
+  renderLiveChat(s,qk);
 }
 
 function navHTML(){
