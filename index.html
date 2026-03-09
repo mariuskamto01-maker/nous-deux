@@ -466,6 +466,77 @@ function sendNotif(title, body, emoji, catId){
   if(catId) addBadge(catId, emoji==='✨'?'reveal':emoji==='💬'?'chat':'answer');
 }
 
+function updateBadgesOnly(s){
+  // Met à jour les badges sur les tuiles existantes SANS reconstruire le DOM
+  if(!s) return;
+  const badges = getBadges(s);
+  const allCats = [...CATS, ...settings.customThemes,
+    ...(settings.customQs.length>0?[{id:'custom'}]:[])];
+
+  allCats.forEach(c=>{
+    const tile = document.querySelector(`.cat-tile[onclick*="'${c.id}'"]`);
+    if(!tile) return;
+    const badgeN = badges[c.id]||0;
+    const prevAlert = tile.classList.contains('cat-tile-alert');
+
+    // Mettre à jour classe alerte
+    if(badgeN>0 && !prevAlert){
+      tile.classList.add('cat-tile-alert');
+      tile.style.borderColor='#E83030';
+      tile.style.boxShadow='0 0 10px rgba(232,48,48,0.25)';
+    } else if(badgeN===0 && prevAlert){
+      tile.classList.remove('cat-tile-alert');
+      tile.style.borderColor='';
+      tile.style.boxShadow='';
+    }
+
+    // Mettre à jour le compteur/badge en bas de tuile
+    const countEl = tile.querySelector('.cat-tile-count');
+    if(countEl){
+      const qCount = getQsForCat(c.id).length;
+      countEl.innerHTML = badgeN>0
+        ? `<span class="cat-tile-badge">${badgeN}</span>`
+        : `${qCount}Q`;
+    }
+
+    // Mettre à jour le point rouge sur l'emoji
+    const emojiEl = tile.querySelector('.cat-tile-emoji');
+    if(emojiEl){
+      const existingDot = emojiEl.querySelector('.cat-tile-dot');
+      if(badgeN>0 && !existingDot){
+        const dot = document.createElement('span');
+        dot.className = 'cat-tile-dot';
+        emojiEl.appendChild(dot);
+      } else if(badgeN===0 && existingDot){
+        existingDot.remove();
+      }
+    }
+  });
+
+  // Mettre à jour les badges de groupe
+  const grouped={};
+  allCats.forEach(c=>{
+    const grp = c.group||'perso';
+    grouped[grp] = (grouped[grp]||0) + (badges[c.id]||0);
+  });
+  Object.keys(grouped).forEach(grpId=>{
+    const header = document.querySelector(`#grp-${grpId} .cat-group-header`);
+    if(!header) return;
+    let grpBadge = header.querySelector('.grp-badge');
+    const total = grouped[grpId];
+    if(total>0){
+      if(!grpBadge){
+        grpBadge = document.createElement('span');
+        grpBadge.className = 'grp-badge';
+        header.querySelector('.cat-group-label').after(grpBadge);
+      }
+      grpBadge.textContent = total;
+    } else if(grpBadge){
+      grpBadge.remove();
+    }
+  });
+}
+
 function checkAllBadges(s){
   if(!s||!s.answers)return;
   const allCats=[...CATS,...settings.customThemes,
@@ -865,62 +936,112 @@ function checkJoin(){document.getElementById('j-btn').disabled=!(document.getEle
 // CREATE / JOIN
 // ═══════════════════════════════════════
 async function createRoom(){
-  myName=document.getElementById('c-name').value.trim();myLang=createLang;myRole='p1';roomCode=genCode();
+  myName=document.getElementById('c-name').value.trim();myLang=createLang;myRole='p1';
+  roomCode=genCode();
+  const myCode=genCode(); // code personnel secret de p1
+  const partnerCode=genCode(); // code à donner au partenaire
   const btn=document.getElementById('c-btn');btn.textContent='Création...';btn.disabled=true;
-  const state={code:roomCode,p1:{name:myName,lang:myLang,ts:Date.now()},p2:null,answers:{},insights:[],aiResult:null};
-  await saveRoom(state);lastRoom=state;startPoll();showWaiting(state);
+  const state={
+    code:roomCode,
+    p1:{name:myName,lang:myLang,ts:Date.now(),secret:myCode},
+    p1PartnerCode:partnerCode, // code que p2 utilisera
+    p2:null,answers:{},insights:[],aiResult:null
+  };
+  await saveRoom(state);lastRoom=state;
+  mySecret=myCode;
+  sessionStorage.setItem('nd_session',JSON.stringify({myRole,myName,myLang,roomCode,mySecret}));
+  startPoll();showWaiting(state);
 }
 async function joinRoom(){
   const code=document.getElementById('j-code').value.trim().toUpperCase();
-  const name=document.getElementById('j-name').value.trim();
   const errEl=document.getElementById('j-err');errEl.style.display='none';
   const btn=document.getElementById('j-btn');btn.textContent='Connexion...';btn.disabled=true;
 
-  // Si déjà en session avec ce code → juste reprendre
+  // Vérifier d'abord si session existante avec ce code
   try{
     const sess=sessionStorage.getItem('nd_session');
     if(sess){
       const d=JSON.parse(sess);
-      if(d.roomCode===code){
-        myRole=d.myRole;myName=d.myName;myLang=d.myLang;roomCode=d.roomCode;
-        const s=await loadRoom(roomCode);
-        if(s){
+      if(d.roomCode===d.roomCode && d.mySecret){
+        // Chercher si ce code = roomCode ou partnerCode
+        const s=await loadRoom(d.roomCode);
+        if(s && (s.p1?.secret===d.mySecret || s.p1PartnerCode===d.mySecret || s.p2?.secret===d.mySecret)){
+          myRole=d.myRole;myName=d.myName;myLang=d.myLang;roomCode=d.roomCode;mySecret=d.mySecret;
           lastRoom=s;startPoll();
-          if(s.p1&&s.p2){showCats();}else{showWaiting(s);}
+          const pending=detectPending(s);
+          if(pending){currentCat=pending.cat;currentQi=pending.qi;currentQs=getQsForCat(pending.cat.id);renderQ();goPage('pg-q');}
+          else if(s.p1&&s.p2){showCats();}
+          else{showWaiting(s);}
           return;
         }
       }
     }
   }catch(e){}
 
-  const state=await loadRoom(code);
-  if(!state){
-    errEl.textContent='Salle introuvable / Room not found';
-    errEl.style.display='block';btn.textContent='Rejoindre / Join';btn.disabled=false;return;
-  }
+  // Nouveau: identifier par code secret
+  // Essayer comme code de salle (p1 qui revient sans session)
+  // OU comme partnerCode (p2 qui rejoint)
+  const name=document.getElementById('j-name')?.value.trim()||'';
 
-  // SECURITE: salle privée max 2 personnes
-  const isP1Back = state.p1 && state.p1.name.toLowerCase()===name.toLowerCase();
-  const isP2Back = state.p2 && state.p2.name.toLowerCase()===name.toLowerCase();
-  const p2Active = state.p2 && (Date.now()-state.p2.ts)<30*60*1000;
+  // Chercher par roomCode direct
+  let state=await loadRoom(code);
+  let resolvedRole=null;
+  let resolvedSecret=null;
+  let resolvedName=name;
+  let resolvedLang=joinLang;
 
-  if(!isP1Back && !isP2Back && p2Active){
-    errEl.textContent='🔒 Salle privée et complète / Private room, already full';
-    errEl.style.display='block';btn.textContent='Rejoindre / Join';btn.disabled=false;return;
-  }
-
-  // Déterminer le rôle
-  if(isP1Back){
-    myRole='p1';myName=state.p1.name;myLang=joinLang||state.p1.lang||'fr';
-    state.p1.ts=Date.now();state.p1.lang=myLang;
+  if(state){
+    // C'est un code de salle direct → p1 qui revient
+    if(state.p1?.name.toLowerCase()===name.toLowerCase()){
+      resolvedRole='p1';
+      resolvedSecret=state.p1.secret||genCode();
+      resolvedName=state.p1.name;
+      resolvedLang=state.p1.lang||joinLang;
+      state.p1.ts=Date.now();state.p1.lang=resolvedLang;
+      if(!state.p1.secret)state.p1.secret=resolvedSecret;
+    } else {
+      errEl.textContent='❌ Code non reconnu / Code not recognized';
+      errEl.style.display='block';btn.textContent='Rejoindre / Join →';btn.disabled=false;return;
+    }
   } else {
-    myRole='p2';myName=name;myLang=joinLang;
-    state.p2={name:myName,lang:myLang,ts:Date.now()};
+    // Chercher si c'est un p1PartnerCode dans n'importe quelle salle
+    state=await findRoomByPartnerCode(code);
+    if(state){
+      // C'est p2 qui rejoint
+      const p2Active=state.p2&&(Date.now()-state.p2.ts)<30*60*1000;
+      const isP2Back=state.p2&&state.p2.secret===code;
+      if(p2Active&&!isP2Back){
+        errEl.textContent='🔒 Salle complète / Room already full';
+        errEl.style.display='block';btn.textContent='Rejoindre / Join →';btn.disabled=false;return;
+      }
+      if(isP2Back){
+        // p2 revient avec son code
+        resolvedRole='p2';
+        resolvedSecret=state.p2.secret;
+        resolvedName=state.p2.name;
+        resolvedLang=state.p2.lang||joinLang;
+        state.p2.ts=Date.now();
+      } else {
+        // Nouveau p2
+        if(!name){errEl.textContent='Entre ton prénom / Enter your name';errEl.style.display='block';btn.textContent='Rejoindre / Join →';btn.disabled=false;return;}
+        resolvedRole='p2';
+        resolvedSecret=genCode();
+        resolvedName=name;
+        resolvedLang=joinLang;
+        state.p2={name:resolvedName,lang:resolvedLang,ts:Date.now(),secret:resolvedSecret};
+      }
+      roomCode=state.code;
+    } else {
+      errEl.textContent='❌ Code introuvable / Code not found';
+      errEl.style.display='block';btn.textContent='Rejoindre / Join →';btn.disabled=false;return;
+    }
   }
 
-  roomCode=code;
+  myRole=resolvedRole;myName=resolvedName;myLang=resolvedLang;mySecret=resolvedSecret;
+  if(!roomCode)roomCode=state.code;
+
   await saveRoom(state);lastRoom=state;
-  sessionStorage.setItem('nd_session',JSON.stringify({myRole,myName,myLang,roomCode}));
+  sessionStorage.setItem('nd_session',JSON.stringify({myRole,myName,myLang,roomCode,mySecret}));
   startPoll();
 
   const pending=detectPending(state);
@@ -936,6 +1057,22 @@ async function joinRoom(){
   } else {
     showWaiting(state);
   }
+}
+
+async function findRoomByPartnerCode(code){
+  // Cherche dans Firebase une salle dont p1PartnerCode = code ou p2.secret = code
+  // On utilise une requête REST limitée
+  try{
+    const r=await fetch(DB_URL+'/.json?shallow=true');
+    const keys=await r.json();
+    if(!keys)return null;
+    for(const k of Object.keys(keys).slice(-50)){ // Chercher parmi les 50 dernières salles
+      const sr=await fetch(DB_URL+'/'+k+'.json');
+      const s=await sr.json();
+      if(s&&(s.p1PartnerCode===code||s.p2?.secret===code))return s;
+    }
+  }catch(e){}
+  return null;
 }
 
 
@@ -986,8 +1123,8 @@ function startPoll(){
     const pg=document.querySelector('.page.active')?.id;
     // Mettre a jour les indicateurs de presence partout
     renderStatus('wait-status',s);renderStatus('cat-status',s);renderStatus('q-status',s);
-    // Mettre à jour les badges sur l'écran des catégories
-    if(document.querySelector('.page.active')?.id==='pg-cats') renderCatList(s);
+    // Mettre à jour uniquement les badges sans reconstruire la liste
+    if(document.querySelector('.page.active')?.id==='pg-cats') updateBadgesOnly(s);
     // Transitions de page
     if(pg==='pg-wait'&&s.p2&&!window._wentToCats){
       window._wentToCats=true;
@@ -1078,6 +1215,14 @@ function showCats(){
 }
 
 function renderCatList(s){
+  // Mémoriser les groupes ouverts avant de reconstruire
+  const openGroups = new Set();
+  document.querySelectorAll('.cat-group-body').forEach(body=>{
+    if(body.style.maxHeight!=='0px' && body.style.maxHeight!==''){
+      openGroups.add(body.id.replace('body-',''));
+    }
+  });
+
   const badges=getBadges(s);
 
   // Construire les groupes
@@ -1134,13 +1279,14 @@ function renderCatList(s){
   });
 
   document.getElementById('cat-list').innerHTML=html;
-  // Ouvrir le premier groupe par défaut (ou ceux avec badges)
+  // Restaurer l'état ouvert/fermé, ou ouvrir le premier par défaut
   const hasAlert=order.find(g=>grouped[g]&&grouped[g].some(c=>badges[c.id]>0));
+  const firstGroup=order.find(o=>grouped[o]&&grouped[o].length>0);
   order.forEach(g=>{
-    if(grouped[g]&&grouped[g].length>0){
-      const shouldOpen = g===hasAlert || (!hasAlert && g===order.find(o=>grouped[o]&&grouped[o].length>0));
-      if(!shouldOpen) collapseGroup(g,false);
-    }
+    if(!grouped[g]||grouped[g].length===0) return;
+    const wasOpen = openGroups.has(g);
+    const shouldOpen = wasOpen || (!openGroups.size && (g===hasAlert || g===firstGroup));
+    if(!shouldOpen) collapseGroup(g, false);
   });
 }
 
