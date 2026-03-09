@@ -1662,20 +1662,11 @@ function startPoll(){
       }
     }
     if(pg==='pg-q'&&currentCat){
-      // Ne mettre à jour le statut que si user n'est pas en train d'écrire
-      const activeEl=document.activeElement;
-      const userTyping=activeEl&&(activeEl.id==='my-answer'||activeEl.id==='chat-input');
-      if(!userTyping){
+      // Si le textarea my-answer est dans le DOM → user en train d'écrire → NE RIEN TOUCHER
+      if(!document.getElementById('my-answer')){
         checkQState(s);
-      } else {
-        // Quand user écrit: juste vérifier si l'autre a répondu (pour révélation auto)
-        const qk=currentCat.id+'_'+currentQi;
-        const thRole=myRole==='p1'?'p2':'p1';
-        // Si l'autre vient de répondre pendant qu'on tape → on le signale discrètement
-        if(s.answers?.[qk+'_'+thRole]&&!lastRoom?.answers?.[qk+'_'+thRole]){
-          checkQState(s); // révélation seulement si les deux ont répondu
-        }
       }
+      // Toujours notifier les badges
       checkAndNotify(s);
     }
     // Notifier meme si l'app est en arriere-plan (autre page)
@@ -1955,16 +1946,15 @@ function checkQState(s){
     document.getElementById('my-zone').style.display='none';
     showSent(s);
   } else {
-    // Zone de saisie - NE PAS reconstruire si le textarea est actif (user en train d écrire)
-    const activeEl=document.activeElement;
-    if(activeEl&&(activeEl.id==='my-answer'||activeEl.id==='chat-input'))return;
-    const myZone=document.getElementById('my-zone');
-    if(myZone&&myZone.style.display==='block')return; // déjà affiché, ne pas recréer
+    // Zone de saisie - NE reconstruire que si le textarea n existe pas encore
+    if(document.getElementById('my-answer'))return; // textarea existe → user écrit → ne pas toucher
     showMyInput();
   }
 }
 
 function showMyInput(){
+  // Si le textarea existe déjà → ne pas reconstruire (user en train d écrire)
+  if(document.getElementById('my-answer'))return;
   const pair=currentQs[currentQi];
   const isP1=myRole==='p1';
   const col=isP1?'var(--p1)':'var(--p2)';
