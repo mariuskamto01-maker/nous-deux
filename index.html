@@ -986,25 +986,47 @@ function clearBadge(catId){
 }
 
 function refreshCatBadges(){
-  // Cacher tous les badges d'abord
-  document.querySelectorAll('[id^="badge-"]').forEach(el=>{
-    const catId=el.id.replace('badge-','');
-    if(_badges[catId]){
-      const b=_badges[catId];
-      const emoji=b.type==='reveal'?'✨':b.type==='chat'?'💬':'✍️';
-      el.textContent=emoji;
-      el.style.display='flex';
-    } else {
-      el.style.display='none';
-      el.textContent='';
+  // Pour chaque tuile visible, mettre à jour badge + dot + alertClass
+  document.querySelectorAll('.cat-tile[data-catid]').forEach(tile=>{
+    const catId = tile.dataset.catid;
+    const hasBadge = !!_badges[catId];
+    // Alert border
+    if(hasBadge){ tile.classList.add('cat-tile-alert'); }
+    else { tile.classList.remove('cat-tile-alert'); }
+    // Red dot on emoji
+    const emojiSpan = tile.querySelector('.cat-tile-emoji');
+    if(emojiSpan){
+      let dot = emojiSpan.querySelector('.cat-tile-dot');
+      if(hasBadge && !dot){
+        dot = document.createElement('span');
+        dot.className = 'cat-tile-dot';
+        emojiSpan.appendChild(dot);
+      } else if(!hasBadge && dot){
+        dot.remove();
+      }
+    }
+    // Badge count on count span
+    const countSpan = tile.querySelector('.cat-tile-count');
+    if(countSpan){
+      if(hasBadge){
+        countSpan.innerHTML = '<span class="cat-tile-badge">'+_badges[catId].count+'</span>';
+      } else {
+        const qCount = getQsForCat(catId).length;
+        countSpan.textContent = qCount+'Q';
+      }
     }
   });
-  // Aussi mettre à jour les points rouges sur les emojis
-  document.querySelectorAll('.cat-tile-dot').forEach(dot=>{
-    const tile=dot.closest('.cat-tile');
-    if(tile){
-      const catId=tile.dataset.catid;
-      if(!_badges[catId]) dot.remove();
+  // Badge rouge sur le header du groupe
+  document.querySelectorAll('.cat-group[data-grpid]').forEach(grp=>{
+    const grpId = grp.dataset.grpid;
+    const grpBadgeEl = grp.querySelector('.grp-badge');
+    // Compter badges dans ce groupe
+    const cats = document.querySelectorAll('.cat-tile[data-catid]');
+    let total = 0;
+    cats.forEach(t=>{ if(t.closest('.cat-group')===grp && _badges[t.dataset.catid]) total += _badges[t.dataset.catid].count||1; });
+    if(grpBadgeEl){
+      if(total>0){ grpBadgeEl.textContent=total; grpBadgeEl.style.display='inline'; }
+      else { grpBadgeEl.style.display='none'; grpBadgeEl.textContent=''; }
     }
   });
 }
