@@ -696,12 +696,8 @@ function showLogoutBtn(){
 
 function confirmLogout(){
   const msg=myLang==='fr'
-    ?"Quitter la session ?
-
-Votre code personnel vous permettra de vous reconnecter."
-    :"Leave the session?
-
-Your personal code will let you reconnect later.";
+    ?'Quitter la session ? Votre code personnel vous permettra de vous reconnecter plus tard.'
+    :'Leave the session? Your personal code will let you reconnect later.';
   if(!confirm(msg))return;
   logout();
 }
