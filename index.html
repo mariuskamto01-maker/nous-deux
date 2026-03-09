@@ -971,18 +971,40 @@ function addBadge(catId, type){
 
 function clearBadge(catId){
   delete _badges[catId];
+  // Reset _notified pour ce cat pour permettre re-détection future
+  Object.keys(_notified).forEach(qk=>{
+    if(qk.startsWith(catId+'_')) delete _notified[qk];
+  });
+  // Reset compteur messages vus
+  Object.keys(_lastMsgCount).forEach(qk=>{
+    if(qk.startsWith(catId+'_')){
+      // On marque comme "vus" tous les messages actuels
+      // (on ne remet pas à 0, on garde le count actuel)
+    }
+  });
   refreshCatBadges();
 }
 
 function refreshCatBadges(){
-  // Mettre à jour les badges sur les boutons de catégorie visibles
-  Object.keys(_badges).forEach(catId=>{
-    const el=document.getElementById('badge-'+catId);
-    if(el){
+  // Cacher tous les badges d'abord
+  document.querySelectorAll('[id^="badge-"]').forEach(el=>{
+    const catId=el.id.replace('badge-','');
+    if(_badges[catId]){
       const b=_badges[catId];
       const emoji=b.type==='reveal'?'✨':b.type==='chat'?'💬':'✍️';
       el.textContent=emoji;
       el.style.display='flex';
+    } else {
+      el.style.display='none';
+      el.textContent='';
+    }
+  });
+  // Aussi mettre à jour les points rouges sur les emojis
+  document.querySelectorAll('.cat-tile-dot').forEach(dot=>{
+    const tile=dot.closest('.cat-tile');
+    if(tile){
+      const catId=tile.dataset.catid;
+      if(!_badges[catId]) dot.remove();
     }
   });
 }
@@ -1662,11 +1684,13 @@ function startPoll(){
       }
     }
     if(pg==='pg-q'&&currentCat){
-      // Si le textarea my-answer est dans le DOM → user en train d'écrire → NE RIEN TOUCHER
+      const qk=currentCat.id+'_'+currentQi;
+      // Rafraîchir le chat TOUJOURS (même si user écrit dans my-answer)
+      refreshLiveChat(s, qk);
+      // Mettre à jour l'état de la question seulement si user n'écrit pas
       if(!document.getElementById('my-answer')){
         checkQState(s);
       }
-      // Toujours notifier les badges
       checkAndNotify(s);
     }
     // Notifier meme si l'app est en arriere-plan (autre page)
@@ -1917,7 +1941,11 @@ function renderQ(){
   if(myZ){myZ.style.display='none';myZ.innerHTML='';}
   if(sentZ){sentZ.style.display='none';sentZ.innerHTML='';}
   if(revZ){revZ.style.display='none';revZ.innerHTML='';}
-  if(chatZ)chatZ.style.display='none';
+  // Chat toujours visible - juste vider les messages
+  if(chatZ){
+    chatZ.style.display='block';
+    renderLiveChat(s, currentCat.id+'_'+currentQi);
+  }
 
   checkQState(s);
 }
@@ -1929,26 +1957,36 @@ function checkQState(s){
   const thRole=myRole==='p1'?'p2':'p1';
   const thA=s.answers?.[qk+'_'+thRole];
 
+  // ── Réponses ──
   if(myA&&thA){
-    // Révélation - seulement si pas déjà affichée
     const revZ=document.getElementById('reveal-zone');
-    if(revZ&&revZ.style.display==='block')return; // déjà en révélation
+    if(revZ&&revZ.style.display==='block'){
+      // Déjà en révélation → juste rafraîchir le chat
+      refreshLiveChat(s,qk);
+      return;
+    }
     document.getElementById('sent-zone').style.display='none';
     document.getElementById('my-zone').style.display='none';
     showReveal(s,qk);
-    const chatZ=document.getElementById('chat-zone');
-    if(chatZ)chatZ.style.display='block';
-    renderLiveChat(s,qk);
   } else if(myA){
-    // En attente - seulement si pas déjà affiché
     const sentZ=document.getElementById('sent-zone');
-    if(sentZ&&sentZ.style.display==='block')return; // déjà en attente
+    if(sentZ&&sentZ.style.display==='block'){
+      // Déjà en attente → juste rafraîchir le chat
+      refreshLiveChat(s,qk);
+      return;
+    }
     document.getElementById('my-zone').style.display='none';
     showSent(s);
   } else {
-    // Zone de saisie - NE reconstruire que si le textarea n existe pas encore
-    if(document.getElementById('my-answer'))return; // textarea existe → user écrit → ne pas toucher
+    if(document.getElementById('my-answer'))return;
     showMyInput();
+  }
+
+  // ── Chat TOUJOURS visible dès qu on est sur cette question ──
+  const chatZ=document.getElementById('chat-zone');
+  if(chatZ){
+    chatZ.style.display='block';
+    renderLiveChat(s,qk);
   }
 }
 
@@ -2165,7 +2203,9 @@ function renderLiveChat(s,qk){
   const msgs=s?.chat?.[key]||[];
   const catLabel=currentCat?.[myLang==='fr'?'fr':'en']||'';
   _lastMsgCount[qk]=_lastMsgCount[qk]||0;
-  if(msgs.length>_lastMsgCount[qk]){
+  // N'ajouter badge que si on n'est PAS déjà sur cette question (page cats)
+  const onThisQ = document.getElementById('pg-q')?.classList.contains('active') && currentCat?.id === qk.split('_')[0];
+  if(msgs.length>_lastMsgCount[qk] && !onThisQ){
     for(let i=_lastMsgCount[qk];i<msgs.length;i++){
       if(msgs[i].role!==myRole) addBadge(currentCat.id,'chat');
     }
