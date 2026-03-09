@@ -875,23 +875,41 @@ async function joinRoom(){
   const name=document.getElementById('j-name').value.trim();
   const errEl=document.getElementById('j-err');errEl.style.display='none';
   const btn=document.getElementById('j-btn');btn.textContent='Connexion...';btn.disabled=true;
+
+  // Si déjà en session avec ce code → juste reprendre
+  try{
+    const sess=sessionStorage.getItem('nd_session');
+    if(sess){
+      const d=JSON.parse(sess);
+      if(d.roomCode===code){
+        myRole=d.myRole;myName=d.myName;myLang=d.myLang;roomCode=d.roomCode;
+        const s=await loadRoom(roomCode);
+        if(s){
+          lastRoom=s;startPoll();
+          if(s.p1&&s.p2){showCats();}else{showWaiting(s);}
+          return;
+        }
+      }
+    }
+  }catch(e){}
+
   const state=await loadRoom(code);
   if(!state){
     errEl.textContent='Salle introuvable / Room not found';
     errEl.style.display='block';btn.textContent='Rejoindre / Join';btn.disabled=false;return;
   }
 
-  // SECURITE: salle privee, max 2 personnes
+  // SECURITE: salle privée max 2 personnes
   const isP1Back = state.p1 && state.p1.name.toLowerCase()===name.toLowerCase();
   const isP2Back = state.p2 && state.p2.name.toLowerCase()===name.toLowerCase();
   const p2Active = state.p2 && (Date.now()-state.p2.ts)<30*60*1000;
 
   if(!isP1Back && !isP2Back && p2Active){
-    errEl.textContent='Cette salle est privee et complete / This room is private and full';
+    errEl.textContent='🔒 Salle privée et complète / Private room, already full';
     errEl.style.display='block';btn.textContent='Rejoindre / Join';btn.disabled=false;return;
   }
 
-  // Determiner le role
+  // Déterminer le rôle
   if(isP1Back){
     myRole='p1';myName=state.p1.name;myLang=joinLang||state.p1.lang||'fr';
     state.p1.ts=Date.now();state.p1.lang=myLang;
@@ -905,13 +923,12 @@ async function joinRoom(){
   sessionStorage.setItem('nd_session',JSON.stringify({myRole,myName,myLang,roomCode}));
   startPoll();
 
-  // Aller au bon endroit
   const pending=detectPending(state);
   if(pending){
     window._wentToCats=true;
     currentCat=pending.cat;currentQi=pending.qi;currentQs=getQsForCat(pending.cat.id);
     document.getElementById('cat-me-name').textContent=myName;
-    const lc=document.getElementById('cat-me-lang');lc.textContent=myLang==='fr'?'FR':'EN';lc.className='lang-chip '+myLang;
+    const lc=document.getElementById('cat-me-lang');lc.textContent=myLang==='fr'?'🇫🇷 FR':'🇬🇧 EN';lc.className='lang-chip '+myLang;
     renderStatus('cat-status',state);
     setTimeout(()=>{renderQ();goPage('pg-q');},300);
   } else if(state.p1&&state.p2){
@@ -1001,15 +1018,17 @@ function startPoll(){
 function isOnline(p){return p&&(Date.now()-p.ts)<15000;}
 function renderStatus(cid,s){
   const el=document.getElementById(cid);if(!el)return;
-  el.innerHTML=[{d:s?.p1,cls:'p1'},{d:s?.p2,cls:'p2'}].map(({d,cls})=>`
-    <div class="status-card ${cls}">${strip()}
-      <div class="status-name">${d?.name||'—'}</div>
+  el.innerHTML=[{d:s?.p1,cls:'p1',role:'p1'},{d:s?.p2,cls:'p2',role:'p2'}].map(({d,cls,role})=>{
+    const isMe=role===myRole;
+    return `<div class="status-card ${cls}">${strip()}
+      <div class="status-name">${d?.name||'—'}${isMe?' <span style="font-size:9px;color:var(--gold);font-weight:700;">(Vous)</span>':''}</div>
       <div class="status-line">
         <span class="dot ${d?(isOnline(d)?'on':'off'):'wait'}"></span>
         <span style="font-size:10px;color:var(--muted)">${d?(isOnline(d)?'Online ✓':'...'):'En attente...'}</span>
         ${d?`<span class="lang-chip ${d.lang}">${d.lang==='fr'?'🇫🇷':'🇬🇧'}</span>`:''}
       </div>
-    </div>`).join('<span style="color:var(--goldD);font-size:16px;display:flex;align-items:center;">♡</span>');
+    </div>`;
+  }).join('<span style="color:var(--goldD);font-size:16px;display:flex;align-items:center;">♡</span>');
 }
 
 // ═══════════════════════════════════════
