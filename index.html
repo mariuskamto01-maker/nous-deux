@@ -1798,10 +1798,12 @@ function startPoll(){
     mergeSharedSettings(s);
     if(pg==='pg-q'&&currentCat){
       const qk=currentCat.id+'_'+currentQi;
-      // Rafraîchir le chat TOUJOURS (même si user écrit dans my-answer)
-      refreshLiveChat(s, qk);
+      const chatInput=document.getElementById('chat-input');
+      const userIsTypingChat = chatInput && document.activeElement===chatInput && chatInput.value.trim().length>0;
+      // Rafraîchir le chat seulement si l'utilisateur n'est pas en train de taper
+      if(!userIsTypingChat) refreshLiveChat(s, qk);
       // Mettre à jour l'état de la question seulement si user n'écrit pas
-      if(!document.getElementById('my-answer')){
+      if(!document.getElementById('my-answer') && !userIsTypingChat){
         checkQState(s);
       }
       checkAndNotify(s);
@@ -1809,11 +1811,6 @@ function startPoll(){
     // Notifier meme si l'app est en arriere-plan (autre page)
     if(pg!=='pg-q'&&currentCat){
       checkAndNotify(s);
-    }
-    // Rafraichir messages chat sans toucher au textarea
-    if(currentCat){
-      const qk=currentCat.id+'_'+currentQi;
-      refreshLiveChat(s, qk);
     }
   },2000);
 }
@@ -2358,8 +2355,24 @@ function renderLiveChat(s,qk){
   const key=getChatKey(qk);
   const msgs=s?.chat?.[key]||[];
   const catLabel=currentCat?.[myLang==='fr'?'fr':'en']||'';
+
+  // Si le conteneur existe déjà et que l'utilisateur est en train de taper → ne PAS reconstruire
+  const existingInput=document.getElementById('chat-input');
+  if(existingInput && document.activeElement===existingInput){
+    // Juste mettre à jour les messages sans toucher au textarea
+    const msgsEl=document.getElementById('chat-msgs');
+    if(msgsEl && msgs.length>(_lastMsgCount[qk]||0)){
+      _lastMsgCount[qk]=msgs.length;
+      msgsEl.innerHTML=buildMsgHtml(s,msgs);
+      msgsEl.scrollTop=msgsEl.scrollHeight;
+    }
+    return;
+  }
+
+  // Si le conteneur existe déjà avec un texte en cours → préserver le texte
+  const draftText = existingInput ? existingInput.value : '';
+
   _lastMsgCount[qk]=_lastMsgCount[qk]||0;
-  // N'ajouter badge que si on n'est PAS déjà sur cette question (page cats)
   const onThisQ = document.getElementById('pg-q')?.classList.contains('active') && currentCat?.id === qk.split('_')[0];
   if(msgs.length>_lastMsgCount[qk] && !onThisQ){
     for(let i=_lastMsgCount[qk];i<msgs.length;i++){
@@ -2375,12 +2388,11 @@ function renderLiveChat(s,qk){
         <div id="chat-msgs" style="display:flex;flex-direction:column;min-height:40px;max-height:280px;overflow-y:auto;padding-bottom:4px;">${buildMsgHtml(s,msgs)}</div>
       </div>
       <div style="padding:10px 14px 14px;display:flex;gap:8px;align-items:flex-end;border-top:1px solid var(--faint);margin-top:10px;">
-        <textarea id="chat-input" rows="2" placeholder="${myLang==='fr'?'Ton message...':'Your message...'}" style="flex:1;font-size:13px;padding:10px 12px;border-radius:12px;resize:none;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMsg('${qk}');}"></textarea>
+        <textarea id="chat-input" rows="2" placeholder="${myLang==='fr'?'Ton message...':'Your message...'}" style="flex:1;font-size:13px;padding:10px 12px;border-radius:12px;resize:none;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMsg('${qk}');}">${draftText}</textarea>
         <button onclick="sendChatMsg('${qk}')" style="background:linear-gradient(135deg,var(--goldD),var(--gold));border:none;border-radius:12px;color:#12090A;font-weight:700;font-size:18px;cursor:pointer;padding:10px 14px;flex-shrink:0;align-self:flex-end;">➤</button>
       </div>
     </div>`;
   setTimeout(()=>{const el=document.getElementById('chat-msgs');if(el)el.scrollTop=el.scrollHeight;},80);
-  // Marquer comme lus silencieusement
   markChatRead(qk).catch(()=>{});
 }
 
@@ -2391,12 +2403,16 @@ function refreshLiveChat(s,qk){
   const key=getChatKey(qk);
   const msgs=s?.chat?.[key]||[];
   const prevCount=_lastMsgCount[qk]||0;
-  // Toujours rafraîchir si des messages existent et n'ont pas encore été affichés
+  // Ne jamais reconstruire si l'utilisateur est en train d'écrire
+  const input=document.getElementById('chat-input');
+  const isTyping = input && document.activeElement===input;
   if(msgs.length>prevCount || (msgs.length>0 && prevCount===0)){
     for(let i=prevCount;i<msgs.length;i++){if(msgs[i].role!==myRole)addBadge(currentCat.id,'chat');}
     _lastMsgCount[qk]=msgs.length;
-    const msgsEl=document.getElementById('chat-msgs');
-    if(msgsEl){msgsEl.innerHTML=buildMsgHtml(s,msgs);msgsEl.scrollTop=msgsEl.scrollHeight;}
+    if(!isTyping){
+      const msgsEl=document.getElementById('chat-msgs');
+      if(msgsEl){msgsEl.innerHTML=buildMsgHtml(s,msgs);msgsEl.scrollTop=msgsEl.scrollHeight;}
+    }
   }
 }
 
