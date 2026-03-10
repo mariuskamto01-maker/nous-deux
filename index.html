@@ -2928,6 +2928,60 @@ function showSent(s){
   z.style.display='block';
 }
 
+async function editAnswer(qk){
+  const s=lastRoom||await loadRoom(roomCode);
+  if(!s)return;
+  const currentAns=s.answers?.[qk+'_'+myRole]||'';
+  const fr=myLang==='fr';
+
+  // Remplacer la bulle par un éditeur inline
+  const textDiv=document.getElementById('answer-text-me');
+  const bubble=textDiv?.closest('.bubble');
+  if(!textDiv||!bubble)return;
+
+  // Cacher les boutons d'action
+  bubble.querySelectorAll('button').forEach(b=>b.style.display='none');
+
+  textDiv.innerHTML=`<textarea id="edit-answer-ta" rows="4" style="width:100%;box-sizing:border-box;font-size:13px;padding:8px 10px;resize:vertical;border-radius:8px;background:var(--d1);border:1px solid var(--goldD);color:var(--cream);font-family:'Outfit',sans-serif;margin-top:4px;">${currentAns}</textarea>
+    <div style="display:flex;gap:6px;margin-top:8px;">
+      <button onclick="confirmEditAnswer('${qk}')" style="flex:1;padding:9px;border-radius:10px;border:none;background:var(--gold);color:#000;font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">✅ ${fr?'Sauvegarder':'Save'}</button>
+      <button onclick="cancelEditAnswer('${qk}')" style="flex:1;padding:9px;border-radius:10px;border:1px solid var(--d2);background:transparent;color:var(--muted);font-size:13px;cursor:pointer;font-family:'Outfit',sans-serif;">${fr?'Annuler':'Cancel'}</button>
+    </div>`;
+  document.getElementById('edit-answer-ta')?.focus();
+}
+
+async function confirmEditAnswer(qk){
+  const newVal=document.getElementById('edit-answer-ta')?.value.trim();
+  if(!newVal)return;
+  const s=lastRoom||await loadRoom(roomCode);
+  if(!s)return;
+  s.answers=s.answers||{};
+  s.answers[qk+'_'+myRole]=newVal;
+  s.answers[qk+'_'+myRole+'_edited']=true;
+  // Reset l'analyse IA car la réponse a changé
+  if(s.aiResult?.qk===qk) delete s.aiResult;
+  await saveRoom(s);lastRoom=s;
+  checkQState(s);
+}
+
+function cancelEditAnswer(qk){
+  const s=lastRoom;
+  if(s)checkQState(s);
+}
+
+async function deleteAnswer(qk){
+  const fr=myLang==='fr';
+  if(!confirm(fr?'Supprimer ta réponse ? (l\'analyse sera réinitialisée)':'Delete your answer? (AI analysis will be reset)'))return;
+  const s=lastRoom||await loadRoom(roomCode);
+  if(!s)return;
+  delete s.answers[qk+'_'+myRole];
+  delete s.answers[qk+'_'+myRole+'_edited'];
+  // Reset analyse IA
+  if(s.aiResult?.qk===qk) delete s.aiResult;
+  await saveRoom(s);lastRoom=s;
+  checkQState(s);
+}
+
 async function submitAnswer(){
   const val=document.getElementById('my-answer')?.value.trim();
   if(!val)return;
@@ -3061,11 +3115,18 @@ function showReveal(s,qk){
           </div>`;
         }
       }
+      const editedFlag = s?.answers?.[qk+'_'+role+'_edited'] ? `<span style="font-size:9px;color:var(--muted);font-style:italic;"> · ${myLang==='fr'?'modifié':'edited'}</span>` : '';
+      const answerActions = isMe ? `
+        <div style="display:flex;gap:4px;margin-top:8px;justify-content:flex-end;">
+          <button onclick="editAnswer('${qk}')" style="background:rgba(212,148,60,0.12);border:1px solid var(--goldD);color:var(--gold);border-radius:8px;font-size:11px;padding:4px 10px;cursor:pointer;font-family:'Outfit',sans-serif;">✏️ ${myLang==='fr'?'Modifier':'Edit'}</button>
+          <button onclick="deleteAnswer('${qk}')" style="background:rgba(232,80,80,0.08);border:1px solid rgba(232,80,80,0.3);color:#E87070;border-radius:8px;font-size:11px;padding:4px 10px;cursor:pointer;font-family:'Outfit',sans-serif;">🗑️ ${myLang==='fr'?'Supprimer':'Delete'}</button>
+        </div>` : '';
       return `<div class="bubble-row ${isMe?'left':'right'}">
         ${getAvatarHtml(s,role,36)}
-        <div class="bubble ${role}">
-          <div class="bubble-name" style="color:${col};">${nm}${isMe?' <span style="font-size:9px;color:var(--gold);">(vous)</span>':''} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
-          ${ans}
+        <div class="bubble ${role}" style="${isMe?'flex:1;':''}">
+          <div class="bubble-name" style="color:${col};">${nm}${isMe?` <span style="font-size:9px;color:var(--gold);">(vous)</span>`:''} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${editedFlag}</div>
+          <div id="answer-text-${isMe?'me':'th'}">${ans}</div>
+          ${answerActions}
         </div>
       </div>`;
     }).join('')}
