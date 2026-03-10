@@ -525,6 +525,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
     <button class="btn btn-gold mb12" onclick="goPage('pg-create')">✨ Créer une salle / Create a room</button>
     <button class="btn btn-ghost mb12" onclick="goPage('pg-join')">🚪 Rejoindre une salle / Join a room</button>
     <button class="btn btn-ghost" onclick="goPage('pg-settings')">⚙️ Paramètres / Settings</button>
+    <button onclick="hardReset()" style="background:none;border:none;color:var(--muted);font-size:11px;margin-top:16px;cursor:pointer;text-decoration:underline;">🔄 Réinitialiser l'app / Reset app</button>
   </div>
 </div>
 
@@ -1042,15 +1043,23 @@ let settings = {
 // Temp buffer for theme being created
 let _themeQsBuf = [];
 
+function hardReset(){
+  if(confirm('Réinitialiser toutes les données locales ? / Reset all local data?')){
+    localStorage.clear();
+    sessionStorage.clear();
+    location.reload();
+  }
+}
+
 function loadSettings() {
   try {
     const s = localStorage.getItem('nd_settings');
     if(s) {
       const parsed = JSON.parse(s);
       settings = {...settings, ...parsed};
-      settings.qCount = 0; // Toujours toutes les questions — ignore l'ancienne valeur sauvée
     }
   } catch(e){}
+  settings.qCount = 0; // Toujours toutes les questions — ignoré l'ancienne valeur sauvée
   applySettingsUI();
 }
 
