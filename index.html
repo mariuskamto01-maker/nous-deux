@@ -903,7 +903,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
         <input type="file" id="photo-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="sendPhotoMsg(this)">
         <!-- Mini menu photo -->
         <div id="photo-menu" style="display:none;position:absolute;bottom:110px;left:14px;background:var(--d2);border:1px solid var(--goldD);border-radius:12px;overflow:hidden;z-index:99;box-shadow:0 4px 20px rgba(0,0,0,0.4);min-width:180px;">
-          <button onclick="document.getElementById('photo-camera-input').click();hidePhotoMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 16px;background:none;border:none;color:var(--cream);font-size:13px;cursor:pointer;font-family:'Outfit',sans-serif;border-bottom:1px solid var(--faint);" onmouseover="this.style.background='rgba(212,148,60,0.1)'" onmouseout="this.style.background='none'">
+          <button onclick="openCameraModal();hidePhotoMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 16px;background:none;border:none;color:var(--cream);font-size:13px;cursor:pointer;font-family:'Outfit',sans-serif;border-bottom:1px solid var(--faint);" onmouseover="this.style.background='rgba(212,148,60,0.1)'" onmouseout="this.style.background='none'">
             📸 <span id="photo-menu-camera-lbl">Prendre une photo</span>
           </button>
           <button onclick="document.getElementById('photo-input').click();hidePhotoMenu()" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 16px;background:none;border:none;color:var(--cream);font-size:13px;cursor:pointer;font-family:'Outfit',sans-serif;" onmouseover="this.style.background='rgba(212,148,60,0.1)'" onmouseout="this.style.background='none'">
@@ -928,6 +928,17 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
     <p id="ins-count" style="font-size:13px;color:var(--muted);margin-bottom:16px;"></p>
     <div id="ins-list"></div>
   </div>
+</div>
+
+<!-- MODALE CAMÉRA -->
+<div id="camera-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:#000;flex-direction:column;align-items:center;justify-content:center;">
+  <video id="camera-preview" autoplay playsinline style="width:100%;max-width:500px;max-height:70vh;object-fit:cover;border-radius:12px;"></video>
+  <div style="display:flex;gap:16px;margin-top:20px;align-items:center;">
+    <button onclick="closeCameraModal()" style="background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:48px;height:48px;font-size:22px;cursor:pointer;color:#fff;">✕</button>
+    <button onclick="snapPhoto()" id="snap-btn" style="background:#fff;border:none;border-radius:50%;width:68px;height:68px;font-size:30px;cursor:pointer;box-shadow:0 0 0 4px rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;">📸</button>
+    <button onclick="flipCamera()" id="flip-btn" style="background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:48px;height:48px;font-size:22px;cursor:pointer;color:#fff;">🔄</button>
+  </div>
+  <canvas id="camera-canvas" style="display:none;"></canvas>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -5037,6 +5048,83 @@ function hidePhotoMenu(){
 function hidePhotoMenuOutside(e){
   const m=document.getElementById('photo-menu');
   if(m && !m.contains(e.target)) m.style.display='none';
+}
+
+// ══ CAMÉRA NATIVE (getUserMedia) ══
+let _cameraStream = null;
+let _cameraFacing = 'environment'; // 'environment' = arrière, 'user' = avant
+
+async function openCameraModal(){
+  const modal = document.getElementById('camera-modal');
+  if(!modal) return;
+  modal.style.display = 'flex';
+  await _startCameraStream();
+}
+
+async function _startCameraStream(){
+  // Arrêter le stream précédent
+  if(_cameraStream){ _cameraStream.getTracks().forEach(t=>t.stop()); _cameraStream=null; }
+  const video = document.getElementById('camera-preview');
+  try{
+    _cameraStream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode: _cameraFacing, width:{ideal:1280}, height:{ideal:720} },
+      audio: false
+    });
+    video.srcObject = _cameraStream;
+  } catch(err){
+    // Fallback sans contrainte facingMode
+    try{
+      _cameraStream = await navigator.mediaDevices.getUserMedia({ video:true, audio:false });
+      video.srcObject = _cameraStream;
+    } catch(e){
+      alert(myLang==='fr'
+        ? "⚠️ Impossible d'accéder à la caméra. Vérifie les permissions."
+        : "⚠️ Cannot access camera. Check permissions.");
+      closeCameraModal();
+    }
+  }
+}
+
+async function flipCamera(){
+  _cameraFacing = _cameraFacing==='environment' ? 'user' : 'environment';
+  await _startCameraStream();
+}
+
+function snapPhoto(){
+  const video = document.getElementById('camera-preview');
+  const canvas = document.getElementById('camera-canvas');
+  if(!video || !canvas) return;
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  // Compresser en JPEG qualité 0.82
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+  closeCameraModal();
+  _sendPhotoData(dataUrl);
+}
+
+function closeCameraModal(){
+  const modal = document.getElementById('camera-modal');
+  if(modal) modal.style.display = 'none';
+  if(_cameraStream){ _cameraStream.getTracks().forEach(t=>t.stop()); _cameraStream=null; }
+}
+
+async function _sendPhotoData(dataUrl){
+  if(!_currentChatQk || !lastRoom) return;
+  const key = getChatKey(_currentChatQk);
+  const msgId = Date.now()+'_'+Math.random().toString(36).slice(2,7);
+  const msg = { id:msgId, role:myRole, type:'photo', data:dataUrl, text:'', ts:Date.now() };
+  try{
+    await fetch(`${FB}/rooms/${roomCode}/chat/${key}/${msgId}.json`,{
+      method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(msg)
+    });
+    if(lastRoom){
+      lastRoom.chat = lastRoom.chat||{};
+      lastRoom.chat[key] = lastRoom.chat[key]||{};
+      lastRoom.chat[key][msgId] = msg;
+    }
+    _updateChatMsgs(lastRoom, _currentChatQk);
+  } catch(e){ console.error('sendPhotoData failed',e); }
 }
 
 async function sendPhotoMsg(input){
