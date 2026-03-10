@@ -3757,19 +3757,35 @@ function getBadges(s){
   return badges;
 }
 
-function showCats(){
+async function showCats(){
   window._wentToCats=true;
+  // Charger lastRoom si manquant
+  if(!lastRoom && roomCode){
+    try{ lastRoom = await loadRoom(roomCode); }catch(e){}
+  }
   const nameEl=document.getElementById('cat-me-name');
   if(nameEl) nameEl.textContent=myName;
   const lc=document.getElementById('cat-me-lang');
   if(lc){lc.textContent=myLang==='fr'?'🇫🇷 FR':'🇬🇧 EN';lc.className='lang-chip '+myLang;}
   goPage('pg-cats');
-  // Rendre la liste après navigation (DOM stable)
+  updateCatsRoomCode();
+  if(lastRoom) renderStatus('cat-status',lastRoom);
+  // Retry jusqu'à ce que la liste soit visible
+  _ensureCatList(lastRoom, 0);
+}
+
+function _ensureCatList(s, attempt){
+  if(attempt > 10) return; // max 10 essais
+  const listEl = document.getElementById('cat-list');
+  if(!listEl){ setTimeout(()=>_ensureCatList(s,attempt+1),100); return; }
+  renderCatList(s);
+  // Vérifier que des tuiles ont été insérées
   setTimeout(()=>{
-    renderCatList(lastRoom);
-    if(lastRoom) renderStatus('cat-status',lastRoom);
-    updateCatsRoomCode();
-  }, 50);
+    if(!listEl.querySelector('.cat-tile')){
+      console.warn('cat-list vide, retry', attempt+1);
+      _ensureCatList(lastRoom||s, attempt+1);
+    }
+  }, 150);
 }
 
 function renderCatList(s){
@@ -3845,9 +3861,13 @@ function renderCatList(s){
 
   const listEl = document.getElementById('cat-list');
   if(!html.trim()){
-    // Aucun thème généré — réessayer dans 300ms (DOM ou données pas prêtes)
+    // Aucun thème généré — réessayer après chargement Firebase
     console.warn('renderCatList: html vide, retry...');
-    setTimeout(()=>renderCatList(lastRoom||s), 300);
+    if(roomCode && !lastRoom){
+      loadRoom(roomCode).then(s2=>{ if(s2){lastRoom=s2; renderCatList(s2);} });
+    } else {
+      setTimeout(()=>renderCatList(lastRoom), 400);
+    }
     return;
   }
   listEl.innerHTML = html;
