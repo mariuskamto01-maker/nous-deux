@@ -592,6 +592,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
         </div>
       </div>
     </div>
+    <div id="home-resume-zone"></div>
     <button class="btn btn-gold mb12" onclick="goPage('pg-create')">✨ Créer une salle / Create a room</button>
     <button class="btn btn-ghost mb12" onclick="goPage('pg-join')">🚪 Rejoindre une salle / Join a room</button>
     <button class="btn btn-ghost" onclick="goPage('pg-settings')">⚙️ Paramètres / Settings</button>
@@ -1997,6 +1998,17 @@ function logout(){
   goPage('pg-home',false);
 }
 
+function saveSession(){
+  if(!roomCode) return;
+  try{
+    localStorage.setItem('nd_session', JSON.stringify({
+      myRole, myName, myLang, roomCode,
+      catId: currentCat?.id || null,
+      qi: currentQi || 0
+    }));
+  }catch(e){}
+}
+
 async function saveSettings() {
   localStorage.setItem('nd_settings', JSON.stringify(settings));
   const btn = document.querySelector('#pg-settings .btn-gold:last-child');
@@ -3282,6 +3294,9 @@ window.addEventListener('load',()=>{
     return; // Ne pas restaurer session
   }
 
+  // Afficher bouton "Reprendre" sur la home si session sauvegardée
+  setTimeout(_renderResumeBtn, 0);
+
   // Restaurer session si page rechargée
   try{
     const sess=localStorage.getItem('nd_session');
@@ -3316,13 +3331,32 @@ window.addEventListener('load',()=>{
           }catch(e){}
           lastRoom=s;window._wentToCats=true;
           startPoll();
-          // Reprendre là où on était
-          const pending=detectPending(s);
-          if(pending&&pending.cat){
-            currentCat=pending.cat;currentQi=pending.qi;currentQs=getQsForCat(pending.cat.id);
-            renderQ();goPage('pg-q');
+          // Reprendre exactement là où on était
+          const savedCatId = d.catId;
+          const savedQi = d.qi || 0;
+          if(savedCatId){
+            // Retrouver le thème par son ID
+            const allCats2 = [...CATS, ...(s.customThemes||[])];
+            const savedCat = savedCatId==='custom'
+              ? {id:'custom',e:'💬',fr:'Nos Questions',en:'Our Questions'}
+              : allCats2.find(c=>c.id===savedCatId);
+            if(savedCat){
+              currentCat=savedCat;
+              currentQs=getQsForCat(savedCat.id);
+              currentQi=Math.min(savedQi, Math.max(0, currentQs.length-1));
+              renderQ(); goPage('pg-q');
+            } else {
+              showCats();
+            }
           } else {
-            showCats();
+            // Fallback : détecter une question en attente
+            const pending=detectPending(s);
+            if(pending&&pending.cat){
+              currentCat=pending.cat;currentQi=pending.qi;currentQs=getQsForCat(pending.cat.id);
+              renderQ();goPage('pg-q');
+            } else {
+              showCats();
+            }
           }
         }).catch(e=>{
           _removeLoader();
@@ -3381,6 +3415,66 @@ function genCode(){
   const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   return Array.from({length:6},()=>c[Math.floor(Math.random()*c.length)]).join('');
 }
+
+function _renderResumeBtn(){
+  const zone = document.getElementById('home-resume-zone');
+  if(!zone) return;
+  try{
+    const sess = localStorage.getItem('nd_session');
+    if(!sess){ zone.innerHTML=''; return; }
+    const d = JSON.parse(sess);
+    if(!d.roomCode||!d.myName){ zone.innerHTML=''; return; }
+    const fr = (d.myLang||'fr')==='fr';
+    zone.innerHTML = `
+      <div style="background:linear-gradient(135deg,rgba(212,148,60,0.12),rgba(200,56,32,0.08));border:1.5px solid var(--goldD);border-radius:16px;padding:14px 18px;margin-bottom:16px;cursor:pointer;transition:opacity 0.2s;" onclick="_resumeSession()">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-size:26px;">💑</div>
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:800;color:var(--gold);margin-bottom:2px;">${fr?'Session en cours':'Active session'}</div>
+            <div style="font-size:13px;color:var(--cream);font-weight:700;">${d.myName} <span style="color:var(--muted);font-weight:400;">· ${d.roomCode}</span></div>
+            ${d.catId ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;">${fr?'Question':'Question'} ${(d.qi||0)+1} · ${d.catId}</div>` : ''}
+          </div>
+          <div style="font-size:20px;color:var(--gold);">→</div>
+        </div>
+      </div>`;
+  }catch(e){ if(zone) zone.innerHTML=''; }
+}
+
+async function _resumeSession(){
+  const sess = localStorage.getItem('nd_session');
+  if(!sess) return;
+  try{
+    const d = JSON.parse(sess);
+    if(!d.roomCode||!d.myName) return;
+    myRole=d.myRole; myName=d.myName; myLang=d.myLang||'fr'; roomCode=d.roomCode;
+    // Overlay de chargement
+    const loaderEl = document.createElement('div');
+    loaderEl.style.cssText='position:fixed;inset:0;background:#0d0509;display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:12px;';
+    loaderEl.innerHTML='<div style="font-size:32px;">💑</div><div style="font-size:12px;color:#8a7060;font-family:Outfit,sans-serif;">'+(myLang==='fr'?'Reprise en cours...':'Resuming...')+'</div>';
+    document.body.appendChild(loaderEl);
+    const s = await loadRoom(roomCode);
+    loaderEl.remove();
+    if(!s){ localStorage.removeItem('nd_session'); _renderResumeBtn(); return; }
+    lastRoom=s; startPoll();
+    // Mettre à jour présence
+    try{ await fetch(`${FB}/rooms/${roomCode}/${myRole}/ts.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(Date.now())}); }catch(e){}
+    // Reprendre à la position sauvegardée
+    if(d.catId){
+      const allCats2 = [...CATS,...(s.customThemes||[])];
+      const savedCat = d.catId==='custom'
+        ? {id:'custom',e:'💬',fr:'Nos Questions',en:'Our Questions'}
+        : allCats2.find(c=>c.id===d.catId);
+      if(savedCat){
+        currentCat=savedCat;
+        currentQs=getQsForCat(savedCat.id);
+        currentQi=Math.min(d.qi||0, Math.max(0,currentQs.length-1));
+        renderQ(); goPage('pg-q');
+        return;
+      }
+    }
+    showCats();
+  }catch(e){ console.error('resume',e); goPage('pg-home'); }
+}
 function strip(){
   return `<div class="strip"><div style="background:var(--k1)"></div><div style="background:var(--k2)"></div><div style="background:var(--k3)"></div><div style="background:var(--k4)"></div><div style="background:var(--k1)"></div><div style="background:var(--k3)"></div><div style="background:var(--k2)"></div><div style="background:var(--k4)"></div></div>`;
 }
@@ -3407,7 +3501,7 @@ async function createRoom(){
     p2:null,answers:{},insights:[],aiResult:null,
     customThemes:settings.customThemes, customQs:settings.customQs};
   await saveRoom(state);lastRoom=state;
-  localStorage.setItem('nd_session',JSON.stringify({myRole,myName,myLang,roomCode}));
+  localStorage.setItem('nd_session',JSON.stringify({myRole,myName,myLang,roomCode,catId:currentCat?.id||null,qi:currentQi||0}));
   window._wentToCats=false;
   startPoll();
   // Afficher pg-wait avec code+QR mais ne pas bloquer — bouton "Commencer seul" visible
@@ -3476,7 +3570,7 @@ async function joinRoom(){
 
   roomCode=code;
   await saveRoom(state); lastRoom=state;
-  localStorage.setItem('nd_session', JSON.stringify({myRole,myName,myLang,roomCode}));
+  localStorage.setItem('nd_session', JSON.stringify({myRole,myName,myLang,roomCode,catId:currentCat?.id||null,qi:currentQi||0}));
   mergeSharedSettings(state); // Charger les thèmes/questions partagés dès la connexion
   // Restaurer l'avatar depuis la room
   if(state[myRole]?.avatar){
@@ -3797,6 +3891,7 @@ function getBadges(s){
 }
 
 async function showCats(){
+  saveSession();
   window._wentToCats=true;
   // Charger lastRoom si manquant
   if(!lastRoom && roomCode){
@@ -4004,6 +4099,7 @@ function collapseGroup(id,animate=true){
 // RENDER QUESTION
 // ═══════════════════════════════════════
 function renderQ(){
+  saveSession(); // Persister la position courante
   const pair=currentQs[currentQi];
   if(!pair){console.warn('No pair for qi',currentQi);return;}
   const s=lastRoom;
