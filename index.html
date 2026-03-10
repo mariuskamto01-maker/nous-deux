@@ -892,7 +892,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
       <!-- Zone messages -->
       <div style="padding:10px 14px 0;">
         <div id="typing-indicator" style="display:none;padding:4px 0 2px;min-height:24px;"></div>
-        <div id="chat-msgs" style="display:flex;flex-direction:column;min-height:80px;max-height:420px;overflow-y:auto;overflow-x:hidden;padding-bottom:4px;width:100%;"></div>
+        <div id="chat-msgs" style="display:flex;flex-direction:column;min-height:80px;max-height:420px;overflow-y:auto;overflow-x:hidden;padding:4px 0 8px;width:100%;box-sizing:border-box;"></div>
       </div>
       <!-- Zone saisie -->
       <div style="padding:8px 14px 14px;border-top:1px solid var(--faint);margin-top:4px;">
@@ -988,7 +988,7 @@ const BG_THEMES = [
   {
     name:'kente',
     draw(ctx,W,H){
-      const colors=['rgba(212,148,60,0.06)','rgba(200,56,32,0.05)','rgba(26,104,48,0.05)','rgba(26,58,144,0.05)'];
+      const colors=['rgba(212,148,60,0.018)','rgba(200,56,32,0.015)','rgba(26,104,48,0.015)','rgba(26,58,144,0.015)'];
       const sz=Math.floor(W/14);
       for(let y=0;y<H;y+=sz*2){
         for(let x=0;x<W;x+=sz){
@@ -998,7 +998,7 @@ const BG_THEMES = [
         }
       }
       // diagonales dorées subtiles
-      ctx.strokeStyle='rgba(212,148,60,0.06)';ctx.lineWidth=1;
+      ctx.strokeStyle='rgba(212,148,60,0.018)';ctx.lineWidth=1;
       for(let i=-H;i<W+H;i+=sz*4){
         ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i+H,H);ctx.stroke();
         ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i-H,H);ctx.stroke();
@@ -1523,7 +1523,8 @@ function initBackground(){
   while(idx===_bgThemeIdx && BG_THEMES.length>1);
   _bgThemeIdx=idx;
 
-  // Fond de base
+  // Effacer complètement + fond de base
+  ctx.clearRect(0,0,W,H);
   ctx.fillStyle='#060408';
   ctx.fillRect(0,0,W,H);
 
@@ -1539,7 +1540,22 @@ function initBackground(){
 
 // Lancer au chargement + resize
 window.addEventListener('load', initBackground);
-window.addEventListener('resize', ()=>{ initBackground(); });
+let _resizeTimer=null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(_resizeTimer);
+  _resizeTimer=setTimeout(()=>{
+    // Redessiner le MÊME thème — pas un nouveau
+    const canvas=document.getElementById('bg-canvas');
+    if(!canvas)return;
+    const ctx=canvas.getContext('2d');
+    const W=canvas.width=window.innerWidth;
+    const H=canvas.height=window.innerHeight;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#060408';
+    ctx.fillRect(0,0,W,H);
+    if(_bgThemeIdx>=0) BG_THEMES[_bgThemeIdx].draw(ctx,W,H);
+  }, 150);
+});
 
 
 // ═══════════════════════════════════════
@@ -4925,7 +4941,7 @@ function buildMsgHtml(s,msgs){
 
     // WhatsApp : nom seulement si ANSWER (première réponse) sinon juste l'heure
     const showName = m.isAnswer && !deleted;
-    const bubbleContent = `<div style="max-width:75%;min-width:60px;background:${bg};border:1px solid ${bd};${answerBorderTop}border-radius:14px;${radiusCorner};padding:8px 12px;word-break:break-word;">`
+    const bubbleContent = `<div style="max-width:82%;min-width:80px;background:${bg};border:1px solid ${bd};${answerBorderTop}border-radius:14px;${radiusCorner};padding:8px 12px;word-break:break-word;box-sizing:border-box;">`
       +(showName ? `<div style="font-size:10px;font-weight:700;color:${col};margin-bottom:4px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">${nm} <span class="lang-chip ${lg}" style="font-size:8px;">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${answerBadge}</div>` : '')
       +textHtml
       +`<div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:4px;">
