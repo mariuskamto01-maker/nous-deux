@@ -602,8 +602,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
         <!-- QR Code -->
         <div style="margin-top:16px;text-align:center;">
           <p style="font-size:10px;color:var(--muted);margin-bottom:8px;letter-spacing:0.5px;">SCANNER POUR REJOINDRE · SCAN TO JOIN</p>
-          <div id="wait-qr" style="display:inline-block;padding:10px;background:#fff;border-radius:12px;border:2px solid var(--goldD);">
-            <canvas id="qr-canvas" width="140" height="140"></canvas>
+          <div id="wait-qr" style="display:inline-block;padding:10px;background:#fff;border-radius:14px;border:3px solid var(--goldD);box-shadow:0 0 20px rgba(212,148,60,0.3);">
           </div>
         </div>
         <p style="font-size:12px;color:var(--muted);margin-top:10px;text-align:center;" id="wait-share-msg"></p>
@@ -865,6 +864,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 // ═══════════════════════════════════════
 // BACKGROUND ENGINE — change à chaque session
@@ -2900,9 +2900,27 @@ function showWaiting(state){
   // Code p1 = son code secret, code p2 = p1PartnerCode
   document.getElementById('wait-code').textContent=state.code;
   document.getElementById('wait-share-msg').textContent=myLang==='fr'?'Partage ce code par WhatsApp':'Share this code via WhatsApp';
-  // Générer le QR code
+  // Générer le QR code avec qrcode.js
   const joinUrl = window.location.href.split('?')[0]+'?join='+state.code;
-  generateQR(joinUrl, document.getElementById('qr-canvas'));
+  const qrContainer = document.getElementById('wait-qr');
+  if(qrContainer){
+    qrContainer.innerHTML = '';
+    try{
+      new QRCode(qrContainer, {
+        text: joinUrl,
+        width: 150,
+        height: 150,
+        colorDark: '#1a1020',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } catch(e){
+      // Fallback: canvas maison
+      const c = document.createElement('canvas');
+      qrContainer.appendChild(c);
+      generateQR(joinUrl, c);
+    }
+  }
   renderStatus('wait-status',state);
   const box=document.getElementById('wait-spinner-box');
   if(state.p2){
