@@ -5596,4 +5596,76 @@ function bestVersion(text){
 const SIZE=v=>v*4+17;
 function makeMatrix(ver){const s=SIZE(ver);const m=[];for(let i=0;i<s;i++){m.push(new Int8Array(s).fill(-1));}return m;}
 function setFinder(m,r,c){for(let i=-1;i<=7;i++)for(let j=-1;j<=7;j++){if(r+i<0||r+i>=m.length||c+j<0||c+j>=m.length)continue;const inFinder=(i>=0&&i<=6&&j>=0&&j<=6);const onBorder=(i===0||i===6||j===0||j===6);const inner=(i>=2&&i<=4&&j>=2&&j<=4);m[r+i][c+j]=inFinder?(onBorder||inner?1:0):-1;}}
-function setTiming(m,ver){const s=SIZE(ver);for(let i=8;i<s-8;i++){if(m[6][i]===-1)m[6][i]=(i%2===0)?1:0;if(m[i][6
+function setTiming(m,ver){const s=SIZE(ver);for(let i=8;i<s-8;i++){if(m[6][i]===-1)m[6][i]=(i%2===0)?1:0;if(m[i][6]===-1)m[i][6]=(i%2===0)?1:0;}}
+function setAlign(m,ver){if(ver<2)return;const pos=[[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50]];const p=pos[ver-2]||[];for(const r of p)for(const c of p){if(m[r][c]!==-1)continue;for(let i=-2;i<=2;i++)for(let j=-2;j<=2;j++){const on=(Math.abs(i)===2||Math.abs(j)===2||(!i&&!j));m[r+i][c+j]=on?1:0;}}}
+function reserveFormat(m,ver){const s=SIZE(ver);// Format bits positions
+for(let i=0;i<=8;i++){if(m[8][i]===-1)m[8][i]=-2;if(m[i][8]===-1)m[i][8]=-2;}for(let i=s-8;i<s;i++){if(m[8][i]===-1)m[8][i]=-2;if(m[i][8]===-1)m[i][8]=-2;}m[s-8][8]=1;// dark module
+}
+function placeData(m,bits){const s=m.length;let bit=0;let dir=-1;let row=s-1;
+for(let col=s-1;col>=0;col-=2){if(col===6)col--;for(let cnt=0;cnt<s;cnt++){const r=dir===-1?row-cnt:row+cnt;if(r<0||r>=s)continue;const c=col-((row+cnt+col)%2);if(c<0||c>=s)continue;if(m[r]&&m[r][c]===-1){m[r][c]=bit<bits.length?bits[bit++]:0;}}if(dir===-1){row-=s;dir=1;}else{row+=s;dir=-1;}row=Math.max(0,Math.min(s-1,row));}
+// Simple left-right-up data placement
+bit=0;
+const s2=m.length;
+let up=true;
+for(let c=s2-1;c>0;c-=2){if(c===6)c--;
+for(let cnt=0;cnt<s2;cnt++){const r=up?s2-1-cnt:cnt;
+for(let k=0;k<2;k++){const cc=c-k;if(cc<0||cc>=s2)continue;if(m[r][cc]===-1){m[r][cc]=bit<bits.length?bits[bit++]:0;}}}
+up=!up;}}
+
+const MASKS=[(r,c)=>(r+c)%2===0,(r,c)=>r%2===0,(r,c)=>c%3===0,(r,c)=>(r+c)%3===0,(r,c)=>(Math.floor(r/2)+Math.floor(c/3))%2===0,(r,c)=>((r*c)%2+(r*c)%3)===0,(r,c)=>((r*c)%2+(r*c)%3)%2===0,(r,c)=>((r+c)%2+(r*c)%3)%2===0];
+function applyMask(m,maskIdx){const s=m.length;const n=[];for(let r=0;r<s;r++){n.push(new Int8Array(s));for(let c=0;c<s;c++){const v=m[r][c];n[r][c]=(v===-1||v===-2)?v:(v^(MASKS[maskIdx](r,c)?1:0));}}return n;}
+function writeFormat(m,maskIdx,ver){
+  // Format string for M level + mask
+  const fmtBits=[0,1,0,1,1,0,0,1,0,0,0,1,0,1,1,0]; // pre-computed for M+mask0..7 — use mask2 (simplest)
+  const precomp=[[0,1,1,0,0,1,0,1,0,1,0,0,0,1,0,0],[0,1,1,0,1,0,1,1,0,0,1,0,0,0,1,1],[0,1,1,1,0,0,0,0,1,1,1,1,0,1,0,1],[0,1,1,1,1,1,1,0,1,0,0,1,0,0,1,0],[0,1,0,0,0,1,1,1,1,0,1,0,1,0,1,1],[0,1,0,0,1,0,0,1,1,1,0,0,1,1,0,0],[0,1,0,1,0,0,1,0,0,0,0,1,1,0,0,0],[0,1,0,1,1,1,0,0,0,1,1,1,1,1,1,1]];
+  const fb=precomp[maskIdx];
+  const s=m.length;
+  const fpos=[[8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],[8,8],[7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8]];
+  const fpos2=[[s-1,8],[s-2,8],[s-3,8],[s-4,8],[s-5,8],[s-6,8],[s-7,8],[8,s-8],[8,s-7],[8,s-6],[8,s-5],[8,s-4],[8,s-3],[8,s-2],[8,s-1]];
+  for(let i=0;i<15;i++){m[fpos[i][0]][fpos[i][1]]=fb[i];m[fpos2[i][0]][fpos2[i][1]]=fb[i];}
+}
+
+window.generateQR=function(text,canvas){
+  if(!canvas)return;
+  try{
+    const ver=bestVersion(text);
+    const s=SIZE(ver);
+    const data=encode(text,ver);
+    // Interleave + RS
+    const bl=_EC_BLOCKS[ver-1],epb=_EC_PER_BLOCK[ver-1],dpb=_DATA_PER_BLOCK[ver-1];
+    const blocks=[];
+    for(let b=0;b<bl;b++)blocks.push(data.slice(b*dpb,(b+1)*dpb));
+    const ecBlocks=blocks.map(b=>Array.from(rsEncode(new Uint8Array(b),epb)));
+    const interleaved=[];
+    for(let i=0;i<dpb;i++)blocks.forEach(b=>{if(i<b.length)interleaved.push(b[i]);});
+    const ecInterleaved=[];
+    for(let i=0;i<epb;i++)ecBlocks.forEach(b=>{if(i<b.length)ecInterleaved.push(b[i]);});
+    const allBytes=[...interleaved,...ecInterleaved];
+    const bits=[];allBytes.forEach(b=>{for(let i=7;i>=0;i--)bits.push((b>>i)&1);});
+    // Build matrix
+    const mat=makeMatrix(ver);
+    setFinder(mat,0,0);setFinder(mat,0,s-7);setFinder(mat,s-7,0);
+    setTiming(mat,ver);setAlign(mat,ver);reserveFormat(mat,ver);
+    placeData(mat,bits);
+    // Pick mask 2
+    const masked=applyMask(mat,2);
+    writeFormat(masked,2,ver);
+    // Draw
+    const px=4;canvas.width=(s+8)*px;canvas.height=(s+8)*px;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#000';
+    for(let r=0;r<s;r++)for(let c=0;c<s;c++){if(masked[r][c]===1)ctx.fillRect((c+4)*px,(r+4)*px,px,px);}
+  }catch(e){
+    console.error('QR error',e);
+    // Fallback texte
+    const ctx=canvas.getContext('2d');canvas.width=140;canvas.height=140;
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,140,140);
+    ctx.fillStyle='#1a1a2e';ctx.font='bold 16px monospace';ctx.textAlign='center';ctx.fillText('CODE',70,50);
+    ctx.fillStyle='#c8943b';ctx.font='bold 20px monospace';ctx.fillText(roomCode||'',70,85);
+  }
+};
+})();
+</script>
+</body>
+</html>
