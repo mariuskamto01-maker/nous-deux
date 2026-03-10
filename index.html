@@ -2211,10 +2211,10 @@ const QS={
   ],
 
   diaspora:[
-    ["Comment tu te définis — Camerounais·e, Nigérian·e, Africain·e, Européen·ne — ou tout à la fois ?","How do you define yourself — Cameroonian, Nigerian, African, European — or all at once?"],
-    ["La première fois que tu as senti que tu n'appartenais pleinement ni à l'Afrique ni à l'Europe — c'était quand ?","The first time you felt you belonged fully neither to Africa nor Europe — when was that?"],
+    ["La dernière fois que tu as été profondément fier·e de tes origines — c'était dans quelle situation concrète ?","The last time you were deeply proud of your origins — what was the concrete situation?"],
+    ["La première fois qu'un·e Européen·ne t'a dit quelque chose sur ton pays qui t'a mis hors de toi — c'était quoi et comment tu as réagi ?"],
     ["Qu'est-ce que l'Europe t'a donné et qu'est-ce qu'elle t'a pris ?","What has Europe given you and what has it taken from you?"],
-    ["Est-ce que tu te sens parfois obligé·e de te justifier — ici, là-bas, partout ?","Do you sometimes feel obligated to justify yourself — here, there, everywhere?"],
+    ["As-tu déjà retenu ta langue face à un·e Européen·ne qui disait quelque chose de faux sur l'Afrique — et regrettes-tu de ne pas avoir parlé ?","Have you ever held your tongue when a European said something false about Africa — and do you regret not speaking up?"],
     ["Comment tu gères le double regard : trop africain·e pour l'Europe, trop européen·ne pour l'Afrique ?","How do you handle the double gaze: too African for Europe, too European for Africa?"],
     ["Qu'est-ce qui te manque le plus de la vie au Cameroun / au Nigeria ?","What do you miss most about life in Cameroon / Nigeria?"],
     ["La solitude en Europe — comment tu la vis ? Est-ce différent de la solitude au pays ?","Loneliness in Europe — how do you experience it? Is it different from loneliness back home?"],
@@ -2236,7 +2236,7 @@ const QS={
     ["Comment tu gères l'écart de réalité entre ce que ta famille imagine de ta vie ici et ce qu'elle est vraiment ?","How do you handle the reality gap between what your family imagines your life here is and what it truly is?"],
     ["Est-ce que tu t'autorises à ne pas aller bien — ou la pression de l'immigration t'oblige à toujours performer ?","Do you allow yourself to not be doing well — or does the pressure of immigration force you to always perform?"],
     ["Comment la distance Allemagne/Angleterre influence-t-elle ta vision d'une relation avec quelqu'un dans l'autre pays ?","How does the Germany/England distance influence your vision of a relationship with someone in the other country?"],
-    ["Qu'est-ce que être africain·e signifie pour toi — au-delà de la géographie ?","What does being African mean to you — beyond geography?"],
+    ["Quelle est la chose la plus concrète que tu fais au quotidien pour rester connecté·e à ta culture d'origine ?","What is the most concrete thing you do daily to stay connected to your culture of origin?"],
     ["As-tu déjà été exotisé·e ou réduit·e à tes origines ici ? Comment tu as réagi ?","Have you ever been exoticised or reduced to your origins here? How did you react?"],
     ["Qu'est-ce que tu portes pour ta communauté ici que tu n'as jamais choisi de porter ?","What do you carry for your community here that you never chose to carry?"],
     ["Est-ce que tu penses parfois que tu aurais été une version différente de toi si tu étais resté·e au pays ?","Do you sometimes think you would have been a different version of yourself if you had stayed home?"],
@@ -2292,7 +2292,7 @@ const QS={
     ["Qu'est-ce que la notion de 'réussite' signifie dans ta culture versus ce qu'elle signifie pour toi personnellement ?","What does 'success' mean in your culture versus what it means to you personally?"],
     ["Comment tu vis le fossé de génération entre toi et tes parents en ce qui concerne leurs attentes ?","How do you experience the generational gap between you and your parents regarding their expectations?"],
     ["Quelle figure historique africaine t'inspire profondément et pourquoi ?","What historical African figure deeply inspires you and why?"],
-    ["Est-ce que tu te sens parfois entre deux mondes — ni totalement africain·e, ni totalement occidental·e ?","Do you sometimes feel between two worlds — neither fully African nor fully Western?"],
+    ["Y a-t-il un moment précis où tu as dû choisir entre une valeur africaine et une norme européenne — qu'est-ce que tu as choisi et pourquoi ?","Was there a specific moment when you had to choose between an African value and a European norm — what did you choose and why?"],
     ["Qu'est-ce que tu veux absolument transmettre de ton héritage africain à tes enfants ?","What do you absolutely want to pass on from your African heritage to your children?"],
     ["Si l'Afrique avait pu te garder dans les meilleures conditions possibles, aurais-tu quitté ?","If Africa could have kept you under the best possible conditions, would you have left?"]
     ['Comment tu vis le système de la dot dans ta culture — héritage à respecter ou pratique à questionner ?', 'How do you experience the bride price system in your culture — heritage to respect or practice to question?'],
@@ -3624,9 +3624,24 @@ function renderCatList(s){
     cats.forEach(c=>{
       const qCount = getQsForCat(c.id).length;
       const badgeN = badges[c.id]||0;
+      // Compter mes réponses dans ce thème
+      const myAnsweredCount = s ? getQsForCat(c.id).reduce((acc,_,qi)=>{
+        const qk=c.id+'_'+qi;
+        return acc + (s.answers?.[qk+'_'+myRole] ? 1 : 0);
+      },0) : 0;
+      const thRole=myRole==='p1'?'p2':'p1';
+      const thAnsweredCount = s ? getQsForCat(c.id).reduce((acc,_,qi)=>{
+        const qk=c.id+'_'+qi;
+        return acc + (s.answers?.[qk+'_'+thRole] ? 1 : 0);
+      },0) : 0;
       const alertClass = badgeN>0 ? ' cat-tile-alert' : '';
       const dotHtml = badgeN>0 ? '<span class="cat-tile-dot"></span>' : '';
-      const countHtml = badgeN>0 ? '<span class="cat-tile-badge">'+badgeN+'</span>' : qCount+'Q';
+      // Badge si l'autre a répondu à des questions sans moi, sinon progression normale
+      const countHtml = badgeN>0
+        ? '<span class="cat-tile-badge">'+badgeN+'</span>'
+        : myAnsweredCount>0
+          ? '<span style="font-size:10px;color:var(--gold);">'+myAnsweredCount+'/'+qCount+'</span>'
+          : qCount+'Q';
       const tileName = (myLang==='fr' ? c.fr : c.en)||c.fr||c.en;
       tilesHtml += '<button class="cat-tile'+alertClass+'" data-catid="'+c.id+'">'
         +'<span class="cat-tile-emoji">'+c.e+dotHtml+'</span>'
@@ -3808,27 +3823,28 @@ function checkQState(s){
   const thRole=myRole==='p1'?'p2':'p1';
   const thA=s.answers?.[qk+'_'+thRole];
 
-  // ── Logique ouverte: on voit les réponses dès qu'elles existent ──
+  // ── Logique ouverte: on affiche toujours les réponses existantes + textarea si pas encore répondu ──
+  // Mode solo: chacun peut avancer sans attendre l'autre
+  const revZ=document.getElementById('reveal-zone');
+  const bothNow=!!(s?.answers?.[qk+'_p1']&&s?.answers?.[qk+'_p2']);
+
   if(myA || thA){
-    const revZ=document.getElementById('reveal-zone');
-    const bothNow=!!(s?.answers?.[qk+'_p1']&&s?.answers?.[qk+'_p2']);
+    // Au moins une réponse → zone révélation
     if(revZ&&revZ.style.display==='block'){
-      // Si j'ai répondu mais my-zone affiche encore le textarea → cacher my-zone
-      if(myA && document.getElementById('my-answer')){
-        const myZone=document.getElementById('my-zone');
-        if(myZone){myZone.style.display='none';myZone.innerHTML='';}
+      // Si je viens de soumettre (textarea encore dans DOM) → reconstruire
+      if(revZ.querySelector('#my-answer')){
+        document.getElementById('sent-zone').style.display='none';
+        document.getElementById('my-zone').style.display='none';
         showReveal(s,qk); return;
       }
-      // Déjà en révélation — vérifier si une nouvelle réponse est arrivée
+      // L'autre vient de répondre → reconstruire
       const shownTh=revZ.querySelector('#answer-text-th');
       const thAnswerNow=s?.answers?.[qk+'_'+thRole];
-      const thAnswerShown=shownTh&&shownTh.textContent.trim()!=='' && !shownTh.closest('[style*="opacity:0.55"]');
-      // Si l'autre vient de répondre alors qu'il n'avait pas encore répondu → reconstruire
+      const thAnswerShown=shownTh&&shownTh.textContent.trim()!==''&&!shownTh.closest('[style*="opacity:0.55"]');
       if(thAnswerNow && !thAnswerShown){
         document.getElementById('sent-zone').style.display='none';
         document.getElementById('my-zone').style.display='none';
-        showReveal(s,qk);
-        return;
+        showReveal(s,qk); return;
       }
       // Sinon juste mettre à jour nav + bouton analyse
       const nz=document.getElementById('nav-zone');
@@ -3838,17 +3854,14 @@ function checkQState(s){
       if(abz&&bothNow&&!ardy&&!document.getElementById('analysis-btn')){
         abz.innerHTML=`<button id="analysis-btn" onclick="doAnalysis()" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--goldD);background:rgba(200,148,59,0.15);color:var(--gold);font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">🔍 ${myLang==='fr'?'Analyser notre compatibilité':'Analyse our compatibility'}</button>`;
       }
-      // Si l'analyse vient d'arriver (depuis l'autre)
-      if(ardy&&!document.getElementById('ai-panel')){
-        renderAI(s.aiResult);
-      }
+      if(ardy&&!document.getElementById('ai-panel')) renderAI(s.aiResult);
       return;
     }
     document.getElementById('sent-zone').style.display='none';
     document.getElementById('my-zone').style.display='none';
     showReveal(s,qk);
   } else {
-    // Aucune réponse encore → zone de saisie
+    // Aucune réponse encore → textarea + nav solo
     if(document.getElementById('my-answer'))return;
     showMyInput();
   }
@@ -3886,6 +3899,26 @@ function showMyInput(){
       </div>
     </div>`;
   z.style.display='block';
+
+  // ── Nav solo : pouvoir avancer sans répondre ──
+  const fr=myLang==='fr';
+  const isLast=currentQi>=currentQs.length-1;
+  const soloNav=document.getElementById('my-zone-nav');
+  if(!soloNav){
+    const navDiv=document.createElement('div');
+    navDiv.id='my-zone-nav';
+    navDiv.style.cssText='margin-top:10px;';
+    const s=lastRoom;
+    const qk=currentCat.id+'_'+currentQi;
+    const thRole=myRole==='p1'?'p2':'p1';
+    const thA=s?.answers?.[qk+'_'+thRole];
+    // Indication si l'autre a déjà répondu
+    const waitMsg = thA
+      ? `<p style="text-align:center;font-size:12px;color:var(--gold);padding:6px 0;margin-bottom:8px;">💬 ${fr?(s[thRole]?.name||'Ton partenaire')+' a déjà répondu — réponds pour voir !': (s[thRole]?.name||'Your partner')+' already answered — respond to see it!'}</p>`
+      : `<p style="text-align:center;font-size:12px;color:var(--muted);padding:6px 0;margin-bottom:8px;">${fr?'💡 Tu peux aussi passer et répondre plus tard.':'💡 You can also skip and answer later.'}</p>`;
+    navDiv.innerHTML=waitMsg+`<button onclick="${isLast?"goPage('pg-cats')":'nextQ()'}" style="width:100%;padding:11px;border-radius:12px;border:1px solid var(--d2);background:transparent;color:var(--muted);font-size:13px;cursor:pointer;font-family:'Outfit',sans-serif;">${fr?(isLast?'↩ Retour aux thèmes':'Passer →'):(isLast?'↩ Back to themes':'Skip →')}</button>`;
+    z.appendChild(navDiv);
+  }
 }
 
 function showSent(s){
@@ -4043,11 +4076,14 @@ function navHTML(s, qk){
     : (fr?'Question suivante →':'Next question →');
   const nextAction = isLast ? "goPage('pg-cats')" : 'nextQ()';
 
-  // Couleur du bouton suivant: or si les deux ont répondu, grisé sinon
+  // Couleur du bouton suivant: or si les deux ont répondu, bleu si seulement moi, toujours actif
   const nextStyle = bothAnswered
     ? 'background:linear-gradient(135deg,#4A3010,#D4943C);color:#0D0A06;font-weight:700;cursor:pointer;'
-    : 'background:var(--d2);color:var(--muted);font-weight:600;cursor:pointer;border:1px solid var(--d2);';
+    : myA
+      ? 'background:linear-gradient(135deg,var(--p1d),var(--p1b));color:var(--cream);font-weight:600;cursor:pointer;border:1px solid var(--p1b);'
+      : 'background:var(--d2);color:var(--muted);font-weight:600;cursor:pointer;border:1px solid var(--d2);opacity:0.6;';
 
+  // Toujours cliquable — même sans réponse (mode solo)
   const nextBtn = `<button onclick="${nextAction}" style="flex:2;padding:12px;border-radius:12px;border:none;${nextStyle}font-family:'Outfit',sans-serif;font-size:14px;">${nextLabel}</button>`;
 
   return `<div style="margin-top:16px;padding:14px;background:var(--d2);border-radius:16px;border:1px solid var(--d2);">
