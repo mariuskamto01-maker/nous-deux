@@ -3620,46 +3620,46 @@ function showReveal(s,qk){
       ? `<span style="font-size:9px;color:var(--muted);font-style:italic;"> · ${myLang==='fr'?'modifié':'edited'}</span>` : '';
 
     if(!ans){
-      // AUTRE pas encore répondu → gauche, grisé
       if(!isMe){
+        // AUTRE pas encore répondu → bulle à gauche, avatar à droite
         return `
-        <div style="display:flex;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;opacity:0.5;">
-          ${av}
-          <div style="background:${bg};border:1px solid ${bd};border-radius:0 16px 16px 16px;padding:10px 14px;max-width:72%;">
+        <div style="display:flex;justify-content:flex-end;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;opacity:0.5;">
+          <div style="background:${bg};border:1px solid ${bd};border-radius:16px 0 16px 16px;padding:10px 14px;max-width:72%;">
             <div style="font-size:11px;font-weight:700;color:${col};margin-bottom:4px;">${nm} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
             <span style="color:var(--muted);font-size:12px;font-style:italic;">${lg==='fr'?'⏳ Pas encore répondu...':'⏳ Hasn\'t answered yet...'}</span>
           </div>
+          ${av}
         </div>`;
       }
-      return ''; // MOI sans réponse → géré par showMyInput, pas ici
+      return ''; // MOI sans réponse → géré par showMyInput
     }
 
     const actions = isMe ? `
-      <div style="display:flex;gap:6px;margin-top:10px;justify-content:flex-end;">
+      <div style="display:flex;gap:6px;margin-top:10px;">
         <button onclick="editAnswer('${qk}')" style="background:rgba(212,148,60,0.12);border:1px solid var(--goldD);color:var(--gold);border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer;font-family:'Outfit',sans-serif;">✏️ ${myLang==='fr'?'Modifier':'Edit'}</button>
         <button onclick="deleteAnswer('${qk}')" style="background:rgba(232,80,80,0.08);border:1px solid rgba(232,80,80,0.3);color:#E87070;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer;font-family:'Outfit',sans-serif;">🗑️ ${myLang==='fr'?'Supprimer':'Delete'}</button>
       </div>` : '';
 
     if(isMe){
-      // ── MOI → droite, avatar à DROITE de la bulle ──
-      return `
-      <div style="display:flex;justify-content:flex-end;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;">
-        <div style="background:${bg};border:1px solid ${bd};border-radius:16px 0 16px 16px;padding:10px 14px;max-width:72%;word-break:break-word;">
-          <div style="font-size:11px;font-weight:700;color:${col};margin-bottom:4px;text-align:right;">${nm} <span style="font-size:9px;color:var(--gold);">(vous)</span> <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${edited}</div>
-          <div id="answer-text-me" style="font-size:13px;line-height:1.6;color:var(--cream);margin-top:2px;white-space:pre-wrap;">${ans}</div>
-          ${actions}
-        </div>
-        ${av}
-      </div>`;
-    } else {
-      // ── AUTRE → gauche, avatar à GAUCHE de la bulle ──
+      // ── MOI → avatar à GAUCHE, bulle à droite de l'avatar ──
       return `
       <div style="display:flex;justify-content:flex-start;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;">
         ${av}
         <div style="background:${bg};border:1px solid ${bd};border-radius:0 16px 16px 16px;padding:10px 14px;max-width:72%;word-break:break-word;">
+          <div style="font-size:11px;font-weight:700;color:${col};margin-bottom:4px;">${nm} <span style="font-size:9px;color:var(--gold);">(vous)</span> <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${edited}</div>
+          <div id="answer-text-me" style="font-size:13px;line-height:1.6;color:var(--cream);margin-top:2px;white-space:pre-wrap;">${ans}</div>
+          ${actions}
+        </div>
+      </div>`;
+    } else {
+      // ── AUTRE → bulle à GAUCHE, avatar à DROITE ──
+      return `
+      <div style="display:flex;justify-content:flex-end;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;">
+        <div style="background:${bg};border:1px solid ${bd};border-radius:16px 0 16px 16px;padding:10px 14px;max-width:72%;word-break:break-word;">
           <div style="font-size:11px;font-weight:700;color:${col};margin-bottom:4px;">${nm} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${edited}</div>
           <div id="answer-text-th" style="font-size:13px;line-height:1.6;color:var(--cream);margin-top:2px;white-space:pre-wrap;">${ans}</div>
         </div>
+        ${av}
       </div>`;
     }
   }
@@ -4115,10 +4115,10 @@ function buildMsgHtml(s,msgs){
     const time=new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
     const edited=m.edited?'<span style="font-size:9px;color:var(--muted);font-style:italic;"> · '+(myLang==='fr'?'modifié':'edited')+'</span>':'';
     const deleted=!!m.deleted;
-    // WhatsApp: MOI = bulle droite, AUTRE = bulle gauche
-    const rowDir=isMe?'row-reverse':'row';
-    const radiusCorner=isMe?'border-bottom-right-radius:4px':'border-bottom-left-radius:4px';
-    const bubbleAlign=isMe?'align-self:flex-end':'align-self:flex-start';
+    // Layout cohérent avec les réponses : MOI = avatar gauche + bulle droite, AUTRE = bulle gauche + avatar droite
+    const rowDir=isMe?'row':'row-reverse';
+    const radiusCorner=isMe?'border-top-left-radius:4px':'border-top-right-radius:4px';
+    const bubbleAlign=isMe?'align-self:flex-start':'align-self:flex-end';
     const msgId=m.id||m.ts;
     // Menu édition/suppression (seulement mes messages, pas supprimés)
     const actionsHtml = isMe && !deleted ? `
