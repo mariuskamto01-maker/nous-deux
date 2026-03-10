@@ -42,7 +42,7 @@ body{
   z-index:0;pointer-events:none;
   opacity:0;transition:opacity 1.8s ease;
 }
-#bg-canvas.visible{opacity:0.35;}
+#bg-canvas.visible{opacity:0.7;}
 /* ── PAGES ── */
 .page{position:relative;z-index:1;display:none;flex-direction:column;align-items:center;min-height:100vh;padding-bottom:80px;}
 .page.active{display:flex;animation:fadeUp 0.3s ease;}
@@ -960,557 +960,675 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 // ═══════════════════════════════════════
-// BACKGROUND ENGINE — change à chaque session
+// BACKGROUND ENGINE — 30 thèmes africains
 // ═══════════════════════════════════════
 const BG_THEMES = [
-  // 1. Aurore africaine — ciel du matin rouge-orangé
-  {
-    name:'aurora',
-    draw(ctx,W,H){
-      const g=ctx.createRadialGradient(W*0.3,H*0.2,0,W*0.3,H*0.2,W*0.8);
-      g.addColorStop(0,'rgba(180,60,20,0.0171)');
-      g.addColorStop(0.4,'rgba(120,30,60,0.0343)');
-      g.addColorStop(1,'rgba(6,4,8,0)');
-      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-      const g2=ctx.createRadialGradient(W*0.8,H*0.7,0,W*0.8,H*0.7,W*0.6);
-      g2.addColorStop(0,'rgba(30,60,140,0.04)');
-      g2.addColorStop(1,'rgba(6,4,8,0)');
-      ctx.fillStyle=g2;ctx.fillRect(0,0,W,H);
-      // étoiles
-      for(let i=0;i<120;i++){
-        const x=Math.random()*W,y=Math.random()*H*0.7;
-        const r=Math.random()*1.2+0.2;
-        ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
-        ctx.fillStyle=`rgba(255,240,200,${Math.random()*0.6+0.1})`;ctx.fill();
-      }
+  // 1. Kente doré — bandes tissées Ghana
+  { name:'kente_gold', draw(ctx,W,H){
+    const bands=[
+      ['#D4943C','#C83820','#1A6830','#1A3880','#D4943C','#8B2040'],
+    ];
+    const bw=Math.floor(W/22);
+    for(let x=0;x<W;x+=bw){
+      const ci=Math.floor(x/bw)%6;
+      const cols=['rgba(212,148,60,0.18)','rgba(200,56,32,0.14)','rgba(26,104,48,0.14)','rgba(26,58,144,0.14)','rgba(212,148,60,0.10)','rgba(139,32,64,0.14)'];
+      ctx.fillStyle=cols[ci]; ctx.fillRect(x,0,bw,H);
     }
-  },
-  // 2. Tissu Kente — motifs géométriques dorés
-  {
-    name:'kente',
-    draw(ctx,W,H){
-      const colors=['rgba(212,148,60,0.018)','rgba(200,56,32,0.015)','rgba(26,104,48,0.015)','rgba(26,58,144,0.015)'];
-      const sz=Math.floor(W/14);
-      for(let y=0;y<H;y+=sz*2){
-        for(let x=0;x<W;x+=sz){
-          const ci=((x/sz)+(y/(sz*2)))%colors.length|0;
-          ctx.fillStyle=colors[ci];
-          ctx.fillRect(x,y,sz,sz*2);
-        }
-      }
-      // diagonales dorées subtiles
-      ctx.strokeStyle='rgba(212,148,60,0.018)';ctx.lineWidth=1;
-      for(let i=-H;i<W+H;i+=sz*4){
-        ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i+H,H);ctx.stroke();
-        ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i-H,H);ctx.stroke();
-      }
+    // Bandes horizontales croisées
+    const bh=Math.floor(H/18);
+    for(let y=0;y<H;y+=bh*3){
+      ctx.fillStyle='rgba(212,148,60,0.08)'; ctx.fillRect(0,y,W,bh);
+      ctx.fillStyle='rgba(200,56,32,0.06)'; ctx.fillRect(0,y+bh,W,bh);
     }
-  },
-  // 3. Nébuleuse violette — espace profond
-  {
-    name:'nebula',
-    draw(ctx,W,H){
-      const g=ctx.createRadialGradient(W*0.5,H*0.3,0,W*0.5,H*0.3,W*0.7);
-      g.addColorStop(0,'rgba(100,40,180,0.0143)');
-      g.addColorStop(0.5,'rgba(40,20,80,0.0229)');
-      g.addColorStop(1,'rgba(6,4,8,0)');
-      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-      const g2=ctx.createRadialGradient(W*0.1,H*0.8,0,W*0.1,H*0.8,W*0.5);
-      g2.addColorStop(0,'rgba(200,80,120,0.0286)');
-      g2.addColorStop(1,'rgba(6,4,8,0)');
-      ctx.fillStyle=g2;ctx.fillRect(0,0,W,H);
-      // étoiles + poussière
-      for(let i=0;i<200;i++){
-        const x=Math.random()*W,y=Math.random()*H;
-        const r=Math.random()*0.9+0.1;
-        const a=Math.random()*0.7+0.1;
-        ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
-        ctx.fillStyle=`rgba(220,200,255,${a})`;ctx.fill();
-      }
+    // Overlay dégradé
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'rgba(6,4,8,0.45)'); g.addColorStop(0.5,'rgba(6,4,8,0.1)'); g.addColorStop(1,'rgba(6,4,8,0.55)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  }},
+  // 2. Nuit sahélienne — étoiles sur bleu profond
+  { name:'sahel_night', draw(ctx,W,H){
+    const g=ctx.createRadialGradient(W/2,H*0.3,0,W/2,H*0.3,W*0.9);
+    g.addColorStop(0,'rgba(20,40,120,0.55)');
+    g.addColorStop(0.5,'rgba(10,20,70,0.40)');
+    g.addColorStop(1,'rgba(6,4,8,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    // Étoiles
+    for(let i=0;i<200;i++){
+      const x=Math.random()*W, y=Math.random()*H*0.75;
+      const r=Math.random()*1.5+0.3;
+      ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(255,240,200,${Math.random()*0.7+0.2})`; ctx.fill();
     }
-  },
-  // 4. Savane au crépuscule — horizon chaud
-  {
-    name:'savane',
-    draw(ctx,W,H){
-      const sky=ctx.createLinearGradient(0,0,0,H*0.75);
-      sky.addColorStop(0,'rgba(10,8,20,0)');
-      sky.addColorStop(0.4,'rgba(80,20,10,0.0286)');
-      sky.addColorStop(0.7,'rgba(160,60,10,0.0343)');
-      sky.addColorStop(1,'rgba(200,80,10,0.0171)');
-      ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
-      // cercle soleil/lune à l'horizon
-      const sunX=W*0.75,sunY=H*0.55;
-      const sunG=ctx.createRadialGradient(sunX,sunY,0,sunX,sunY,W*0.25);
-      sunG.addColorStop(0,'rgba(240,160,40,0.0171)');
-      sunG.addColorStop(0.4,'rgba(200,80,20,0.0229)');
-      sunG.addColorStop(1,'rgba(6,4,8,0)');
-      ctx.fillStyle=sunG;ctx.fillRect(0,0,W,H);
-      // silhouettes arbres
-      ctx.fillStyle='rgba(8,5,14,0.0476)';
-      [[0.1,0.85,18,120],[0.2,0.88,12,80],[0.35,0.82,22,150],[0.65,0.84,16,100],[0.85,0.87,14,90],[0.92,0.83,20,130]].forEach(([rx,ry,rw,rh])=>{
-        ctx.fillRect(W*rx-rw/2,H*ry-rh,rw,rh);
-        // branche arrondie haut
-        ctx.beginPath();ctx.arc(W*rx,H*ry-rh,rw*1.8,0,Math.PI*2);ctx.fill();
-      });
-    }
-  },
-  // 5. Océan atlantique — bleu profond avec reflets
-  {
-    name:'ocean',
-    draw(ctx,W,H){
-      const g=ctx.createLinearGradient(0,0,W,H);
-      g.addColorStop(0,'rgba(10,30,80,0.0343)');
-      g.addColorStop(0.5,'rgba(20,60,120,0.0229)');
-      g.addColorStop(1,'rgba(10,20,60,0.0286)');
-      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-      // vagues horizontales subtiles
-      ctx.strokeStyle='rgba(107,170,255,0.0171)';ctx.lineWidth=1;
-      for(let y=H*0.4;y<H;y+=30){
-        ctx.beginPath();
-        for(let x=0;x<=W;x+=20){
-          const wave=Math.sin((x+y*3)*0.04)*6;
-          x===0?ctx.moveTo(x,y+wave):ctx.lineTo(x,y+wave);
-        }
-        ctx.stroke();
-      }
-      // reflet lune sur l'eau
-      const moonG=ctx.createRadialGradient(W*0.5,H*0.6,0,W*0.5,H*0.6,W*0.3);
-      moonG.addColorStop(0,'rgba(180,200,255,0.0229)');
-      moonG.addColorStop(1,'rgba(6,4,8,0)');
-      ctx.fillStyle=moonG;ctx.fillRect(0,0,W,H);
-    }
-  },
-  // 6. Tissu Ndop — formes géométriques Bamiléké
-  {
-    name:'ndop',
-    draw(ctx,W,H){
-      const sz=Math.floor(W/10);
-      ctx.strokeStyle='rgba(107,170,255,0.0143)';ctx.lineWidth=1;
-      // grille losange
-      for(let y=-sz;y<H+sz;y+=sz){
-        for(let x=-sz;x<W+sz;x+=sz*2){
-          ctx.beginPath();
-          ctx.moveTo(x+(y%2?sz:0),y);
-          ctx.lineTo(x+sz+(y%2?sz:0),y+sz/2);
-          ctx.lineTo(x+(y%2?sz:0),y+sz);
-          ctx.lineTo(x-sz+(y%2?sz:0),y+sz/2);
-          ctx.closePath();ctx.stroke();
-        }
-      }
-      // cercles concentriques
-      for(let i=0;i<5;i++){
-        const cx=Math.random()*W,cy=Math.random()*H;
-        for(let r=20;r<120;r+=20){
-          ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
-          ctx.strokeStyle=`rgba(212,148,60,${0.03+i*0.01})`;
-          ctx.lineWidth=1;ctx.stroke();
+    // Lune
+    ctx.beginPath(); ctx.arc(W*0.82,H*0.12,22,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,230,150,0.12)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(W*0.82,H*0.12,14,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,220,120,0.15)'; ctx.fill();
+  }},
+  // 3. Bogolan bamanan — terre ocre Mali
+  { name:'bogolan', draw(ctx,W,H){
+    const g=ctx.createLinearGradient(0,0,W,H);
+    g.addColorStop(0,'rgba(120,60,10,0.30)');
+    g.addColorStop(0.5,'rgba(80,35,5,0.20)');
+    g.addColorStop(1,'rgba(60,20,5,0.30)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    // Motif bandes horizontales bogolan
+    const bh=Math.floor(H/14);
+    for(let y=0;y<H;y+=bh){
+      if(Math.floor(y/bh)%3===0){
+        ctx.fillStyle='rgba(200,120,40,0.10)'; ctx.fillRect(0,y,W,bh*0.4);
+        // Petits carrés sur la bande
+        for(let x=0;x<W;x+=bh*0.8){
+          ctx.fillStyle='rgba(40,15,0,0.12)';
+          ctx.fillRect(x,y+bh*0.1,bh*0.5,bh*0.25);
         }
       }
     }
-  },
-  // 7. Adinkra Sankofa — symboles circulaires dorés
-  {
-    name:'adinkra',
-    draw(ctx,W,H){
-      // Fond dégradé chaud
-      const g=ctx.createLinearGradient(0,0,W,H);
-      g.addColorStop(0,'rgba(100,30,0,0.0229)');
-      g.addColorStop(1,'rgba(40,10,0,0.0114)');
-      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-      // Grille de symboles Adinkra (cercle+croix)
-      const sz=70;
-      ctx.strokeStyle='rgba(212,148,60,0.02)';ctx.lineWidth=1;
-      for(let y=sz/2;y<H+sz;y+=sz){
-        for(let x=sz/2;x<W+sz;x+=sz){
-          const off=(Math.floor(y/sz)%2)*sz/2;
-          const cx=x+off, cy=y;
-          // Cercle extérieur
-          ctx.beginPath();ctx.arc(cx,cy,sz*0.38,0,Math.PI*2);ctx.stroke();
-          // Croix intérieure
-          ctx.beginPath();ctx.moveTo(cx-sz*0.22,cy);ctx.lineTo(cx+sz*0.22,cy);ctx.stroke();
-          ctx.beginPath();ctx.moveTo(cx,cy-sz*0.22);ctx.lineTo(cx,cy+sz*0.22);ctx.stroke();
-          // Petit cercle centre
-          ctx.beginPath();ctx.arc(cx,cy,sz*0.08,0,Math.PI*2);
-          ctx.fillStyle='rgba(212,148,60,0.0143)';ctx.fill();
-        }
-      }
-      // Lueur centrale dorée
-      const gl=ctx.createRadialGradient(W*0.5,H*0.5,0,W*0.5,H*0.5,W*0.5);
-      gl.addColorStop(0,'rgba(212,148,60,0.0171)');gl.addColorStop(1,'rgba(6,4,8,0)');
-      ctx.fillStyle=gl;ctx.fillRect(0,0,W,H);
-    }
-  },
-  // 8. Bogolan Mudcloth — traits horizontaux irréguliers style Mali
-  {
-    name:'bogolan',
-    draw(ctx,W,H){
-      const g=ctx.createLinearGradient(0,0,0,H);
-      g.addColorStop(0,'rgba(60,20,0,0.0286)');g.addColorStop(1,'rgba(20,8,0,0.0114)');
-      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-      // Bandes horizontales épaisses
-      const bandH=Math.floor(H/12);
-      for(let i=0;i<12;i++){
-        if(i%2===0){
-          ctx.fillStyle=`rgba(${90+i*5},${40+i*2},0,0.018)`;
-          ctx.fillRect(0,i*bandH,W,bandH);
-        }
-        // Petits carrés en quinconce dans les bandes
-        if(i%3===0){
-          const sq=bandH*0.5;
-          for(let x=0;x<W;x+=bandH*1.5){
-            ctx.fillStyle='rgba(212,148,60,0.0171)';
-            ctx.fillRect(x+(i%2)*bandH*0.75,i*bandH+bandH*0.25,sq,sq);
-          }
-        }
-      }
-      // Lignes verticales en pointillé
-      ctx.setLineDash([4,8]);ctx.strokeStyle='rgba(180,100,20,0.0143)';ctx.lineWidth=2;
-      for(let x=40;x<W;x+=80){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
-      ctx.setLineDash([]);
-    }
-  },
-  // 9. Wax Ankara — cercles concentriques multicolores
-  {
-    name:'ankara',
-    draw(ctx,W,H){
-      const palette=[
-        'rgba(200,56,32,0.0171)','rgba(212,148,60,0.0171)',
-        'rgba(26,104,48,0.0171)','rgba(26,58,144,0.0171)',
-        'rgba(180,40,120,0.0143)'
-      ];
-      // Grand cercle central
-      const cx=W*0.5,cy=H*0.5;
-      for(let r=40;r<Math.max(W,H)*0.9;r+=40){
-        ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
-        ctx.strokeStyle=palette[Math.floor(r/40)%palette.length];
-        ctx.lineWidth=8;ctx.stroke();
-      }
-      // Petites rosettes aux 4 coins
-      [[0.15,0.2],[0.85,0.2],[0.15,0.8],[0.85,0.8]].forEach(([rx,ry])=>{
-        const px=W*rx,py=H*ry;
-        for(let r=10;r<60;r+=10){
-          ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);
-          ctx.strokeStyle=palette[r/10%palette.length];
-          ctx.lineWidth=3;ctx.stroke();
-        }
-      });
-    }
-  },
-  // 10. Zulu Beads — triangles et losanges répétés
-  {
-    name:'zulu',
-    draw(ctx,W,H){
-      const cols=['rgba(220,30,30,0.012)','rgba(212,148,60,0.014)','rgba(255,255,255,0.005)','rgba(10,10,10,0.008)'];
-      const sz=36;
-      for(let row=0;row*sz<H+sz;row++){
-        for(let col=0;col*sz<W+sz;col++){
-          const x=col*sz + (row%2?sz/2:0);
-          const y=row*sz;
-          const ci=(row+col)%cols.length;
-          // Triangle pointant en haut
-          ctx.beginPath();ctx.moveTo(x,y+sz);ctx.lineTo(x+sz/2,y);ctx.lineTo(x+sz,y+sz);ctx.closePath();
-          ctx.fillStyle=cols[ci];ctx.fill();
-          // Trait de contour
-          ctx.strokeStyle='rgba(212,148,60,0.008)';ctx.lineWidth=0.3;ctx.stroke();
-        }
-      }
-    }
-  },
-  // 11. Berbère / Amazigh — losanges et zigzags
-  {
-    name:'berbere',
-    draw(ctx,W,H){
-      const g=ctx.createLinearGradient(0,0,W,0);
-      g.addColorStop(0,'rgba(180,80,0,0.0171)');g.addColorStop(0.5,'rgba(212,148,60,0.0114)');g.addColorStop(1,'rgba(100,40,0,0.0171)');
-      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-      const sz=50;
-      // Zigzag horizontal répété
-      for(let row=0;row<H/sz+1;row++){
-        ctx.beginPath();ctx.strokeStyle=`rgba(212,148,60,${0.05+row%3*0.01})`;ctx.lineWidth=1.5;
-        for(let x=0;x<=W;x+=sz/2){
-          const y=row*sz + (Math.floor(x/(sz/2))%2===0 ? 0 : sz/3);
-          x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
-        }
-        ctx.stroke();
-      }
-      // Losanges centraux
-      ctx.strokeStyle='rgba(212,148,60,0.0171)';ctx.lineWidth=1;
-      for(let y=sz;y<H;y+=sz*2){
-        for(let x=sz;x<W;x+=sz*2){
-          ctx.beginPath();ctx.moveTo(x,y-sz/2);ctx.lineTo(x+sz/2,y);ctx.lineTo(x,y+sz/2);ctx.lineTo(x-sz/2,y);ctx.closePath();ctx.stroke();
-        }
-      }
-    }
-  },
-  // 12. Galaxie bleue — spirale cosmique
-  {
-    name:'galaxy',
-    draw(ctx,W,H){
-      const cx=W*0.5,cy=H*0.5;
-      const g=ctx.createRadialGradient(cx,cy,0,cx,cy,W*0.6);
-      g.addColorStop(0,'rgba(20,60,160,0.0143)');g.addColorStop(0.5,'rgba(10,20,80,0.0229)');g.addColorStop(1,'rgba(6,4,8,0)');
-      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-      // Bras spirale
-      for(let arm=0;arm<3;arm++){
-        const offset=arm*(Math.PI*2/3);
-        ctx.strokeStyle=`rgba(100,160,255,0.0114)`;ctx.lineWidth=6;
-        ctx.beginPath();
-        for(let t=0;t<Math.PI*4;t+=0.05){
-          const r=t*25;
-          const x=cx+r*Math.cos(t+offset);
-          const y=cy+r*Math.sin(t+offset);
-          t===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
-        }
-        ctx.stroke();
-      }
-      // Étoiles denses
-      for(let i=0;i<300;i++){
-        const x=Math.random()*W,y=Math.random()*H;
-        const r=Math.random()*1+0.1;
-        ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
-        ctx.fillStyle=`rgba(200,220,255,${Math.random()*0.5+0.1})`;ctx.fill();
-      }
-    }
-  },
-  // 13. Kuba (Congo) — entrelacs géométriques
-  {
-    name:'kuba',
-    draw(ctx,W,H){
-      const sz=44;
-      ctx.strokeStyle='rgba(212,148,60,0.02)';ctx.lineWidth=1.5;
-      // Grille de carrés tournés à 45°
-      for(let y=-sz;y<H+sz;y+=sz){
-        for(let x=-sz;x<W+sz;x+=sz){
-          const cx=x+(y%sz===0?sz/2:0);
-          ctx.save();ctx.translate(cx,y);ctx.rotate(Math.PI/4);
-          ctx.strokeRect(-sz*0.3,-sz*0.3,sz*0.6,sz*0.6);
-          ctx.strokeRect(-sz*0.15,-sz*0.15,sz*0.3,sz*0.3);
-          ctx.restore();
-        }
-      }
-      // Lignes diagonales croisées
-      ctx.strokeStyle='rgba(200,56,32,0.0114)';ctx.lineWidth=1;
-      for(let i=-H;i<W;i+=sz*2){
-        ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i+H,H);ctx.stroke();
-        ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i-H,H);ctx.stroke();
-      }
-    }
-  },
-  // 14. Aurore boréale / Tropique — vagues lumineuses vertes
-  {
-    name:'aurora_green',
-    draw(ctx,W,H){
-      // Vagues de lumière verticales
-      for(let i=0;i<6;i++){
-        const x=W*(0.1+i*0.15);
-        const g=ctx.createLinearGradient(x-80,0,x+80,H);
-        g.addColorStop(0,'rgba(20,120,60,0)');
-        g.addColorStop(0.3,`rgba(${20+i*10},${140-i*5},${60+i*8},0.0229)`);
-        g.addColorStop(0.6,'rgba(60,200,120,0.0114)');
-        g.addColorStop(1,'rgba(10,40,20,0)');
-        ctx.fillStyle=g;ctx.fillRect(x-100,0,200,H);
-      }
-      for(let i=0;i<180;i++){
-        const x=Math.random()*W,y=Math.random()*H*0.6;
-        ctx.beginPath();ctx.arc(x,y,Math.random()*0.8+0.1,0,Math.PI*2);
-        ctx.fillStyle=`rgba(180,255,200,${Math.random()*0.4+0.05})`;ctx.fill();
-      }
-    }
-  },
-  // 15. Shibori Indigo — vagues japonaises/diaspora
-  {
-    name:'shibori',
-    draw(ctx,W,H){
-      const g=ctx.createLinearGradient(0,0,0,H);
-      g.addColorStop(0,'rgba(10,30,80,0.0343)');g.addColorStop(1,'rgba(20,10,60,0.0171)');
-      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-      // Cercles concentriques style shibori
-      const pts=[[0.2,0.3],[0.7,0.2],[0.5,0.7],[0.85,0.65],[0.1,0.8]];
-      pts.forEach(([rx,ry],i)=>{
-        const cx=W*rx,cy=H*ry;
-        for(let r=15;r<200;r+=18){
-          ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
-          ctx.strokeStyle=`rgba(80,${120+i*10},220,${0.05-r*0.0001})`;
-          ctx.lineWidth=2;ctx.stroke();
-        }
-      });
-    }
-  },
-  // 16. Désert Sahara — dunes et vents de sable
-  {
-    name:'sahara',
-    draw(ctx,W,H){
-      const sky=ctx.createLinearGradient(0,0,0,H);
-      sky.addColorStop(0,'rgba(30,10,0,0.0171)');sky.addColorStop(0.6,'rgba(120,50,10,0.0286)');sky.addColorStop(1,'rgba(180,100,20,0.0229)');
-      ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
-      // Courbes de dunes
-      for(let d=0;d<5;d++){
-        const yBase=H*(0.4+d*0.12);
-        ctx.beginPath();ctx.moveTo(0,yBase);
-        for(let x=0;x<=W;x+=30){
-          const y=yBase+Math.sin(x*0.008+d*1.2)*40*(1-d*0.15);
-          ctx.lineTo(x,y);
-        }
-        ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();
-        ctx.fillStyle=`rgba(${140+d*10},${60+d*8},${10+d*5},${0.04+d*0.01})`;ctx.fill();
-      }
-      // Particules de sable
-      for(let i=0;i<120;i++){
-        ctx.beginPath();ctx.arc(Math.random()*W,Math.random()*H,Math.random()*1.5+0.2,0,Math.PI*2);
-        ctx.fillStyle=`rgba(220,160,60,${Math.random()*0.15+0.02})`;ctx.fill();
-      }
-    }
-  },
-  // 17. Tissu Kanga (Swahili) — damier coloré
-  {
-    name:'kanga',
-    draw(ctx,W,H){
-      const sz=Math.floor(W/16);
-      const colors=[
-        'rgba(200,56,32,0.02)','rgba(26,104,48,0.02)',
-        'rgba(212,148,60,0.022)','rgba(26,58,144,0.018)'
-      ];
-      for(let row=0;row*sz<H+sz;row++){
-        for(let col=0;col*sz<W+sz;col++){
-          const ci=(row+col)%colors.length;
-          ctx.fillStyle=colors[ci];
-          ctx.fillRect(col*sz,row*sz,sz,sz);
-        }
-      }
-      // Bordure décorative
-      ctx.strokeStyle='rgba(212,148,60,0.0171)';ctx.lineWidth=3;
-      ctx.strokeRect(12,12,W-24,H-24);
-      ctx.strokeStyle='rgba(200,56,32,0.0143)';ctx.lineWidth=1.5;
-      ctx.strokeRect(20,20,W-40,H-40);
-    }
-  },
-  // 18. Nuit de Lagos — gratte-ciel silhouette + lumières
-  {
-    name:'lagos',
-    draw(ctx,W,H){
-      const sky=ctx.createLinearGradient(0,0,0,H);
-      sky.addColorStop(0,'rgba(6,4,8,0)');sky.addColorStop(0.6,'rgba(40,10,0,0.0229)');sky.addColorStop(1,'rgba(100,40,0,0.0343)');
-      ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
-      // Silhouettes buildings
-      ctx.fillStyle='rgba(6,4,8,0.0333)';
-      const buildings=[[0,0.7,0.12,0.3],[0.1,0.65,0.08,0.35],[0.17,0.72,0.1,0.28],[0.3,0.6,0.07,0.4],[0.38,0.68,0.12,0.32],[0.52,0.58,0.09,0.42],[0.62,0.65,0.11,0.35],[0.75,0.7,0.08,0.3],[0.84,0.62,0.1,0.38],[0.92,0.72,0.08,0.28]];
-      buildings.forEach(([rx,ry,rw,rh])=>ctx.fillRect(W*rx,H*ry,W*rw,H*rh));
-      // Lumières fenêtres
-      for(let i=0;i<80;i++){
-        ctx.fillStyle=`rgba(${220+Math.random()*35},${150+Math.random()*60},${Math.random()*40},${Math.random()*0.4+0.1})`;
-        ctx.fillRect(Math.random()*W,H*0.6+Math.random()*H*0.3,3,3);
-      }
-      // Reflets dans l'eau (bas)
-      const waterG=ctx.createLinearGradient(0,H*0.85,0,H);
-      waterG.addColorStop(0,'rgba(100,40,0,0.0171)');waterG.addColorStop(1,'rgba(6,4,8,0)');
-      ctx.fillStyle=waterG;ctx.fillRect(0,H*0.85,W,H*0.15);
-    }
-  },
-  // 19. Tissu Korhogo (Côte d'Ivoire) — animaux stylisés linéaires
-  {
-    name:'korhogo',
-    draw(ctx,W,H){
-      ctx.strokeStyle='rgba(180,80,20,0.0171)';ctx.lineWidth=1;
-      const sz=90;
-      for(let row=0;row<H/sz+1;row++){
-        for(let col=0;col<W/sz+1;col++){
-          const cx=col*sz+sz/2+(row%2?sz/2:0);
-          const cy=row*sz+sz/2;
-          // Forme animale stylisée (rectangle corps + tête)
-          ctx.strokeRect(cx-sz*0.3,cy-sz*0.15,sz*0.6,sz*0.3);
-          ctx.strokeRect(cx+sz*0.2,cy-sz*0.2,sz*0.2,sz*0.2);
-          // Pattes
-          for(let p=0;p<4;p++){
-            const px=cx-sz*0.2+p*sz*0.13;
-            ctx.beginPath();ctx.moveTo(px,cy+sz*0.15);ctx.lineTo(px,cy+sz*0.3);ctx.stroke();
-          }
-        }
-      }
-      // Fond brun chaud
-      const g=ctx.createLinearGradient(0,0,W,H);
-      g.addColorStop(0,'rgba(80,30,0,0.0171)');g.addColorStop(1,'rgba(40,10,0,0.0086)');
-      ctx.globalCompositeOperation='destination-over';ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-      ctx.globalCompositeOperation='source-over';
-    }
-  },
-  // 20. Aurora Rose — ciel rose-violet romantique
-  {
-    name:'aurora_rose',
-    draw(ctx,W,H){
-      const g1=ctx.createRadialGradient(W*0.3,H*0.2,0,W*0.3,H*0.2,W*0.7);
-      g1.addColorStop(0,'rgba(180,40,120,0.04)');g1.addColorStop(1,'rgba(6,4,8,0)');
-      ctx.fillStyle=g1;ctx.fillRect(0,0,W,H);
-      const g2=ctx.createRadialGradient(W*0.75,H*0.4,0,W*0.75,H*0.4,W*0.6);
-      g2.addColorStop(0,'rgba(100,20,160,0.0343)');g2.addColorStop(1,'rgba(6,4,8,0)');
-      ctx.fillStyle=g2;ctx.fillRect(0,0,W,H);
-      const g3=ctx.createRadialGradient(W*0.5,H*0.8,0,W*0.5,H*0.8,W*0.4);
-      g3.addColorStop(0,'rgba(212,80,40,0.0229)');g3.addColorStop(1,'rgba(6,4,8,0)');
-      ctx.fillStyle=g3;ctx.fillRect(0,0,W,H);
-      for(let i=0;i<220;i++){
-        const x=Math.random()*W,y=Math.random()*H;
-        ctx.beginPath();ctx.arc(x,y,Math.random()*1+0.1,0,Math.PI*2);
-        ctx.fillStyle=`rgba(255,200,240,${Math.random()*0.5+0.05})`;ctx.fill();
-      }
-    }
-  },
-  // 21. Aso-Oke (Yoruba) — bandes horizontales tissées
-  {
-    name:'asooke',
-    draw(ctx,W,H){
-      // Bandes larges horizontales
-      const bandes=[
-        {h:0.08,c:'rgba(212,148,60,0.025)'},{h:0.03,c:'rgba(200,56,32,0.02)'},
-        {h:0.06,c:'rgba(26,58,144,0.022)'},{h:0.03,c:'rgba(212,148,60,0.018)'},
-        {h:0.08,c:'rgba(26,104,48,0.022)'},{h:0.03,c:'rgba(200,56,32,0.018)'},
-        {h:0.06,c:'rgba(212,148,60,0.025)'},{h:0.03,c:'rgba(26,58,144,0.02)'},
-      ];
-      let y=0;
-      while(y<H){
-        bandes.forEach(b=>{
-          const bh=H*b.h;
-          ctx.fillStyle=b.c;ctx.fillRect(0,y,W,bh);
-          y+=bh;
-          if(y>=H)return;
+    const g2=ctx.createLinearGradient(0,0,0,H);
+    g2.addColorStop(0,'rgba(6,4,8,0.40)'); g2.addColorStop(0.5,'rgba(6,4,8,0.05)'); g2.addColorStop(1,'rgba(6,4,8,0.50)');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+  }},
+  // 4. Adinkra Asante — symboles dorés sur noir
+  { name:'adinkra', draw(ctx,W,H){
+    ctx.strokeStyle='rgba(212,148,60,0.20)'; ctx.lineWidth=1.5;
+    const sz=80;
+    for(let y=sz/2;y<H;y+=sz){
+      for(let x=sz/2;x<W;x+=sz){
+        // Symbole Gye Nyame simplifié (cercle + croix)
+        ctx.beginPath(); ctx.arc(x,y,sz*0.32,0,Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x,y,sz*0.16,0,Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x-sz*0.38,y); ctx.lineTo(x+sz*0.38,y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x,y-sz*0.38); ctx.lineTo(x,y+sz*0.38); ctx.stroke();
+        // Points décoratifs
+        ctx.fillStyle='rgba(212,148,60,0.18)';
+        [[0,-0.38],[0,0.38],[-0.38,0],[0.38,0]].forEach(([dx,dy])=>{
+          ctx.beginPath(); ctx.arc(x+dx*sz,y+dy*sz,2.5,0,Math.PI*2); ctx.fill();
         });
       }
-      // Fils brillants dorés (lignes verticales fines)
-      ctx.strokeStyle='rgba(212,148,60,0.0171)';ctx.lineWidth=1;
-      for(let x=0;x<W;x+=8){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
     }
-  },
-  // 22. Batik — fleurs et spirales indonésien-africain
-  {
-    name:'batik',
-    draw(ctx,W,H){
-      const g=ctx.createLinearGradient(0,0,W,H);
-      g.addColorStop(0,'rgba(60,20,80,0.025)');g.addColorStop(1,'rgba(20,60,40,0.018)');
-      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-      // Motifs floraux répétés
-      const sz=80;
-      for(let row=-1;row<H/sz+1;row++){
-        for(let col=-1;col<W/sz+1;col++){
-          const cx=col*sz+(row%2?sz/2:0);
-          const cy=row*sz;
-          // Pétales
-          for(let p=0;p<6;p++){
-            const angle=p*(Math.PI/3);
-            const px=cx+Math.cos(angle)*sz*0.22;
-            const py=cy+Math.sin(angle)*sz*0.22;
-            ctx.beginPath();ctx.arc(px,py,sz*0.13,0,Math.PI*2);
-            ctx.strokeStyle=`rgba(212,148,60,0.0143)`;ctx.lineWidth=1;ctx.stroke();
-          }
-          // Centre
-          ctx.beginPath();ctx.arc(cx,cy,sz*0.1,0,Math.PI*2);
-          ctx.strokeStyle='rgba(200,56,32,0.0171)';ctx.lineWidth=1.5;ctx.stroke();
+    const g=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*0.7);
+    g.addColorStop(0,'rgba(6,4,8,0.0)'); g.addColorStop(1,'rgba(6,4,8,0.60)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  }},
+  // 5. Coucher savane — orange et silhouettes
+  { name:'savane_sunset', draw(ctx,W,H){
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'rgba(180,60,10,0.40)');
+    g.addColorStop(0.4,'rgba(220,100,20,0.25)');
+    g.addColorStop(0.7,'rgba(180,80,10,0.15)');
+    g.addColorStop(1,'rgba(6,4,8,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    // Soleil
+    const cx=W*0.72, cy=H*0.22;
+    const sg=ctx.createRadialGradient(cx,cy,0,cx,cy,H*0.28);
+    sg.addColorStop(0,'rgba(255,180,40,0.22)');
+    sg.addColorStop(0.5,'rgba(220,100,20,0.10)');
+    sg.addColorStop(1,'rgba(6,4,8,0)');
+    ctx.fillStyle=sg; ctx.fillRect(0,0,W,H);
+    // Silhouettes d'acacia
+    ctx.fillStyle='rgba(10,5,0,0.20)';
+    [[W*0.1,H*0.78,30],[W*0.35,H*0.82,22],[W*0.65,H*0.76,35],[W*0.88,H*0.80,28]].forEach(([tx,ty,r])=>{
+      ctx.beginPath(); ctx.arc(tx,ty-r*0.8,r,0,Math.PI*2); ctx.fill();
+      ctx.fillRect(tx-3,ty-r*0.8,6,r*1.4);
+    });
+  }},
+  // 6. Ndop Bamiléké — indigo et blanc
+  { name:'ndop', draw(ctx,W,H){
+    // Fond indigo
+    const g=ctx.createLinearGradient(0,0,W,H);
+    g.addColorStop(0,'rgba(20,40,120,0.35)');
+    g.addColorStop(1,'rgba(10,20,80,0.25)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    // Grille de losanges blancs
+    ctx.strokeStyle='rgba(180,200,255,0.22)'; ctx.lineWidth=1.2;
+    const sz=55;
+    for(let y=-sz;y<H+sz;y+=sz){
+      for(let x=-sz;x<W+sz;x+=sz){
+        const ox = (Math.floor(y/sz)%2)*sz/2;
+        ctx.save(); ctx.translate(x+ox,y);
+        ctx.rotate(Math.PI/4);
+        ctx.strokeRect(-sz*0.28,-sz*0.28,sz*0.56,sz*0.56);
+        ctx.strokeRect(-sz*0.14,-sz*0.14,sz*0.28,sz*0.28);
+        ctx.restore();
+      }
+    }
+    const g2=ctx.createLinearGradient(0,0,0,H);
+    g2.addColorStop(0,'rgba(6,4,8,0.40)'); g2.addColorStop(0.5,'rgba(6,4,8,0.05)'); g2.addColorStop(1,'rgba(6,4,8,0.50)');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+  }},
+  // 7. Ankara wax — cercles colorés nigérian
+  { name:'ankara', draw(ctx,W,H){
+    const palette=['rgba(200,56,32,0.14)','rgba(212,148,60,0.14)','rgba(26,104,48,0.13)','rgba(26,58,144,0.13)','rgba(180,40,120,0.11)'];
+    const cx=W*0.5, cy=H*0.5;
+    for(let r=30;r<Math.max(W,H)*1.1;r+=38){
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+      ctx.strokeStyle=palette[Math.floor(r/38)%palette.length].replace(')',',1)').replace('rgba','rgb');
+      ctx.strokeStyle=palette[Math.floor(r/38)%palette.length];
+      ctx.lineWidth=14; ctx.stroke();
+    }
+    // Second foyer
+    const cx2=W*0.15, cy2=H*0.2;
+    for(let r=20;r<W*0.6;r+=28){
+      ctx.beginPath(); ctx.arc(cx2,cy2,r,0,Math.PI*2);
+      ctx.strokeStyle=palette[(Math.floor(r/28)+2)%palette.length];
+      ctx.lineWidth=8; ctx.stroke();
+    }
+    const g=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*0.8);
+    g.addColorStop(0,'rgba(6,4,8,0.10)'); g.addColorStop(1,'rgba(6,4,8,0.62)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  }},
+  // 8. Forêt équatoriale — vert profond Congo
+  { name:'foret_congo', draw(ctx,W,H){
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'rgba(6,4,8,0)');
+    g.addColorStop(0.3,'rgba(10,50,20,0.25)');
+    g.addColorStop(0.7,'rgba(15,70,25,0.30)');
+    g.addColorStop(1,'rgba(6,4,8,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    // Feuilles stylisées
+    ctx.strokeStyle='rgba(30,120,50,0.18)'; ctx.lineWidth=1;
+    for(let i=0;i<40;i++){
+      const x=Math.random()*W, y=Math.random()*H;
+      const len=Math.random()*60+30, angle=Math.random()*Math.PI;
+      ctx.save(); ctx.translate(x,y); ctx.rotate(angle);
+      ctx.beginPath(); ctx.ellipse(0,0,len*0.15,len*0.5,0,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,-len*0.5); ctx.lineTo(0,len*0.5); ctx.stroke();
+      ctx.restore();
+    }
+    const g2=ctx.createLinearGradient(0,0,0,H);
+    g2.addColorStop(0,'rgba(6,4,8,0.50)'); g2.addColorStop(0.5,'rgba(6,4,8,0.10)'); g2.addColorStop(1,'rgba(6,4,8,0.50)');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+  }},
+  // 9. Berbère Amazigh — losanges Atlas
+  { name:'berbere', draw(ctx,W,H){
+    const g=ctx.createLinearGradient(0,0,W,0);
+    g.addColorStop(0,'rgba(160,60,10,0.20)');
+    g.addColorStop(0.5,'rgba(212,148,60,0.12)');
+    g.addColorStop(1,'rgba(100,30,10,0.20)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='rgba(212,148,60,0.22)'; ctx.lineWidth=1.5;
+    const sz=52;
+    for(let row=0;row<H/sz+1;row++){
+      for(let col=0;col<W/sz+1;col++){
+        const cx=(col+0.5)*sz, cy=(row+0.5)*sz;
+        // Losange extérieur
+        ctx.beginPath(); ctx.moveTo(cx,cy-sz*0.45); ctx.lineTo(cx+sz*0.45,cy);
+        ctx.lineTo(cx,cy+sz*0.45); ctx.lineTo(cx-sz*0.45,cy); ctx.closePath(); ctx.stroke();
+        // Losange intérieur
+        ctx.beginPath(); ctx.moveTo(cx,cy-sz*0.22); ctx.lineTo(cx+sz*0.22,cy);
+        ctx.lineTo(cx,cy+sz*0.22); ctx.lineTo(cx-sz*0.22,cy); ctx.closePath(); ctx.stroke();
+      }
+    }
+    const g2=ctx.createLinearGradient(0,0,0,H);
+    g2.addColorStop(0,'rgba(6,4,8,0.45)'); g2.addColorStop(0.5,'rgba(6,4,8,0.05)'); g2.addColorStop(1,'rgba(6,4,8,0.50)');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+  }},
+  // 10. Galaxie africaine — cosmos violet
+  { name:'galaxie', draw(ctx,W,H){
+    const g=ctx.createRadialGradient(W*0.4,H*0.35,0,W*0.4,H*0.35,W*0.8);
+    g.addColorStop(0,'rgba(80,20,160,0.35)');
+    g.addColorStop(0.4,'rgba(40,10,90,0.20)');
+    g.addColorStop(1,'rgba(6,4,8,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    const g2=ctx.createRadialGradient(W*0.8,H*0.7,0,W*0.8,H*0.7,W*0.5);
+    g2.addColorStop(0,'rgba(180,40,100,0.20)');
+    g2.addColorStop(1,'rgba(6,4,8,0)');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+    for(let i=0;i<250;i++){
+      const x=Math.random()*W, y=Math.random()*H;
+      const r=Math.random()*1.8+0.2;
+      ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${200+Math.random()*55},${160+Math.random()*80},${220+Math.random()*35},${Math.random()*0.8+0.1})`; ctx.fill();
+    }
+  }},
+  // 11. Zulu — triangles géométriques
+  { name:'zulu', draw(ctx,W,H){
+    const cols=['rgba(220,30,30,0.16)','rgba(212,148,60,0.18)','rgba(255,255,255,0.06)','rgba(10,10,10,0.14)'];
+    const sz=48;
+    for(let row=0;row*sz<H+sz;row++){
+      for(let col=0;col*sz<W+sz;col++){
+        const x=col*sz+(row%2?sz/2:0), y=row*sz;
+        const ci=(row+col)%cols.length;
+        ctx.beginPath(); ctx.moveTo(x,y+sz); ctx.lineTo(x+sz/2,y); ctx.lineTo(x+sz,y+sz); ctx.closePath();
+        ctx.fillStyle=cols[ci]; ctx.fill();
+      }
+    }
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'rgba(6,4,8,0.55)'); g.addColorStop(0.4,'rgba(6,4,8,0.15)'); g.addColorStop(0.7,'rgba(6,4,8,0.10)'); g.addColorStop(1,'rgba(6,4,8,0.65)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  }},
+  // 12. Kuba Congo — entrelacs géométriques
+  { name:'kuba', draw(ctx,W,H){
+    ctx.strokeStyle='rgba(212,148,60,0.22)'; ctx.lineWidth=1.8;
+    const sz=50;
+    for(let y=-sz;y<H+sz;y+=sz){
+      for(let x=-sz;x<W+sz;x+=sz){
+        ctx.save(); ctx.translate(x+sz/2,y+sz/2); ctx.rotate(Math.PI/4);
+        ctx.strokeRect(-sz*0.38,-sz*0.38,sz*0.76,sz*0.76);
+        ctx.strokeRect(-sz*0.20,-sz*0.20,sz*0.40,sz*0.40);
+        ctx.beginPath(); ctx.moveTo(-sz*0.38,0); ctx.lineTo(sz*0.38,0); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0,-sz*0.38); ctx.lineTo(0,sz*0.38); ctx.stroke();
+        ctx.restore();
+      }
+    }
+    const g=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*0.75);
+    g.addColorStop(0,'rgba(6,4,8,0.0)'); g.addColorStop(1,'rgba(6,4,8,0.65)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  }},
+  // 13. Lagos néon — ville africaine la nuit
+  { name:'lagos', draw(ctx,W,H){
+    // Fond ville sombre
+    ctx.fillStyle='rgba(5,8,20,0.30)'; ctx.fillRect(0,0,W,H);
+    // Reflets néon sur sol
+    const neons=[['rgba(212,148,60,0.12)',W*0.2],['rgba(200,56,32,0.10)',W*0.5],['rgba(26,58,144,0.10)',W*0.78]];
+    neons.forEach(([col,cx])=>{
+      const g=ctx.createRadialGradient(cx,H,0,cx,H,H*0.5);
+      g.addColorStop(0,col); g.addColorStop(1,'rgba(6,4,8,0)');
+      ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    });
+    // Grille perspective
+    ctx.strokeStyle='rgba(212,148,60,0.10)'; ctx.lineWidth=1;
+    const vp={x:W/2,y:H*0.45};
+    for(let i=0;i<=12;i++){
+      const x=i*(W/12);
+      ctx.beginPath(); ctx.moveTo(vp.x,vp.y); ctx.lineTo(x,H); ctx.stroke();
+    }
+    for(let j=0;j<5;j++){
+      const t=j/5; const y=vp.y+(H-vp.y)*t;
+      const w2=(W/2)*t;
+      ctx.beginPath(); ctx.moveTo(vp.x-w2,y); ctx.lineTo(vp.x+w2,y); ctx.stroke();
+    }
+  }},
+  // 14. Asooke yoruba — bandes verticales brillantes
+  { name:'asooke', draw(ctx,W,H){
+    const bw=Math.floor(W/16);
+    const cols=['rgba(212,148,60,0.22)','rgba(200,56,32,0.18)','rgba(26,104,48,0.18)','rgba(26,58,144,0.18)',
+                'rgba(180,40,120,0.15)','rgba(212,148,60,0.12)','rgba(200,56,32,0.10)','rgba(26,104,48,0.10)'];
+    for(let x=0;x<W;x+=bw){
+      ctx.fillStyle=cols[Math.floor(x/bw)%cols.length];
+      ctx.fillRect(x,0,bw,H);
+    }
+    // Fil doré horizontal
+    for(let y=0;y<H;y+=Math.floor(H/12)){
+      ctx.fillStyle='rgba(212,148,60,0.10)'; ctx.fillRect(0,y,W,2);
+    }
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'rgba(6,4,8,0.50)'); g.addColorStop(0.3,'rgba(6,4,8,0.12)'); g.addColorStop(0.7,'rgba(6,4,8,0.10)'); g.addColorStop(1,'rgba(6,4,8,0.60)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  }},
+  // 15. Batik javano-swahili — fleurs en réserve
+  { name:'batik', draw(ctx,W,H){
+    const g=ctx.createLinearGradient(0,0,W,H);
+    g.addColorStop(0,'rgba(30,10,60,0.28)');
+    g.addColorStop(1,'rgba(10,20,80,0.20)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    // Fleurs régulières
+    const sz=70;
+    for(let y=sz/2;y<H+sz;y+=sz){
+      for(let x=sz/2+(Math.floor(y/sz)%2)*sz/2;x<W+sz;x+=sz){
+        ctx.strokeStyle='rgba(180,200,255,0.18)'; ctx.lineWidth=1;
+        for(let p=0;p<6;p++){
+          const a=p*Math.PI/3;
+          ctx.beginPath(); ctx.arc(x+Math.cos(a)*sz*0.28,y+Math.sin(a)*sz*0.28,sz*0.18,0,Math.PI*2); ctx.stroke();
+        }
+        ctx.beginPath(); ctx.arc(x,y,sz*0.14,0,Math.PI*2); ctx.stroke();
+      }
+    }
+    const g2=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*0.75);
+    g2.addColorStop(0,'rgba(6,4,8,0.0)'); g2.addColorStop(1,'rgba(6,4,8,0.62)');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+  }},
+  // 16. Désert Sahara — dunes rosées
+  { name:'sahara', draw(ctx,W,H){
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'rgba(180,80,20,0.22)');
+    g.addColorStop(0.4,'rgba(220,130,50,0.15)');
+    g.addColorStop(0.7,'rgba(160,70,15,0.18)');
+    g.addColorStop(1,'rgba(80,30,5,0.28)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    // Courbes de dunes
+    for(let i=0;i<6;i++){
+      const y=H*(0.3+i*0.12);
+      ctx.beginPath(); ctx.moveTo(0,y);
+      for(let x=0;x<=W;x+=W/8){
+        ctx.quadraticCurveTo(x+W/16, y+Math.sin(i+x/W*Math.PI)*H*0.04, x+W/8, y+Math.sin(i*1.3+x/W*Math.PI*1.5)*H*0.03);
+      }
+      ctx.strokeStyle=`rgba(${180+i*8},${90+i*5},${20+i*3},0.14)`; ctx.lineWidth=2; ctx.stroke();
+    }
+    // Étoiles basses
+    for(let i=0;i<60;i++){
+      const x=Math.random()*W, y=Math.random()*H*0.4;
+      ctx.beginPath(); ctx.arc(x,y,Math.random()*1.2+0.3,0,Math.PI*2);
+      ctx.fillStyle=`rgba(255,230,180,${Math.random()*0.5+0.2})`; ctx.fill();
+    }
+    const g2=ctx.createLinearGradient(0,0,0,H);
+    g2.addColorStop(0,'rgba(6,4,8,0.45)'); g2.addColorStop(0.5,'rgba(6,4,8,0.05)'); g2.addColorStop(1,'rgba(6,4,8,0.40)');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+  }},
+  // 17. Korhogo Sénoufo — silhouettes animales
+  { name:'korhogo', draw(ctx,W,H){
+    ctx.strokeStyle='rgba(180,80,20,0.20)'; ctx.lineWidth=1.2;
+    const sz=100;
+    for(let row=0;row<H/sz+1;row++){
+      for(let col=0;col<W/sz+1;col++){
+        const cx=col*sz+sz/2+(row%2?sz/2:0), cy=row*sz+sz/2;
+        // Corps rectangle
+        ctx.strokeRect(cx-sz*0.28,cy-sz*0.12,sz*0.56,sz*0.24);
+        // Tête cercle
+        ctx.beginPath(); ctx.arc(cx+sz*0.28,cy,sz*0.14,0,Math.PI*2); ctx.stroke();
+        // Pattes
+        [[-0.18,-0.12],[-0.08,-0.12],[0.08,-0.12],[0.18,-0.12]].forEach(([dx,dy])=>{
+          ctx.beginPath(); ctx.moveTo(cx+dx*sz,cy+sz*0.12); ctx.lineTo(cx+dx*sz,cy+sz*0.30); ctx.stroke();
+        });
+      }
+    }
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'rgba(6,4,8,0.55)'); g.addColorStop(0.5,'rgba(6,4,8,0.08)'); g.addColorStop(1,'rgba(6,4,8,0.55)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  }},
+  // 18. Fleuve Niger — reflets d'eau
+  { name:'niger', draw(ctx,W,H){
+    const g=ctx.createLinearGradient(0,H*0.3,0,H);
+    g.addColorStop(0,'rgba(10,40,100,0.30)');
+    g.addColorStop(0.5,'rgba(15,60,140,0.22)');
+    g.addColorStop(1,'rgba(5,20,60,0.35)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    // Ondulations
+    for(let i=0;i<20;i++){
+      const y=H*(0.2+i*0.04)+Math.random()*20;
+      ctx.beginPath(); ctx.moveTo(0,y);
+      for(let x=0;x<=W;x+=30){
+        ctx.lineTo(x, y+Math.sin(x/40+i)*6);
+      }
+      ctx.strokeStyle=`rgba(100,160,255,${0.06+Math.random()*0.06})`; ctx.lineWidth=1; ctx.stroke();
+    }
+    // Étoiles reflets
+    for(let i=0;i<80;i++){
+      const x=Math.random()*W, y=H*0.3+Math.random()*H*0.7;
+      const r=Math.random()*1.5+0.2;
+      ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(150,200,255,${Math.random()*0.35+0.05})`; ctx.fill();
+    }
+    const g2=ctx.createLinearGradient(0,0,0,H);
+    g2.addColorStop(0,'rgba(6,4,8,0.50)'); g2.addColorStop(0.3,'rgba(6,4,8,0.15)'); g2.addColorStop(1,'rgba(6,4,8,0.35)');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+  }},
+  // 19. Éthiopie ancienne — croix et motifs aksoumites
+  { name:'aksoum', draw(ctx,W,H){
+    const g=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*0.8);
+    g.addColorStop(0,'rgba(120,30,10,0.25)');
+    g.addColorStop(0.6,'rgba(80,20,5,0.15)');
+    g.addColorStop(1,'rgba(6,4,8,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='rgba(212,148,60,0.20)'; ctx.lineWidth=1.5;
+    const sz=75;
+    for(let y=sz/2;y<H+sz;y+=sz){
+      for(let x=sz/2;x<W+sz;x+=sz){
+        // Croix éthiopienne
+        const a=sz*0.35, b=sz*0.12;
+        ctx.strokeRect(x-b,y-a,b*2,a*2);
+        ctx.strokeRect(x-a,y-b,a*2,b*2);
+        ctx.beginPath(); ctx.arc(x,y,sz*0.08,0,Math.PI*2); ctx.stroke();
+      }
+    }
+    const g2=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*0.75);
+    g2.addColorStop(0,'rgba(6,4,8,0.0)'); g2.addColorStop(1,'rgba(6,4,8,0.62)');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+  }},
+  // 20. Masaï — rouge et ocre
+  { name:'masai', draw(ctx,W,H){
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'rgba(200,40,20,0.28)');
+    g.addColorStop(0.5,'rgba(180,30,10,0.18)');
+    g.addColorStop(1,'rgba(120,20,5,0.28)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    // Bandes horizontales Masaï
+    const bh=Math.floor(H/20);
+    for(let y=0;y<H;y+=bh){
+      const ci=Math.floor(y/bh)%4;
+      const cc=['rgba(212,148,60,0.14)','rgba(255,255,255,0.06)','rgba(10,10,10,0.10)','rgba(200,56,32,0.12)'][ci];
+      ctx.fillStyle=cc; ctx.fillRect(0,y,W,bh*0.6);
+    }
+    // Perles décoratives
+    ctx.fillStyle='rgba(212,148,60,0.18)';
+    for(let i=0;i<80;i++){
+      const x=Math.random()*W, y=Math.random()*H;
+      ctx.beginPath(); ctx.arc(x,y,Math.random()*3+1,0,Math.PI*2); ctx.fill();
+    }
+    const g2=ctx.createLinearGradient(0,0,0,H);
+    g2.addColorStop(0,'rgba(6,4,8,0.48)'); g2.addColorStop(0.5,'rgba(6,4,8,0.08)'); g2.addColorStop(1,'rgba(6,4,8,0.52)');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+  }},
+  // 21. Nébulosité Kilimanjaro — brumes violettes
+  { name:'kili', draw(ctx,W,H){
+    const g=ctx.createRadialGradient(W*0.5,H*0.2,0,W*0.5,H*0.2,W*0.9);
+    g.addColorStop(0,'rgba(100,40,180,0.28)');
+    g.addColorStop(0.5,'rgba(40,20,80,0.18)');
+    g.addColorStop(1,'rgba(6,4,8,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    const g2=ctx.createRadialGradient(W*0.1,H*0.8,0,W*0.1,H*0.8,W*0.55);
+    g2.addColorStop(0,'rgba(180,50,100,0.20)');
+    g2.addColorStop(1,'rgba(6,4,8,0)');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+    // Étoiles
+    for(let i=0;i<180;i++){
+      const x=Math.random()*W, y=Math.random()*H*0.7;
+      ctx.beginPath(); ctx.arc(x,y,Math.random()*1.5+0.2,0,Math.PI*2);
+      ctx.fillStyle=`rgba(220,200,255,${Math.random()*0.7+0.1})`; ctx.fill();
+    }
+  }},
+  // 22. Kanga swahili — rose et turquoise
+  { name:'kanga', draw(ctx,W,H){
+    const g=ctx.createLinearGradient(0,0,W,H);
+    g.addColorStop(0,'rgba(180,40,120,0.22)');
+    g.addColorStop(0.5,'rgba(20,100,140,0.18)');
+    g.addColorStop(1,'rgba(140,20,80,0.22)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    // Bordure décorative
+    const bw=Math.floor(Math.min(W,H)*0.06);
+    ctx.strokeStyle='rgba(212,148,60,0.20)'; ctx.lineWidth=2;
+    ctx.strokeRect(bw,bw,W-bw*2,H-bw*2);
+    ctx.strokeRect(bw*1.4,bw*1.4,W-bw*2.8,H-bw*2.8);
+    // Fleur centrale
+    const cx=W/2, cy=H/2, r=Math.min(W,H)*0.18;
+    for(let p=0;p<8;p++){
+      const a=p*Math.PI/4;
+      ctx.beginPath(); ctx.arc(cx+Math.cos(a)*r*0.55,cy+Math.sin(a)*r*0.55,r*0.38,0,Math.PI*2);
+      ctx.strokeStyle='rgba(212,148,60,0.15)'; ctx.lineWidth=1.5; ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(cx,cy,r*0.22,0,Math.PI*2); ctx.stroke();
+    const g2=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*0.75);
+    g2.addColorStop(0,'rgba(6,4,8,0.05)'); g2.addColorStop(1,'rgba(6,4,8,0.60)');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+  }},
+  // 23. Aurore rose — aube africaine
+  { name:'aurora_rose', draw(ctx,W,H){
+    const g=ctx.createRadialGradient(W*0.3,H*0.8,0,W*0.3,H*0.8,W*1.0);
+    g.addColorStop(0,'rgba(220,80,120,0.30)');
+    g.addColorStop(0.35,'rgba(180,50,80,0.18)');
+    g.addColorStop(1,'rgba(6,4,8,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    const g2=ctx.createRadialGradient(W*0.75,H*0.2,0,W*0.75,H*0.2,W*0.65);
+    g2.addColorStop(0,'rgba(212,148,60,0.20)');
+    g2.addColorStop(1,'rgba(6,4,8,0)');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+    for(let i=0;i<140;i++){
+      const x=Math.random()*W, y=Math.random()*H*0.6;
+      ctx.beginPath(); ctx.arc(x,y,Math.random()*1.3+0.2,0,Math.PI*2);
+      ctx.fillStyle=`rgba(255,220,200,${Math.random()*0.6+0.1})`; ctx.fill();
+    }
+  }},
+  // 24. Océan indien — vagues turquoise
+  { name:'ocean_indien', draw(ctx,W,H){
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'rgba(5,40,100,0.30)');
+    g.addColorStop(0.5,'rgba(10,80,140,0.22)');
+    g.addColorStop(1,'rgba(5,30,70,0.35)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    for(let i=0;i<25;i++){
+      const y=i*(H/20);
+      ctx.beginPath(); ctx.moveTo(0,y);
+      for(let x=0;x<=W;x+=W/10){
+        ctx.quadraticCurveTo(x+W/20,y+Math.sin(i+x/W*6)*12, x+W/10, y+Math.sin(i*1.2+x/W*5)*8);
+      }
+      ctx.strokeStyle=`rgba(80,180,220,${0.08+i*0.003})`; ctx.lineWidth=1.5; ctx.stroke();
+    }
+    const g2=ctx.createLinearGradient(0,0,0,H);
+    g2.addColorStop(0,'rgba(6,4,8,0.55)'); g2.addColorStop(0.4,'rgba(6,4,8,0.10)'); g2.addColorStop(1,'rgba(6,4,8,0.45)');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+  }},
+  // 25. Shibori africain — cercles en réserve
+  { name:'shibori', draw(ctx,W,H){
+    const g=ctx.createLinearGradient(0,0,W,H);
+    g.addColorStop(0,'rgba(20,50,140,0.30)');
+    g.addColorStop(1,'rgba(10,25,80,0.22)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='rgba(200,220,255,0.16)'; ctx.lineWidth=1.2;
+    const sz=60;
+    for(let y=0;y<H+sz;y+=sz*0.8){
+      for(let x=(Math.floor(y/(sz*0.8))%2)*sz*0.5;x<W+sz;x+=sz){
+        for(let r=sz*0.08;r<sz*0.45;r+=sz*0.12){
+          ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.stroke();
         }
       }
     }
-  },
+    const g2=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*0.78);
+    g2.addColorStop(0,'rgba(6,4,8,0.0)'); g2.addColorStop(1,'rgba(6,4,8,0.62)');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+  }},
+  // 26. Aurore verte — nuit équatoriale
+  { name:'aurora_green', draw(ctx,W,H){
+    const g=ctx.createRadialGradient(W*0.5,H,0,W*0.5,H,H*1.2);
+    g.addColorStop(0,'rgba(20,180,80,0.22)');
+    g.addColorStop(0.3,'rgba(10,120,50,0.15)');
+    g.addColorStop(0.7,'rgba(5,60,25,0.08)');
+    g.addColorStop(1,'rgba(6,4,8,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    for(let i=0;i<160;i++){
+      const x=Math.random()*W, y=Math.random()*H*0.8;
+      ctx.beginPath(); ctx.arc(x,y,Math.random()*1.4+0.2,0,Math.PI*2);
+      ctx.fillStyle=`rgba(200,255,210,${Math.random()*0.65+0.1})`; ctx.fill();
+    }
+    // Rayons aurore
+    for(let i=0;i<8;i++){
+      const x=W*(0.2+i*0.08), a=Math.PI*1.4+i*0.05;
+      const g2=ctx.createLinearGradient(x,H,x+Math.cos(a)*H*0.8,H+Math.sin(a)*H*0.8);
+      g2.addColorStop(0,'rgba(30,220,100,0.08)');
+      g2.addColorStop(1,'rgba(6,4,8,0)');
+      ctx.fillStyle=g2;
+      ctx.beginPath(); ctx.moveTo(x-20,H); ctx.lineTo(x+20,H);
+      ctx.lineTo(x+Math.cos(a)*H*0.9+30,H+Math.sin(a)*H*0.9);
+      ctx.lineTo(x+Math.cos(a)*H*0.9-30,H+Math.sin(a)*H*0.9);
+      ctx.closePath(); ctx.fill();
+    }
+  }},
+  // 27. Chefferie Bamiléké — masques et trônes
+  { name:'bamileke', draw(ctx,W,H){
+    const g=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*0.7);
+    g.addColorStop(0,'rgba(140,60,10,0.22)');
+    g.addColorStop(0.5,'rgba(100,40,8,0.15)');
+    g.addColorStop(1,'rgba(6,4,8,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='rgba(212,148,60,0.20)'; ctx.lineWidth=1.5;
+    const sz=90;
+    for(let y=sz/2;y<H+sz;y+=sz){
+      for(let x=sz/2+(Math.floor(y/sz)%2)*sz/2;x<W+sz;x+=sz){
+        // Motif perles concentriques
+        for(let r=sz*0.1;r<sz*0.44;r+=sz*0.11){
+          ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.stroke();
+        }
+        // Croix intérieure
+        ctx.beginPath(); ctx.moveTo(x-sz*0.3,y); ctx.lineTo(x+sz*0.3,y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x,y-sz*0.3); ctx.lineTo(x,y+sz*0.3); ctx.stroke();
+      }
+    }
+    const g2=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*0.75);
+    g2.addColorStop(0,'rgba(6,4,8,0.0)'); g2.addColorStop(1,'rgba(6,4,8,0.62)');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+  }},
+  // 28. Nil bleu — Éthiopie et Soudan
+  { name:'nil_bleu', draw(ctx,W,H){
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'rgba(10,40,120,0.32)');
+    g.addColorStop(0.6,'rgba(15,70,160,0.20)');
+    g.addColorStop(1,'rgba(5,20,60,0.38)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    // Courbe du fleuve
+    ctx.beginPath(); ctx.moveTo(W*0.2,0);
+    ctx.bezierCurveTo(W*0.5,H*0.2, W*0.3,H*0.5, W*0.6,H*0.7);
+    ctx.bezierCurveTo(W*0.8,H*0.85, W*0.4,H*0.9, W*0.7,H);
+    ctx.strokeStyle='rgba(80,150,255,0.15)'; ctx.lineWidth=20; ctx.stroke();
+    ctx.strokeStyle='rgba(120,190,255,0.10)'; ctx.lineWidth=35; ctx.stroke();
+    for(let i=0;i<120;i++){
+      const x=Math.random()*W, y=Math.random()*H*0.5;
+      ctx.beginPath(); ctx.arc(x,y,Math.random()*1.3+0.2,0,Math.PI*2);
+      ctx.fillStyle=`rgba(180,220,255,${Math.random()*0.50+0.1})`; ctx.fill();
+    }
+    const g2=ctx.createLinearGradient(0,0,0,H);
+    g2.addColorStop(0,'rgba(6,4,8,0.50)'); g2.addColorStop(0.4,'rgba(6,4,8,0.10)'); g2.addColorStop(1,'rgba(6,4,8,0.45)');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+  }},
+  // 29. Tissu bogolan signé — brun et crème
+  { name:'bogolan2', draw(ctx,W,H){
+    const g=ctx.createLinearGradient(0,0,W,H);
+    g.addColorStop(0,'rgba(100,50,8,0.30)');
+    g.addColorStop(1,'rgba(70,30,5,0.22)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='rgba(220,185,120,0.18)'; ctx.lineWidth=1;
+    // Grille carrés irréguliers
+    const base=Math.floor(W/12);
+    for(let y=0;y<H;y+=base){
+      for(let x=0;x<W;x+=base){
+        const jx=Math.sin(y/50+x/80)*4, jy=Math.cos(x/60+y/90)*4;
+        ctx.strokeRect(x+jx,y+jy,base*0.85,base*0.85);
+        // Tiret central
+        ctx.beginPath();
+        ctx.moveTo(x+jx+base*0.2,y+jy+base*0.42);
+        ctx.lineTo(x+jx+base*0.65,y+jy+base*0.42);
+        ctx.stroke();
+      }
+    }
+    const g2=ctx.createLinearGradient(0,0,0,H);
+    g2.addColorStop(0,'rgba(6,4,8,0.50)'); g2.addColorStop(0.5,'rgba(6,4,8,0.08)'); g2.addColorStop(1,'rgba(6,4,8,0.52)');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+  }},
+  // 30. Coucher Lagos — crépuscule orange sur mer
+  { name:'lagos_sunset', draw(ctx,W,H){
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'rgba(200,60,10,0.35)');
+    g.addColorStop(0.3,'rgba(220,110,20,0.25)');
+    g.addColorStop(0.6,'rgba(180,70,10,0.18)');
+    g.addColorStop(1,'rgba(10,20,60,0.35)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    // Soleil couchant
+    const cx=W*0.5, cy=H*0.38;
+    const sg=ctx.createRadialGradient(cx,cy,0,cx,cy,H*0.32);
+    sg.addColorStop(0,'rgba(255,200,60,0.25)');
+    sg.addColorStop(0.4,'rgba(220,100,20,0.12)');
+    sg.addColorStop(1,'rgba(6,4,8,0)');
+    ctx.fillStyle=sg; ctx.fillRect(0,0,W,H);
+    // Reflets sur eau
+    for(let i=0;i<18;i++){
+      const y=H*(0.55+i*0.025);
+      const rw=W*(0.6-i*0.025);
+      const g2=ctx.createLinearGradient(W/2-rw/2,y,W/2+rw/2,y);
+      g2.addColorStop(0,'rgba(6,4,8,0)');
+      g2.addColorStop(0.5,`rgba(220,120,30,${0.12-i*0.005})`);
+      g2.addColorStop(1,'rgba(6,4,8,0)');
+      ctx.fillStyle=g2; ctx.fillRect(W/2-rw/2,y,rw,3);
+    }
+    // Silhouettes bateaux
+    ctx.fillStyle='rgba(5,8,15,0.22)';
+    [[W*0.3,H*0.55],[W*0.6,H*0.58],[W*0.78,H*0.53]].forEach(([bx,by])=>{
+      ctx.fillRect(bx-20,by-6,40,8); ctx.fillRect(bx-4,by-18,8,14);
+    });
+    const g3=ctx.createLinearGradient(0,0,0,H);
+    g3.addColorStop(0,'rgba(6,4,8,0.42)'); g3.addColorStop(0.5,'rgba(6,4,8,0.05)'); g3.addColorStop(1,'rgba(6,4,8,0.42)');
+    ctx.fillStyle=g3; ctx.fillRect(0,0,W,H);
+  }},
 ];
 
 let _bgThemeIdx = -1;
-
 function initBackground(){
   const canvas=document.getElementById('bg-canvas');
   if(!canvas)return;
@@ -3322,7 +3440,7 @@ function goPage(id, addToHistory=true){
       if(lastRoom) updateBadgesOnly(lastRoom);
     }, 80);
   }
-  if(['pg-home','pg-cats','pg-wait'].includes(id)){
+  if(['pg-home','pg-cats','pg-wait','pg-q'].includes(id)){
     setTimeout(initBackground, 50);
   }
   if(id==='pg-home'){
