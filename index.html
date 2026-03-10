@@ -3568,65 +3568,76 @@ function showReveal(s,qk){
   const ardy=s?.aiResult?.qk===qk;
   const z=document.getElementById('reveal-zone');
 
-  // Ordre WhatsApp : AUTRE en haut, MOI en bas — chaque bulle pleine largeur
+  // Ordre : AUTRE en haut, MOI en bas
+  // MOI = droite (avatar à droite), AUTRE = gauche (avatar à gauche) — comme WhatsApp
   const thRole=myRole==='p1'?'p2':'p1';
-  const roles=[thRole, myRole];
 
-  const bubblesHtml=roles.map(role=>{
-    const isMe=role===myRole;
-    const nm=s?.[role]?.name||'?';
-    const lg=s?.[role]?.lang||'fr';
-    const ans=s?.answers?.[qk+'_'+role];
-    const col=role==='p1'?'var(--p1)':'var(--p2)';
-    const bg=role==='p1'?'var(--p1d)':'var(--p2d)';
-    const bd=role==='p1'?'var(--p1b)':'var(--p2b)';
-    // MOI → droite (row-reverse) | AUTRE → gauche (row)
-    const rowDir=isMe?'row-reverse':'row';
-    const radius=isMe?'border-bottom-right-radius:4px':'border-bottom-left-radius:4px';
-    const justify=isMe?'justify-content:flex-end':'justify-content:flex-start';
+  function _bubble(role){
+    const isMe = role===myRole;
+    const nm = s?.[role]?.name||'?';
+    const lg = s?.[role]?.lang||'fr';
+    const ans = s?.answers?.[qk+'_'+role];
+    const col = role==='p1'?'var(--p1)':'var(--p2)';
+    const bg  = role==='p1'?'var(--p1d)':'var(--p2d)';
+    const bd  = role==='p1'?'var(--p1b)':'var(--p2b)';
+    const av  = getAvatarHtml(s,role,36);
+    const editedFlag = s?.answers?.[qk+'_'+role+'_edited']
+      ? `<span style="font-size:9px;color:var(--muted);font-style:italic;"> · ${myLang==='fr'?'modifié':'edited'}</span>` : '';
 
+    // ── Pas encore répondu ──
     if(!ans){
       if(isMe){
-        return `<div style="display:flex;${justify};width:100%;box-sizing:border-box;margin-bottom:12px;">
-          <div style="display:flex;flex-direction:${rowDir};gap:10px;align-items:flex-start;max-width:90%;min-width:0;flex:1;">
-            ${getAvatarHtml(s,role,36)}
-            <div style="flex:1;min-width:0;background:${bg};border:1px solid ${bd};border-radius:16px;${radius};padding:10px 14px;">
-              <div class="bubble-name" style="color:${col};">${nm} <span style="font-size:9px;color:var(--gold);">(vous)</span> <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
-              <textarea id="my-answer" rows="3" placeholder="${lg==='fr'?'Ta réponse...':'Your answer...'}" style="width:100%;box-sizing:border-box;font-size:13px;padding:8px 10px;resize:none;margin-top:6px;border-radius:8px;background:var(--d1);border:1px solid ${bd};color:var(--cream);font-family:'Outfit',sans-serif;"></textarea>
-              <button onclick="submitAnswer()" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,${bg},${col});color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">${lg==='fr'?'Envoyer →':'Send →'}</button>
-            </div>
+        // MOI sans réponse → textarea, côté droit
+        return `<div style="display:flex;flex-direction:row-reverse;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;">
+          ${av}
+          <div style="flex:1;background:${bg};border:1px solid ${bd};border-radius:16px;border-bottom-right-radius:4px;padding:10px 14px;">
+            <div class="bubble-name" style="color:${col};">${nm} <span style="font-size:9px;color:var(--gold);">(vous)</span> <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
+            <textarea id="my-answer" rows="3" placeholder="${lg==='fr'?'Ta réponse...':'Your answer...'}" style="width:100%;box-sizing:border-box;font-size:13px;padding:8px 10px;resize:none;margin-top:6px;border-radius:8px;background:var(--d1);border:1px solid ${bd};color:var(--cream);font-family:'Outfit',sans-serif;"></textarea>
+            <button onclick="submitAnswer()" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,${bg},${col});color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">${lg==='fr'?'Envoyer →':'Send →'}</button>
           </div>
         </div>`;
       } else {
-        return `<div style="display:flex;${justify};width:100%;box-sizing:border-box;margin-bottom:12px;opacity:0.55;">
-          <div style="display:flex;flex-direction:${rowDir};gap:10px;align-items:flex-start;max-width:78%;">
-            ${getAvatarHtml(s,role,36)}
-            <div style="background:${bg};border:1px solid ${bd};border-radius:16px;${radius};padding:10px 14px;">
-              <div class="bubble-name" style="color:${col};">${nm} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
-              <span style="color:var(--muted);font-size:12px;font-style:italic;">${lg==='fr'?'⏳ Pas encore répondu...':'⏳ Hasn\'t answered yet...'}</span>
-            </div>
+        // AUTRE sans réponse → placeholder, côté gauche
+        return `<div style="display:flex;flex-direction:row;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;opacity:0.55;">
+          ${av}
+          <div style="background:${bg};border:1px solid ${bd};border-radius:16px;border-bottom-left-radius:4px;padding:10px 14px;max-width:75%;">
+            <div class="bubble-name" style="color:${col};">${nm} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
+            <span style="color:var(--muted);font-size:12px;font-style:italic;">${lg==='fr'?'⏳ Pas encore répondu...':'⏳ Hasn\'t answered yet...'}</span>
           </div>
         </div>`;
       }
     }
 
-    const editedFlag=s?.answers?.[qk+'_'+role+'_edited']?`<span style="font-size:9px;color:var(--muted);font-style:italic;"> · ${myLang==='fr'?'modifié':'edited'}</span>`:'';
-    const answerActions=isMe?`<div style="display:flex;gap:6px;margin-top:10px;justify-content:flex-end;">
+    // ── A répondu ──
+    const actions = isMe ? `<div style="display:flex;gap:6px;margin-top:10px;justify-content:flex-end;">
       <button onclick="editAnswer('${qk}')" style="background:rgba(212,148,60,0.12);border:1px solid var(--goldD);color:var(--gold);border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer;font-family:'Outfit',sans-serif;">✏️ ${myLang==='fr'?'Modifier':'Edit'}</button>
       <button onclick="deleteAnswer('${qk}')" style="background:rgba(232,80,80,0.08);border:1px solid rgba(232,80,80,0.3);color:#E87070;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer;font-family:'Outfit',sans-serif;">🗑️ ${myLang==='fr'?'Supprimer':'Delete'}</button>
-    </div>`:'';
+    </div>` : '';
 
-    return `<div style="display:flex;${justify};width:100%;box-sizing:border-box;margin-bottom:12px;">
-      <div style="display:flex;flex-direction:${rowDir};gap:10px;align-items:flex-start;max-width:82%;min-width:0;">
-        ${getAvatarHtml(s,role,36)}
-        <div style="min-width:0;flex:1;background:${bg};border:1px solid ${bd};border-radius:16px;${radius};padding:10px 14px;word-break:break-word;">
-          <div class="bubble-name" style="color:${col};">${nm}${isMe?` <span style="font-size:9px;color:var(--gold);">(vous)</span>`:''} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${editedFlag}</div>
-          <div id="answer-text-${isMe?'me':'th'}" style="font-size:13px;line-height:1.6;color:var(--cream);margin-top:4px;white-space:pre-wrap;">${ans}</div>
-          ${answerActions}
+    if(isMe){
+      // MOI avec réponse → droite, avatar à droite
+      return `<div style="display:flex;flex-direction:row-reverse;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;">
+        ${av}
+        <div style="max-width:78%;background:${bg};border:1px solid ${bd};border-radius:16px;border-bottom-right-radius:4px;padding:10px 14px;word-break:break-word;">
+          <div class="bubble-name" style="color:${col};">${nm} <span style="font-size:9px;color:var(--gold);">(vous)</span> <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${editedFlag}</div>
+          <div id="answer-text-me" style="font-size:13px;line-height:1.6;color:var(--cream);margin-top:4px;white-space:pre-wrap;">${ans}</div>
+          ${actions}
         </div>
-      </div>
-    </div>`;
-  }).join('');
+      </div>`;
+    } else {
+      // AUTRE avec réponse → gauche, avatar à gauche
+      return `<div style="display:flex;flex-direction:row;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;">
+        ${av}
+        <div style="max-width:78%;background:${bg};border:1px solid ${bd};border-radius:16px;border-bottom-left-radius:4px;padding:10px 14px;word-break:break-word;">
+          <div class="bubble-name" style="color:${col};">${nm} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${editedFlag}</div>
+          <div id="answer-text-th" style="font-size:13px;line-height:1.6;color:var(--cream);margin-top:4px;white-space:pre-wrap;">${ans}</div>
+        </div>
+      </div>`;
+    }
+  }
+
+  // AUTRE en haut, MOI en bas
+  const bubblesHtml = _bubble(thRole) + _bubble(myRole);
 
   const bothAnswered=!!(s?.answers?.[qk+'_p1']&&s?.answers?.[qk+'_p2']);
   // N'afficher le bouton analyse QUE si les deux ont répondu et analyse pas encore faite
