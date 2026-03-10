@@ -239,6 +239,12 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
   padding:0 10px 10px;
 }
 
+/* ── CHAT MESSAGE ACTIONS ── */
+.msg-actions{
+  display:inline-flex;align-items:center;gap:0;margin-left:4px;
+  opacity:0;transition:opacity 0.15s;
+}
+.chat-msg-row:hover .msg-actions{opacity:1;}
 /* ── CATEGORY TILES ── */
 .cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
 @media(max-width:340px){.cat-grid{grid-template-columns:repeat(2,1fr);}}
@@ -3462,16 +3468,28 @@ function buildMsgHtml(s,msgs){
     const bd=m.role==='p1'?'var(--p1b)':'var(--p2b)';
     const avatarHtml=getAvatarHtml(s,m.role,32);
     const time=new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    const edited=m.edited?'<span style="font-size:9px;color:var(--muted);font-style:italic;"> · '+(myLang==='fr'?'modifié':'edited')+'</span>':'';
+    const deleted=!!m.deleted;
     const rowDir=isMe?'row':'row-reverse';
     const radiusCorner=isMe?'border-bottom-left-radius:4px':'border-bottom-right-radius:4px';
-    return '<div style="display:flex;flex-direction:'+rowDir+';gap:8px;align-items:flex-end;margin-bottom:10px;">'
+    const msgId=m.id||m.ts;
+    // Menu édition/suppression (seulement mes messages, pas supprimés)
+    const actionsHtml = isMe && !deleted ? `<div class="msg-actions" data-msgid="${msgId}">
+      <button onclick="editChatMsg('${msgId}')" title="${myLang==='fr'?'Modifier':'Edit'}" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--muted)'">✏️</button>
+      <button onclick="deleteChatMsg('${msgId}')" title="${myLang==='fr'?'Supprimer':'Delete'}" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px;" onmouseover="this.style.color='#E87070'" onmouseout="this.style.color='var(--muted)'">🗑️</button>
+    </div>` : '';
+    const textHtml = deleted
+      ? `<span style="font-size:12px;color:var(--muted);font-style:italic;">🚫 ${myLang==='fr'?'Message supprimé':'Message deleted'}</span>`
+      : `<div style="font-size:13px;line-height:1.6;color:var(--cream);">${m.text}</div>`;
+    return `<div class="chat-msg-row" style="display:flex;flex-direction:${rowDir};gap:8px;align-items:flex-end;margin-bottom:10px;position:relative;" data-msgid="${msgId}">`
       +avatarHtml
-      +'<div style="max-width:75%;background:'+bg+';border:1px solid '+bd+';border-radius:14px;'+radiusCorner+';padding:8px 12px;">'
-        +'<div style="font-size:10px;font-weight:700;color:'+col+';margin-bottom:4px;display:flex;align-items:center;gap:5px;">'
-          +nm+' <span class="lang-chip '+lg+'">'+(lg==='fr'?'🇫🇷':'🇬🇧')+'</span>'
-          +'<span style="font-size:9px;color:var(--muted);margin-left:auto;">'+time+'</span>'
+      +`<div style="max-width:75%;background:${bg};border:1px solid ${bd};border-radius:14px;${radiusCorner};padding:8px 12px;">`
+        +`<div style="font-size:10px;font-weight:700;color:${col};margin-bottom:4px;display:flex;align-items:center;gap:5px;">`
+          +nm+` <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>`
+          +`<span style="font-size:9px;color:var(--muted);margin-left:auto;">${time}${edited}</span>`
+          +(isMe && !deleted ? actionsHtml : '')
         +'</div>'
-        +'<div style="font-size:13px;line-height:1.6;color:var(--cream);">'+m.text+'</div>'
+        +textHtml
       +'</div>'
     +'</div>';
   }).join('');
@@ -3569,6 +3587,73 @@ function refreshLiveChat(s, qk){
   }
 }
 
+async function editChatMsg(msgId){
+  if(!_currentChatQk)return;
+  const s=lastRoom||await loadRoom(roomCode);
+  if(!s)return;
+  const key=getChatKey(_currentChatQk);
+  const msgs=s.chat?.[key]||[];
+  const msg=msgs.find(m=>(m.id||m.ts)==msgId && m.role===myRole);
+  if(!msg||msg.deleted)return;
+
+  // Afficher inline editor dans la bulle
+  const row=document.querySelector(`.chat-msg-row[data-msgid="${msgId}"]`);
+  if(!row)return;
+  const textDiv=row.querySelector('div[style*="font-size:13px"]');
+  if(!textDiv)return;
+
+  const originalText=msg.text;
+  const fr=myLang==='fr';
+
+  // Remplacer le texte par un textarea inline
+  textDiv.innerHTML=`<textarea id="edit-input-${msgId}" style="width:100%;box-sizing:border-box;font-size:13px;padding:6px 8px;border-radius:8px;background:var(--d1);border:1px solid var(--goldD);color:var(--cream);font-family:'Outfit',sans-serif;resize:none;min-height:60px;">${originalText}</textarea>
+    <div style="display:flex;gap:6px;margin-top:6px;">
+      <button onclick="confirmEditMsg('${msgId}','${key.replace(/'/g,"\'")}',this)" style="flex:1;padding:6px;border-radius:8px;border:none;background:var(--gold);color:#000;font-size:12px;font-weight:700;cursor:pointer;">${fr?'✅ Sauvegarder':'✅ Save'}</button>
+      <button onclick="cancelEditMsg('${msgId}','${originalText.replace(/'/g,"\'")}',this)" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--d2);background:transparent;color:var(--muted);font-size:12px;cursor:pointer;">${fr?'Annuler':'Cancel'}</button>
+    </div>`;
+  document.getElementById('edit-input-'+msgId)?.focus();
+
+  // Cacher les boutons d'action pendant l'édition
+  const actions=row.querySelector('.msg-actions');
+  if(actions)actions.style.display='none';
+}
+
+async function confirmEditMsg(msgId, chatKey, btn){
+  const input=document.getElementById('edit-input-'+msgId);
+  const newText=input?.value.trim();
+  if(!newText)return;
+  btn.textContent='...';btn.disabled=true;
+  const s=lastRoom||await loadRoom(roomCode);
+  if(!s)return;
+  const msgs=s.chat?.[chatKey]||[];
+  const msg=msgs.find(m=>(m.id||m.ts)==msgId && m.role===myRole);
+  if(!msg){_updateChatMsgs(s,_currentChatQk);return;}
+  msg.text=newText;
+  msg.edited=true;
+  await saveRoom(s);lastRoom=s;
+  _updateChatMsgs(s,_currentChatQk);
+}
+
+function cancelEditMsg(msgId, originalText, btn){
+  const s=lastRoom;
+  if(s)_updateChatMsgs(s,_currentChatQk);
+}
+
+async function deleteChatMsg(msgId){
+  const fr=myLang==='fr';
+  if(!confirm(fr?'Supprimer ce message ?':'Delete this message?'))return;
+  const s=lastRoom||await loadRoom(roomCode);
+  if(!s)return;
+  const key=getChatKey(_currentChatQk);
+  const msgs=s.chat?.[key]||[];
+  const msg=msgs.find(m=>(m.id||m.ts)==msgId && m.role===myRole);
+  if(!msg)return;
+  msg.deleted=true;
+  msg.text=''; // Vider le texte aussi
+  await saveRoom(s);lastRoom=s;
+  _updateChatMsgs(s,_currentChatQk);
+}
+
 async function sendChatMsg(qk){
   const input=document.getElementById('chat-input');
   const text=input?.value.trim();
@@ -3578,7 +3663,7 @@ async function sendChatMsg(qk){
   s.chat=s.chat||{};
   const key=getChatKey(qk);
   s.chat[key]=s.chat[key]||[];
-  s.chat[key].push({role:myRole,text,ts:Date.now()});
+  s.chat[key].push({id:Date.now()+'_'+Math.random().toString(36).slice(2,7),role:myRole,text,ts:Date.now()});
   // Marquer tous les messages de l'autre comme lus
   s.chat[key].forEach(m=>{ if(m.role!==myRole){m.readBy=m.readBy||{};m.readBy[myRole]=true;} });
   await saveRoom(s);lastRoom=s;
