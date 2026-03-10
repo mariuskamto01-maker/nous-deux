@@ -903,7 +903,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
           <div id="voice-rec-status" style="display:none;align-items:center;gap:6px;flex:1;">
             <span style="width:8px;height:8px;border-radius:50%;background:#E84040;display:inline-block;animation:pulse 1s infinite;"></span>
             <span id="voice-rec-time" style="font-size:12px;color:#E84040;font-weight:700;">0:00</span>
-            <span style="font-size:11px;color:var(--muted);">${myLang==='fr'?'Enregistrement...':'Recording...'}</span>
+            <span id="voice-rec-label" style="font-size:11px;color:var(--muted);">Enregistrement...</span>
           </div>
         </div>
         <!-- Input texte + envoyer -->
@@ -3761,7 +3761,8 @@ function getBadges(s){
   if(s.chat){
     Object.keys(s.chat).forEach(key=>{
       // Reconstruire le qk depuis la clé chat_catId_qi
-      const qk=key.replace(/^chat_/,'').replace(/_/g,'_');
+      // key = "chat_enfance_0" → qk = "enfance_0"
+      const qk = key.replace(/^chat_/, '');
       if(_readQks.has(qk)) return; // Déjà lu localement → pas de badge
       // Firebase retourne un objet — normaliser en tableau
       const raw=s.chat[key]||{};
@@ -4922,13 +4923,15 @@ function buildMsgHtml(s,msgs){
       ? `<span style="font-size:8px;font-weight:800;letter-spacing:0.06em;color:var(--gold);background:rgba(212,148,60,0.15);border:1px solid var(--goldD);border-radius:6px;padding:1px 6px;margin-left:4px;text-transform:uppercase;">${myLang==='fr'?'Réponse':'Answer'}</span>` : '';
     const answerBorderTop = m.isAnswer && !deleted ? 'border-top:2px solid var(--gold);' : '';
 
-    const bubbleContent = `<div style="max-width:72%;min-width:0;background:${bg};border:1px solid ${bd};${answerBorderTop}border-radius:14px;${radiusCorner};padding:8px 12px;word-break:break-word;">`
-      +`<div style="font-size:10px;font-weight:700;color:${col};margin-bottom:4px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">`
-        +nm+` <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${answerBadge}`
-        +`<span style="font-size:9px;color:var(--muted);margin-left:auto;white-space:nowrap;">${time}${edited}</span>`
-      +'</div>'
+    // WhatsApp : nom seulement si ANSWER (première réponse) sinon juste l'heure
+    const showName = m.isAnswer && !deleted;
+    const bubbleContent = `<div style="max-width:75%;min-width:60px;background:${bg};border:1px solid ${bd};${answerBorderTop}border-radius:14px;${radiusCorner};padding:8px 12px;word-break:break-word;">`
+      +(showName ? `<div style="font-size:10px;font-weight:700;color:${col};margin-bottom:4px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">${nm} <span class="lang-chip ${lg}" style="font-size:8px;">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${answerBadge}</div>` : '')
       +textHtml
-      +(isMe && !deleted ? `<div style="display:flex;justify-content:flex-end;gap:4px;margin-top:6px;">${actionsHtml}</div>` : '')
+      +`<div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:4px;">
+          ${isMe && !deleted ? actionsHtml : ''}
+          <span style="font-size:9px;color:var(--muted);white-space:nowrap;">${time}${edited}</span>
+        </div>`
     +'</div>';
     // justify-content positionne toute la row d'un côté
     const rowJustify = isMe ? 'flex-end' : 'flex-start';
@@ -5305,22 +5308,19 @@ async function toggleVoiceRecord(){
       const blob = new Blob(_audioChunks, {type:'audio/webm'});
       if(blob.size > 1024*1024){ alert(myLang==='fr'?'Audio trop long (max ~1min)':'Audio too long (max ~1min)'); return; }
       const reader = new FileReader();
-      reader.onload = async(e)=>{
-        const s = lastRoom || await loadRoom(roomCode);
-        if(!s) return;
-        s.chat = s.chat||{};
+      reader.onload = async(ev)=>{
+        if(!_currentChatQk) return;
         const key = getChatKey(_currentChatQk);
-        s.chat[key] = s.chat[key]||[];
-        const mins = Math.floor(dur/60);
-        const secs = String(dur%60).padStart(2,'0');
-        s.chat[key].push({
-          id: Date.now()+'_'+Math.random().toString(36).slice(2,7),
-          role: myRole, type:'voice', data: e.target.result,
-          duration: mins+':'+secs, ts: Date.now()
-        });
-        s.chat[key].forEach(m=>{ if(m.role!==myRole){m.readBy=m.readBy||{};m.readBy[myRole]=true;} });
-        await saveRoom(s); lastRoom=s;
-        _updateChatMsgs(s, _currentChatQk);
+        const msgId = Date.now()+'_'+Math.random().toString(36).slice(2,7);
+        const mins = Math.floor(dur/60), secs = String(dur%60).padStart(2,'0');
+        const msg = {id:msgId,role:myRole,type:'voice',data:ev.target.result,duration:mins+':'+secs,ts:Date.now()};
+        try{
+          await fetch(`${FB}/rooms/${roomCode}/chat/${key}/${msgId}.json`,{
+            method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(msg)
+          });
+        }catch(err){ console.error('voice send failed',err); }
+        if(lastRoom){ lastRoom.chat=lastRoom.chat||{}; lastRoom.chat[key]=lastRoom.chat[key]||{}; lastRoom.chat[key][msgId]=msg; }
+        _updateChatMsgs(lastRoom, _currentChatQk);
       };
       reader.readAsDataURL(blob);
       // Reset UI
@@ -5335,7 +5335,11 @@ async function toggleVoiceRecord(){
     const btn = document.getElementById('voice-btn');
     const status = document.getElementById('voice-rec-status');
     if(btn){btn.textContent='⏹️';btn.style.background='rgba(232,64,64,0.15)';btn.style.borderColor='rgba(232,64,64,0.4)';}
-    if(status) status.style.display='flex';
+    if(status){
+      status.style.display='flex';
+      const lbl=document.getElementById('voice-rec-label');
+      if(lbl) lbl.textContent=myLang==='fr'?'Enregistrement...':'Recording...';
+    }
     _recTimer = setInterval(()=>{
       _recSeconds++;
       const el = document.getElementById('voice-rec-time');
