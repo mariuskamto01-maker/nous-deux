@@ -4757,11 +4757,11 @@ function buildMsgHtml(s,msgs){
     const nm  = s?.[m.role]?.name || '?';
     const lg  = s?.[m.role]?.lang || 'fr';
 
-    // ── Couleurs : MOI = toujours bleu, AUTRE = toujours rouge ──
-    // (indépendant du rôle p1/p2 pour que les deux voient la même chose)
-    const col = isMe ? 'var(--p1)' : 'var(--p2)';
-    const bg  = isMe ? '#182A40'   : '#2E1810';
-    const bd  = isMe ? 'var(--p1b)': 'var(--p2b)';
+    // ── Couleurs : toujours basées sur le rôle réel (p1=bleu, p2=rouge) ──
+    // Position : MOI à droite, AUTRE à gauche (comme WhatsApp)
+    const col = m.role==='p1' ? 'var(--p1)' : 'var(--p2)';
+    const bg  = m.role==='p1' ? '#182A40'   : '#2E1810';
+    const bd  = m.role==='p1' ? 'var(--p1b)': 'var(--p2b)';
 
     const avatarHtml = getAvatarHtml(s, m.role, 32);
     const time = new Date(m.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
