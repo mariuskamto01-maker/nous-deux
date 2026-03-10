@@ -599,6 +599,13 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
         <div style="text-align:center;">
           <button onclick="copyCode()" id="copy-btn" style="background:rgba(200,148,59,0.2);border:1px solid var(--goldD);border-radius:8px;color:var(--gold);font-size:12px;padding:6px 16px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:8px;">📋 Copier / Copy</button>
         </div>
+        <!-- QR Code -->
+        <div style="margin-top:16px;text-align:center;">
+          <p style="font-size:10px;color:var(--muted);margin-bottom:8px;letter-spacing:0.5px;">SCANNER POUR REJOINDRE · SCAN TO JOIN</p>
+          <div id="wait-qr" style="display:inline-block;padding:10px;background:#fff;border-radius:12px;border:2px solid var(--goldD);">
+            <canvas id="qr-canvas" width="140" height="140"></canvas>
+          </div>
+        </div>
         <p style="font-size:12px;color:var(--muted);margin-top:10px;text-align:center;" id="wait-share-msg"></p>
       </div>
     </div>
@@ -2893,6 +2900,9 @@ function showWaiting(state){
   // Code p1 = son code secret, code p2 = p1PartnerCode
   document.getElementById('wait-code').textContent=state.code;
   document.getElementById('wait-share-msg').textContent=myLang==='fr'?'Partage ce code par WhatsApp':'Share this code via WhatsApp';
+  // Générer le QR code
+  const joinUrl = window.location.href.split('?')[0]+'?join='+state.code;
+  generateQR(joinUrl, document.getElementById('qr-canvas'));
   renderStatus('wait-status',state);
   const box=document.getElementById('wait-spinner-box');
   if(state.p2){
@@ -3311,12 +3321,11 @@ function checkQState(s){
     const revZ=document.getElementById('reveal-zone');
     const bothNow=!!(s?.answers?.[qk+'_p1']&&s?.answers?.[qk+'_p2']);
     if(revZ&&revZ.style.display==='block'){
-      // Si #my-answer encore dans le DOM → je viens de soumettre, reconstruire complètement
-      if(revZ.querySelector('#my-answer')){
-        document.getElementById('sent-zone').style.display='none';
-        document.getElementById('my-zone').style.display='none';
-        showReveal(s,qk);
-        return;
+      // Si j'ai répondu mais my-zone affiche encore le textarea → cacher my-zone
+      if(myA && document.getElementById('my-answer')){
+        const myZone=document.getElementById('my-zone');
+        if(myZone){myZone.style.display='none';myZone.innerHTML='';}
+        showReveal(s,qk); return;
       }
       // Déjà en révélation — vérifier si une nouvelle réponse est arrivée
       const shownTh=revZ.querySelector('#answer-text-th');
@@ -3422,7 +3431,8 @@ async function editAnswer(qk){
 
   // Remplacer la bulle par un éditeur inline
   const textDiv=document.getElementById('answer-text-me');
-  const bubble=textDiv?.closest('.bubble');
+  // Trouver le conteneur parent de la bulle (div avec background)
+  const bubble=textDiv?.parentElement;
   if(!textDiv||!bubble)return;
 
   // Cacher les boutons d'action
@@ -3587,15 +3597,8 @@ function showReveal(s,qk){
     // ── Pas encore répondu ──
     if(!ans){
       if(isMe){
-        // MOI sans réponse → textarea, côté droit
-        return `<div style="display:flex;flex-direction:row-reverse;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;">
-          ${av}
-          <div style="flex:1;background:${bg};border:1px solid ${bd};border-radius:16px;border-bottom-right-radius:4px;padding:10px 14px;">
-            <div class="bubble-name" style="color:${col};">${nm} <span style="font-size:9px;color:var(--gold);">(vous)</span> <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
-            <textarea id="my-answer" rows="3" placeholder="${lg==='fr'?'Ta réponse...':'Your answer...'}" style="width:100%;box-sizing:border-box;font-size:13px;padding:8px 10px;resize:none;margin-top:6px;border-radius:8px;background:var(--d1);border:1px solid ${bd};color:var(--cream);font-family:'Outfit',sans-serif;"></textarea>
-            <button onclick="submitAnswer()" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,${bg},${col});color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">${lg==='fr'?'Envoyer →':'Send →'}</button>
-          </div>
-        </div>`;
+        // MOI sans réponse → rien dans reveal-zone, le textarea est dans my-zone (showMyInput)
+        return '';
       } else {
         // AUTRE sans réponse → placeholder, côté gauche
         return `<div style="display:flex;flex-direction:row;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;opacity:0.55;">
@@ -3615,13 +3618,16 @@ function showReveal(s,qk){
     </div>` : '';
 
     if(isMe){
-      // MOI avec réponse → droite, avatar à droite
-      return `<div style="display:flex;flex-direction:row-reverse;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;">
-        ${av}
-        <div style="max-width:78%;background:${bg};border:1px solid ${bd};border-radius:16px;border-bottom-right-radius:4px;padding:10px 14px;word-break:break-word;">
-          <div class="bubble-name" style="color:${col};">${nm} <span style="font-size:9px;color:var(--gold);">(vous)</span> <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${editedFlag}</div>
-          <div id="answer-text-me" style="font-size:13px;line-height:1.6;color:var(--cream);margin-top:4px;white-space:pre-wrap;">${ans}</div>
-          ${actions}
+      // MOI avec réponse → droite
+      // flex row normal + margin-left:auto sur inner = pousse tout à droite
+      return `<div style="display:flex;flex-direction:row;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;">
+        <div style="display:flex;flex-direction:row;align-items:flex-start;gap:10px;margin-left:auto;">
+          <div style="max-width:78%;background:${bg};border:1px solid ${bd};border-radius:16px;border-bottom-right-radius:4px;padding:10px 14px;word-break:break-word;">
+            <div class="bubble-name" style="color:${col};text-align:right;">${nm} <span style="font-size:9px;color:var(--gold);">(vous)</span> <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${editedFlag}</div>
+            <div id="answer-text-me" style="font-size:13px;line-height:1.6;color:var(--cream);margin-top:4px;white-space:pre-wrap;">${ans}</div>
+            ${actions}
+          </div>
+          ${av}
         </div>
       </div>`;
     } else {
@@ -3655,9 +3661,23 @@ function showReveal(s,qk){
     <div id="ai-zone"></div>
     <div id="nav-zone">${navHTML(s,qk)}</div>`;
   z.style.display='block';
+
+  // Si MOI n'ai pas encore répondu → afficher aussi my-zone pour la saisie
+  const _myA = s?.answers?.[qk+'_'+myRole];
+  if(!_myA){
+    // Montrer my-zone pour la saisie, au-dessus du reveal
+    const myZone = document.getElementById('my-zone');
+    if(myZone && !myZone.querySelector('#my-answer')){
+      showMyInput();
+    }
+  } else {
+    // Cacher my-zone si j'ai répondu
+    const myZone = document.getElementById('my-zone');
+    if(myZone){ myZone.style.display='none'; myZone.innerHTML=''; }
+  }
+
   if(ardy) renderAI(s.aiResult);
   else {
-    // Programmer l'analyse seulement si les deux ont DÉJÀ répondu au moment de l'affichage
     const _ba=!!(s?.answers?.[qk+'_p1']&&s?.answers?.[qk+'_p2']);
     if(_ba) scheduleAutoAnalysis(s,qk);
   }
@@ -4514,6 +4534,44 @@ function showInsights(){
   goPage('pg-insights');
 }
 
+
+// ═══════════════════════════════════════
+// QR CODE GENERATOR (pure JS, no lib)
+// ═══════════════════════════════════════
+function generateQR(text, canvas){
+  if(!canvas) return;
+  // Utiliser l'API QR de Google Charts (fallback simple, fonctionne offline via cache)
+  // Si pas de réseau, on affiche le texte
+  const size = 140;
+  const ctx = canvas.getContext('2d');
+  canvas.width = size; canvas.height = size;
+
+  // Essai 1 : générer via une image externe (Google Charts API)
+  const img = new Image();
+  const encoded = encodeURIComponent(text);
+  img.crossOrigin = 'anonymous';
+  img.onload = function(){
+    ctx.clearRect(0,0,size,size);
+    ctx.drawImage(img,0,0,size,size);
+  };
+  img.onerror = function(){
+    // Fallback : afficher le texte du code
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0,0,size,size);
+    ctx.fillStyle = '#1a1a2e';
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('CODE', size/2, 50);
+    ctx.font = 'bold 22px monospace';
+    ctx.fillStyle = '#c8943b';
+    ctx.fillText(roomCode||'', size/2, 90);
+    ctx.font = '10px sans-serif';
+    ctx.fillStyle = '#666';
+    ctx.fillText('(pas de réseau)', size/2, 120);
+  };
+  // API Google Charts
+  img.src = `https://chart.googleapis.com/chart?cht=qr&chs=${size}x${size}&chl=${encoded}&choe=UTF-8`;
+}
 </script>
 </body>
 </html>
