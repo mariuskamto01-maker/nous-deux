@@ -857,9 +857,6 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
         <div class="q-text" id="q-en"></div>
       </div>
     </div>
-    <div id="my-zone" style="display:none;"></div>
-    <div id="sent-zone" style="display:none;"></div>
-    <div id="reveal-zone" style="display:none;"></div>
     <!-- Chat permanent - structure fixe, jamais reconstruite -->
     <div id="chat-zone" style="margin-top:12px;background:var(--d3);border:1px solid var(--goldD);border-radius:16px;overflow:hidden;display:none;position:relative;z-index:1;">
       <div class="strip"><div style="background:var(--k1)"></div><div style="background:var(--k2)"></div><div style="background:var(--k3)"></div><div style="background:var(--k4)"></div><div style="background:var(--k1)"></div><div style="background:var(--k3)"></div><div style="background:var(--k2)"></div><div style="background:var(--k4)"></div></div>
@@ -879,7 +876,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
       <!-- Zone messages -->
       <div style="padding:10px 14px 0;">
         <div id="typing-indicator" style="display:none;padding:4px 0 2px;min-height:24px;"></div>
-        <div id="chat-msgs" style="display:flex;flex-direction:column;min-height:60px;max-height:320px;overflow-y:auto;overflow-x:hidden;padding-bottom:4px;width:100%;"></div>
+        <div id="chat-msgs" style="display:flex;flex-direction:column;min-height:80px;max-height:420px;overflow-y:auto;overflow-x:hidden;padding-bottom:4px;width:100%;"></div>
       </div>
       <!-- Zone saisie -->
       <div style="padding:8px 14px 14px;border-top:1px solid var(--faint);margin-top:4px;">
@@ -3879,66 +3876,39 @@ function renderQ(){
   // Status (seulement si pas de saisie active)
   if(document.activeElement?.id !== 'my-answer') renderStatus('q-status',s);
 
-  // Le chat est l'unique espace — masquer les zones legacy
-  ['my-zone','sent-zone','reveal-zone'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el){el.style.display='none';el.innerHTML='';}
-  });
-
-  // Chat — espace principal
+  // Chat = espace unique
   const chatZ=document.getElementById('chat-zone');
   if(chatZ){
     chatZ.style.display='block';
     renderLiveChat(s, currentCat.id+'_'+currentQi);
   }
-
   checkQState(s);
 }
 
 function checkQState(s){
   if(!s||!currentCat)return;
   const qk=currentCat.id+'_'+currentQi;
-  const thRole=myRole==='p1'?'p2':'p1';
   const bothNow=!!(s?.answers?.[qk+'_p1']&&s?.answers?.[qk+'_p2']);
 
-  // Masquer les anciennes zones — le chat est l'unique espace
-  ['my-zone','sent-zone','reveal-zone'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el){el.style.display='none';el.innerHTML='';}
-  });
-
-  // ── Mettre à jour la zone de navigation (nav-zone) ──
-  let nz=document.getElementById('nav-zone');
-  if(!nz){
-    // Créer nav-zone sous le chat si elle n'existe pas
-    const chatZ=document.getElementById('chat-zone');
-    if(chatZ){
-      nz=document.createElement('div');
-      nz.id='nav-zone';
-      nz.style.marginTop='10px';
-      chatZ.parentNode.insertBefore(nz, chatZ.nextSibling);
-    }
-  }
+  // Nav zone
+  const nz=document.getElementById('nav-zone');
   if(nz) nz.innerHTML=navHTML(s,qk);
 
-  // ── Analyse IA si les deux ont répondu au chat ──
+  // Bouton analyse
   const ardy=s?.aiResult?.qk===qk;
-  let abz=document.getElementById('analysis-btn-zone');
-  if(!abz){
-    abz=document.createElement('div');
-    abz.id='analysis-btn-zone';
-    if(nz) nz.parentNode.insertBefore(abz, nz);
+  const abz=document.getElementById('analysis-btn-zone');
+  if(abz){
+    if(bothNow&&!ardy&&!document.getElementById('analysis-btn')){
+      abz.innerHTML=`<button id="analysis-btn" onclick="doAnalysis()" style="width:100%;margin-bottom:8px;padding:12px;border-radius:12px;border:1px solid var(--goldD);background:rgba(200,148,59,0.15);color:var(--gold);font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">🔍 ${myLang==='fr'?'Analyser notre compatibilité':'Analyse our compatibility'}</button>`;
+    } else if(!bothNow){
+      abz.innerHTML='';
+    }
   }
-  if(bothNow&&!ardy&&!document.getElementById('analysis-btn')){
-    abz.innerHTML=`<button id="analysis-btn" onclick="doAnalysis()" style="width:100%;margin-bottom:8px;padding:12px;border-radius:12px;border:1px solid var(--goldD);background:rgba(200,148,59,0.15);color:var(--gold);font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">🔍 ${myLang==='fr'?'Analyser notre compatibilité':'Analyse our compatibility'}</button>`;
-  }
-  if(ardy&&!document.getElementById('ai-panel')){
-    let aiz=document.getElementById('ai-zone');
-    if(!aiz){aiz=document.createElement('div');aiz.id='ai-zone';if(abz)abz.parentNode.insertBefore(aiz,abz.nextSibling);}
-    renderAI(s.aiResult);
+  if(ardy){
+    const aiz=document.getElementById('ai-zone');
+    if(aiz&&!document.getElementById('ai-panel')) renderAI(s.aiResult);
   }
 
-  // ── Programmer analyse auto ──
   scheduleAutoAnalysis(s,qk);
 }
 
@@ -4737,7 +4707,8 @@ function getAvatarHtml(s, role, size=32){
 }
 
 function buildMsgHtml(s,msgs){
-  if(!msgs||!Object.keys(msgs).length)return '<p style="font-size:12px;color:var(--muted);text-align:center;font-style:italic;padding:20px 0;">'+(myLang==='fr'?'✏️ Réponds à la question ci-dessus...':'✏️ Answer the question above...')+'</p>';
+  // Si pas de messages chat — juste rien (les réponses épinglées sont déjà au-dessus)
+  if(!msgs||!Object.keys(msgs).length||!msgs.length)return '';
   // Normaliser : msgs peut être un objet (Firebase) ou un tableau
   const msgsArr = Array.isArray(msgs) ? msgs : Object.values(msgs).sort((a,b)=>a.ts-b.ts);
   return msgsArr.map(m=>{
@@ -4751,10 +4722,10 @@ function buildMsgHtml(s,msgs){
     const time=new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
     const edited=m.edited?'<span style="font-size:9px;color:var(--muted);font-style:italic;"> · '+(myLang==='fr'?'modifié':'edited')+'</span>':'';
     const deleted=!!m.deleted;
-    // Layout cohérent avec les réponses : MOI = avatar gauche + bulle droite, AUTRE = bulle gauche + avatar droite
-    const rowDir=isMe?'row':'row-reverse';
-    const radiusCorner=isMe?'border-top-left-radius:4px':'border-top-right-radius:4px';
-    const bubbleAlign=isMe?'align-self:flex-start':'align-self:flex-end';
+    // Layout WhatsApp : MOI = bulle droite + avatar droite, AUTRE = avatar gauche + bulle gauche
+    const rowDir=isMe?'row-reverse':'row';
+    const radiusCorner=isMe?'border-top-right-radius:4px':'border-top-left-radius:4px';
+    const bubbleAlign=isMe?'align-self:flex-end':'align-self:flex-start';
     const msgId=m.id||m.ts;
     // Menu édition/suppression (seulement mes messages, pas supprimés)
     const actionsHtml = isMe && !deleted ? `
@@ -4885,6 +4856,60 @@ function renderLiveChat(s, qk){
   markChatRead(qk).catch(()=>{});
 }
 
+function _buildAnswerPins(s, qk){
+  const thRole=myRole==='p1'?'p2':'p1';
+  const fr=myLang==='fr';
+  let html='';
+
+  function pinBubble(role){
+    const ans=s?.answers?.[qk+'_'+role];
+    const nm=s?.[role]?.name||'?';
+    const lg=s?.[role]?.lang||'fr';
+    const isMe=role===myRole;
+    const col=role==='p1'?'var(--p1)':'var(--p2)';
+    const bg=role==='p1'?'rgba(74,143,212,0.10)':'rgba(196,98,48,0.10)';
+    const bd=role==='p1'?'var(--p1b)':'var(--p2b)';
+    const av=getAvatarHtml(s,role,30);
+    const youBadge=isMe?`<span style="font-size:8px;color:var(--gold);font-weight:700;">(${fr?'vous':'you'})</span>`:'';
+    const rowDir=isMe?'row':'row-reverse';
+    const radius=isMe?'0 12px 12px 12px':'12px 0 12px 12px';
+    const badge=`<span style="font-size:8px;letter-spacing:.05em;color:var(--gold);background:rgba(212,148,60,0.15);border:1px solid var(--goldD);border-radius:4px;padding:0 4px;margin-left:2px;">${fr?'RÉPONSE':'ANSWER'}</span>`;
+
+    if(!ans){
+      return `<div style="display:flex;flex-direction:${rowDir};gap:8px;align-items:flex-end;margin-bottom:6px;">
+        ${av}
+        <div style="background:${bg};border:1px dashed ${bd};border-radius:${radius};padding:7px 11px;max-width:75%;opacity:0.5;">
+          <div style="font-size:9px;font-weight:700;color:${col};margin-bottom:3px;display:flex;align-items:center;gap:4px;">${nm} ${youBadge}<span class="lang-chip ${lg}" style="font-size:8px;">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${badge}</div>
+          <span style="font-size:11px;color:var(--muted);font-style:italic;">⏳ ${fr?'Pas encore répondu...':'Not yet answered...'}</span>
+        </div>
+      </div>`;
+    }
+    const edited=s?.answers?.[qk+'_'+role+'_edited']?`<span style="font-size:8px;color:var(--muted);font-style:italic;"> · ${fr?'modifié':'edited'}</span>`:'';
+    return `<div style="display:flex;flex-direction:${rowDir};gap:8px;align-items:flex-end;margin-bottom:6px;">
+      ${av}
+      <div style="background:${bg};border:1px solid ${bd};border-top:2px solid ${col};border-radius:${radius};padding:7px 11px;max-width:75%;word-break:break-word;">
+        <div style="font-size:9px;font-weight:700;color:${col};margin-bottom:3px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;">${nm} ${youBadge}<span class="lang-chip ${lg}" style="font-size:8px;">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${badge}${edited}</div>
+        <div style="font-size:12px;line-height:1.55;color:var(--cream);white-space:pre-wrap;">${ans}</div>
+      </div>
+    </div>`;
+  }
+
+  html += pinBubble(thRole) + pinBubble(myRole);
+
+  // Séparateur avant le chat libre (si des messages existent)
+  const key=getChatKey(qk);
+  const rawMsgs=s?.chat?.[key]||{};
+  const hasMsgs=Array.isArray(rawMsgs)?rawMsgs.length>0:Object.keys(rawMsgs).length>0;
+  if(hasMsgs){
+    html+=`<div style="display:flex;align-items:center;gap:8px;margin:8px 0 6px;">
+      <div style="flex:1;height:1px;background:var(--faint);"></div>
+      <span style="font-size:9px;color:var(--muted);font-weight:600;letter-spacing:.06em;white-space:nowrap;">💬 ${fr?'ÉCHANGE LIBRE':'FREE EXCHANGE'}</span>
+      <div style="flex:1;height:1px;background:var(--faint);"></div>
+    </div>`;
+  }
+  return html;
+}
+
 function _updateChatMsgs(s, qk){
   const key = getChatKey(qk);
   const rawMsgs = s?.chat?.[key] || {};
@@ -4904,8 +4929,8 @@ function _updateChatMsgs(s, qk){
     }
   }
   _lastMsgCount[qk] = msgs.length;
-  // Toujours rendre les messages
-  msgsEl.innerHTML = buildMsgHtml(s, msgs);
+  // Réponses épinglées + messages chat libre
+  msgsEl.innerHTML = _buildAnswerPins(s, qk) + buildMsgHtml(s, msgs);
   showTypingIndicator(s);
   setTimeout(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; }, 50);
 
