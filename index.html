@@ -4891,7 +4891,7 @@ function buildMsgHtml(s,msgs){
     // MOI   → row-reverse : [bulle][avatar]  bulle à droite
     // AUTRE → row         : [avatar][bulle]  bulle à gauche
     const rowDir      = isMe ? 'row-reverse' : 'row';
-    const radiusCorner = isMe ? 'border-top-right-radius:4px' : 'border-top-left-radius:4px';
+    const radiusCorner = isMe ? 'border-bottom-right-radius:4px' : 'border-bottom-left-radius:4px';
     const bubbleAlign  = isMe ? 'margin-left:auto' : 'margin-right:auto';
     const msgId=m.id||m.ts;
     // Menu édition/suppression (seulement mes messages, pas supprimés)
@@ -4907,7 +4907,7 @@ function buildMsgHtml(s,msgs){
       if(m.text) textHtml+=`<div style="font-size:12px;color:var(--muted);margin-top:4px;">${m.text}</div>`;
     } else if(m.type==='voice'){
       textHtml=`<div style="display:flex;align-items:center;gap:8px;padding:2px 0;">
-        <button onclick="toggleVoice('${msgId}',this)" style="background:${col};border:none;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">▶️</button>
+        <button onclick="toggleVoice(String('${msgId}'),this)" style="background:${col};border:none;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;">▶️</button>
         <div style="flex:1;">
           <div style="height:3px;background:rgba(255,255,255,0.15);border-radius:3px;position:relative;">
             <div id="vp-${msgId}" style="height:100%;width:0%;background:${col};border-radius:3px;transition:width 0.1s;"></div>
@@ -4933,12 +4933,21 @@ function buildMsgHtml(s,msgs){
           <span style="font-size:9px;color:var(--muted);white-space:nowrap;">${time}${edited}</span>
         </div>`
     +'</div>';
-    // justify-content positionne toute la row d'un côté
-    const rowJustify = isMe ? 'flex-end' : 'flex-start';
-    return `<div class="chat-msg-row" style="display:flex;flex-direction:${rowDir};justify-content:${rowJustify};gap:8px;align-items:flex-end;width:100%;box-sizing:border-box;margin-bottom:10px;" data-msgid="${msgId}">`
-      +avatarHtml
-      +bubbleContent
-    +'</div>';
+    // WhatsApp layout : MOI à droite (avatar à droite), AUTRE à gauche (avatar à gauche)
+    // On utilise flex-direction:row pour tout, et on ordonne avatar/bulle selon isMe
+    if(isMe){
+      // MOI : bulle à gauche de l'avatar → [bulle][avatar] avec justify flex-end
+      return `<div class="chat-msg-row" style="display:flex;flex-direction:row;justify-content:flex-end;gap:8px;align-items:flex-end;width:100%;box-sizing:border-box;margin-bottom:10px;" data-msgid="${msgId}">`
+        +bubbleContent
+        +avatarHtml
+      +'</div>';
+    } else {
+      // AUTRE : avatar à gauche, bulle à droite → [avatar][bulle] avec justify flex-start
+      return `<div class="chat-msg-row" style="display:flex;flex-direction:row;justify-content:flex-start;gap:8px;align-items:flex-end;width:100%;box-sizing:border-box;margin-bottom:10px;" data-msgid="${msgId}">`
+        +avatarHtml
+        +bubbleContent
+      +'</div>';
+    }
   }).join('');
 }
 
@@ -4963,7 +4972,7 @@ function renderLiveChat(s, qk){
 
   if(titleEl){
     if(!_myAnswered){
-      titleEl.innerHTML = currentCat?.e+' <span style="color:var(--cream);font-weight:800;">'+(myLang==='fr'?'Ta réponse':'Your answer')+'</span>';
+      titleEl.innerHTML = '✍️ <span style="color:var(--cream);font-weight:800;">'+(myLang==='fr'?'Ta réponse':'Your answer')+'</span> — '+currentCat?.e;
     } else if(_myAnswered && !_thAnswered){
       titleEl.innerHTML = '⏳ <span style="color:var(--muted);">'+(myLang==='fr'?'En attente de '+_thName2:'Waiting for '+_thName2)+'</span>';
     } else {
@@ -5355,32 +5364,55 @@ async function toggleVoiceRecord(){
 // Lecture vocale
 const _audioPlayers = {};
 function toggleVoice(msgId, btn){
-  if(_audioPlayers[msgId]){
-    const a = _audioPlayers[msgId];
+  // Normaliser msgId en string pour comparaisons fiables
+  const sid = String(msgId);
+  if(_audioPlayers[sid]){
+    const a = _audioPlayers[sid];
     if(!a.paused){ a.pause(); btn.textContent='▶️'; return; }
-    a.play(); btn.textContent='⏸️'; return;
+    a.play().catch(()=>{}); btn.textContent='⏸️'; return;
   }
-  // Trouver le message
-  const qk = _currentChatQk;
-  if(!qk||!lastRoom) return;
-  const key = getChatKey(qk);
-  const msgs = lastRoom.chat?.[key]||[];
-  const msg = msgs.find(m=>(m.id||m.ts)==msgId);
-  if(!msg?.data) return;
-  const audio = new Audio(msg.data);
-  _audioPlayers[msgId] = audio;
+  // Chercher dans toutes les questions du chat (pas seulement la courante)
+  let msg = null;
+  if(lastRoom?.chat){
+    for(const chatKey of Object.keys(lastRoom.chat)){
+      const rawMsgs = lastRoom.chat[chatKey];
+      const arr = Array.isArray(rawMsgs) ? rawMsgs : Object.values(rawMsgs||{});
+      const found = arr.find(m=>String(m.id||m.ts)===sid);
+      if(found){ msg=found; break; }
+    }
+  }
+  if(!msg?.data){ console.warn('toggleVoice: no data for',sid); return; }
+  // S'assurer que le src est un data URI correct
+  let src = msg.data;
+  if(!src.startsWith('data:')){ src = 'data:audio/webm;base64,'+src; }
+  const audio = new Audio(src);
+  _audioPlayers[sid] = audio;
   audio.ontimeupdate = ()=>{
-    const bar = document.getElementById('vp-'+msgId);
+    const bar = document.getElementById('vp-'+sid);
     if(bar && audio.duration) bar.style.width=(audio.currentTime/audio.duration*100)+'%';
+    const dur = document.getElementById('vd-'+sid);
+    if(dur && audio.duration){
+      const rem = Math.max(0, audio.duration-audio.currentTime);
+      const m=Math.floor(rem/60), s=Math.floor(rem%60);
+      dur.textContent = m+':'+(s<10?'0':'')+s;
+    }
   };
   audio.onended = ()=>{
     btn.textContent='▶️';
-    const bar = document.getElementById('vp-'+msgId);
+    const bar = document.getElementById('vp-'+sid);
     if(bar) bar.style.width='0%';
-    delete _audioPlayers[msgId];
+    delete _audioPlayers[sid];
   };
-  audio.play();
-  btn.textContent='⏸️';
+  audio.onerror = (e)=>{
+    console.error('Audio error',e,audio.error);
+    btn.textContent='❌';
+    delete _audioPlayers[sid];
+  };
+  audio.play().then(()=>{ btn.textContent='⏸️'; }).catch(err=>{
+    console.error('play() failed',err);
+    btn.textContent='❌';
+    delete _audioPlayers[sid];
+  });
 }
 
 async function editChatMsg(msgId){
