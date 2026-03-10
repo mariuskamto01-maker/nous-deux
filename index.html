@@ -1969,7 +1969,7 @@ function logout(){
     if(myRole==='p2'&&s.p2)s.p2.ts=0;
     saveRoom(s).catch(()=>{});
   }
-  sessionStorage.removeItem('nd_session');
+  localStorage.removeItem('nd_session');
   roomCode='';myName='';myRole='';myLang='fr';mySecret='';lastRoom=null;
   _readQks.clear();_saveReadQks(); // Réinitialiser les lectures pour la nouvelle room
   currentCat=null;currentQi=0;currentQs=[];
@@ -3250,10 +3250,12 @@ window.addEventListener('load',()=>{
 
   // Restaurer session si page rechargée
   try{
-    const sess=sessionStorage.getItem('nd_session');
+    const sess=localStorage.getItem('nd_session');
     if(sess){
       const d=JSON.parse(sess);
-      myRole=d.myRole;myName=d.myName;myLang=d.myLang;roomCode=d.roomCode;
+      // Valider que la session est complète avant de restaurer
+      if(!d.roomCode||!d.myRole||!d.myName){ localStorage.removeItem('nd_session'); return; }
+      myRole=d.myRole;myName=d.myName;myLang=d.myLang||'fr';roomCode=d.roomCode;
       if(roomCode){
         // Masquer pg-home pour éviter le flash — on sait qu'on a une session
         document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -3268,14 +3270,15 @@ window.addEventListener('load',()=>{
           _removeLoader();
           if(!s){ // Room introuvable → retour accueil
             roomCode='';myRole='';myName='';
-            sessionStorage.removeItem('nd_session');
+            localStorage.removeItem('nd_session');
             goPage('pg-home'); return;
           }
-          // Mettre à jour timestamp de présence
+          // Mettre à jour timestamp de présence via PATCH (pas saveRoom complet)
           try{
-            if(myRole==='p1')s.p1.ts=Date.now();
-            else if(s.p2)s.p2.ts=Date.now();
-            await saveRoom(s);
+            await fetch(`${FB}/rooms/${roomCode}/${myRole}/ts.json`,{
+              method:'PUT',headers:{'Content-Type':'application/json'},
+              body:JSON.stringify(Date.now())
+            });
           }catch(e){}
           lastRoom=s;window._wentToCats=true;
           startPoll();
@@ -3289,7 +3292,7 @@ window.addEventListener('load',()=>{
           }
         }).catch(e=>{
           _removeLoader();
-          sessionStorage.removeItem('nd_session');
+          localStorage.removeItem('nd_session');
           goPage('pg-home');
           console.log('restore err',e);
         });
@@ -3368,7 +3371,7 @@ async function createRoom(){
   const state={code:roomCode,p1:{name:myName,lang:myLang,ts:Date.now()},p2:null,answers:{},insights:[],aiResult:null,
     customThemes:settings.customThemes, customQs:settings.customQs};
   await saveRoom(state);lastRoom=state;
-  sessionStorage.setItem('nd_session',JSON.stringify({myRole,myName,myLang,roomCode}));
+  localStorage.setItem('nd_session',JSON.stringify({myRole,myName,myLang,roomCode}));
   window._wentToCats=false;
   startPoll();
   // Afficher pg-wait avec code+QR mais ne pas bloquer — bouton "Commencer seul" visible
@@ -3382,7 +3385,7 @@ async function joinRoom(){
 
   // Déjà en session avec ce code → reprendre directement
   try{
-    const sess = sessionStorage.getItem('nd_session');
+    const sess = localStorage.getItem('nd_session');
     if(sess){
       const d = JSON.parse(sess);
       if(d.roomCode === code){
@@ -3437,7 +3440,7 @@ async function joinRoom(){
 
   roomCode=code;
   await saveRoom(state); lastRoom=state;
-  sessionStorage.setItem('nd_session', JSON.stringify({myRole,myName,myLang,roomCode}));
+  localStorage.setItem('nd_session', JSON.stringify({myRole,myName,myLang,roomCode}));
   mergeSharedSettings(state); // Charger les thèmes/questions partagés dès la connexion
   // Restaurer l'avatar depuis la room
   if(state[myRole]?.avatar){
@@ -3756,11 +3759,17 @@ function getBadges(s){
 
 function showCats(){
   window._wentToCats=true;
-  document.getElementById('cat-me-name').textContent=myName;
-  const lc=document.getElementById('cat-me-lang');lc.textContent=myLang==='fr'?'🇫🇷 FR':'🇬🇧 EN';lc.className='lang-chip '+myLang;
-  renderCatList(lastRoom);
-  if(lastRoom)renderStatus('cat-status',lastRoom);
+  const nameEl=document.getElementById('cat-me-name');
+  if(nameEl) nameEl.textContent=myName;
+  const lc=document.getElementById('cat-me-lang');
+  if(lc){lc.textContent=myLang==='fr'?'🇫🇷 FR':'🇬🇧 EN';lc.className='lang-chip '+myLang;}
   goPage('pg-cats');
+  // Rendre la liste après navigation (DOM stable)
+  setTimeout(()=>{
+    renderCatList(lastRoom);
+    if(lastRoom) renderStatus('cat-status',lastRoom);
+    updateCatsRoomCode();
+  }, 50);
 }
 
 function renderCatList(s){
@@ -3835,6 +3844,12 @@ function renderCatList(s){
   });
 
   const listEl = document.getElementById('cat-list');
+  if(!html.trim()){
+    // Aucun thème généré — réessayer dans 300ms (DOM ou données pas prêtes)
+    console.warn('renderCatList: html vide, retry...');
+    setTimeout(()=>renderCatList(lastRoom||s), 300);
+    return;
+  }
   listEl.innerHTML = html;
 
   // Event delegation - UN seul listener sur cat-list
@@ -3850,34 +3865,14 @@ function renderCatList(s){
     if(addBtn){ e.stopPropagation(); goPage('pg-settings'); switchTab('themes'); initEmojiPicker(); }
   };
 
-  // Restaurer l'état ouvert/fermé — après rendu DOM (requestAnimationFrame)
+  // Tous les groupes toujours ouverts — pas de calcul scrollHeight fragile
   requestAnimationFrame(()=>{
-    const hasAlert = order.find(g=>grouped[g]&&grouped[g].some(c=>badges[c.id]>0));
-    const firstGroup = order.find(o=>grouped[o]&&grouped[o].length>0);
-    // Ouvrir tous les groupes qui ont du contenu par défaut si aucun n'était ouvert
-    const defaultOpen = openGroups.size === 0;
     order.forEach(g=>{
       if(!grouped[g]||grouped[g].length===0) return;
-      const wasOpen = openGroups.has(g);
-      const shouldOpen = wasOpen || defaultOpen; // Par défaut tout ouvert
-      if(shouldOpen){
-        const body=document.getElementById('body-'+g);
-        const arrow=document.getElementById('arrow-'+g);
-        if(body){
-          body.style.transition='none';
-          body.style.maxHeight='none'; // none = pas de limite = toujours visible
-          body.style.overflow='visible';
-          body.style.opacity='1';
-          setTimeout(()=>{
-            body.style.maxHeight=body.scrollHeight+'px';
-            body.style.overflow='';
-            body.style.transition='';
-          }, 80);
-        }
-        if(arrow)arrow.textContent='▾';
-      } else {
-        collapseGroup(g, false);
-      }
+      const body=document.getElementById('body-'+g);
+      const arrow=document.getElementById('arrow-'+g);
+      if(body){ body.style.transition='none'; body.style.maxHeight='9999px'; body.style.opacity='1'; }
+      if(arrow) arrow.textContent='▾';
     });
   });
 }function startCat(catId){
