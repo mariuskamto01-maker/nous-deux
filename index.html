@@ -804,7 +804,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
     <div id="sent-zone"></div>
     <div id="reveal-zone"></div>
     <!-- Chat permanent - structure fixe, jamais reconstruite -->
-    <div id="chat-zone" style="margin-top:12px;background:var(--d3);border:1px solid var(--goldD);border-radius:16px;overflow:hidden;display:none;">
+    <div id="chat-zone" style="margin-top:12px;background:var(--d3);border:1px solid var(--goldD);border-radius:16px;overflow:hidden;display:none;position:relative;z-index:1;">
       <div class="strip"><div style="background:var(--k1)"></div><div style="background:var(--k2)"></div><div style="background:var(--k3)"></div><div style="background:var(--k4)"></div><div style="background:var(--k1)"></div><div style="background:var(--k3)"></div><div style="background:var(--k2)"></div><div style="background:var(--k4)"></div></div>
       <!-- En-tête avec avatars des deux participants -->
       <div style="padding:10px 14px 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--faint);">
@@ -3548,68 +3548,76 @@ function showReveal(s,qk){
   document.getElementById('my-zone').style.display='none';
   const ardy=s?.aiResult?.qk===qk;
   const z=document.getElementById('reveal-zone');
+
+  // Ordre WhatsApp : AUTRE en haut, MOI en bas — chaque bulle pleine largeur
+  const thRole=myRole==='p1'?'p2':'p1';
+  const roles=[thRole, myRole];
+
+  const bubblesHtml=roles.map(role=>{
+    const isMe=role===myRole;
+    const nm=s?.[role]?.name||'?';
+    const lg=s?.[role]?.lang||'fr';
+    const ans=s?.answers?.[qk+'_'+role];
+    const col=role==='p1'?'var(--p1)':'var(--p2)';
+    const bg=role==='p1'?'var(--p1d)':'var(--p2d)';
+    const bd=role==='p1'?'var(--p1b)':'var(--p2b)';
+    const rowDir=isMe?'row-reverse':'row';
+    const radius=isMe?'border-bottom-right-radius:4px':'border-bottom-left-radius:4px';
+
+    if(!ans){
+      if(isMe){
+        return `<div style="display:flex;flex-direction:${rowDir};gap:10px;align-items:flex-start;width:100%;box-sizing:border-box;margin-bottom:12px;">
+          ${getAvatarHtml(s,role,36)}
+          <div style="flex:1;background:${bg};border:1px solid ${bd};border-radius:16px;${radius};padding:10px 14px;">
+            <div class="bubble-name" style="color:${col};">${nm} <span style="font-size:9px;color:var(--gold);">(vous)</span> <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
+            <textarea id="my-answer" rows="3" placeholder="${lg==='fr'?'Ta réponse...':'Your answer...'}" style="width:100%;box-sizing:border-box;font-size:13px;padding:8px 10px;resize:none;margin-top:6px;border-radius:8px;background:var(--d1);border:1px solid ${bd};color:var(--cream);font-family:'Outfit',sans-serif;"></textarea>
+            <button onclick="submitAnswer()" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,${bg},${col});color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">${lg==='fr'?'Envoyer →':'Send →'}</button>
+          </div>
+        </div>`;
+      } else {
+        return `<div style="display:flex;flex-direction:${rowDir};gap:10px;align-items:flex-start;width:100%;box-sizing:border-box;margin-bottom:12px;opacity:0.55;">
+          ${getAvatarHtml(s,role,36)}
+          <div style="background:${bg};border:1px solid ${bd};border-radius:16px;${radius};padding:10px 14px;max-width:75%;">
+            <div class="bubble-name" style="color:${col};">${nm} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
+            <span style="color:var(--muted);font-size:12px;font-style:italic;">${lg==='fr'?'⏳ Pas encore répondu...':'⏳ Hasn\'t answered yet...'}</span>
+          </div>
+        </div>`;
+      }
+    }
+
+    const editedFlag=s?.answers?.[qk+'_'+role+'_edited']?`<span style="font-size:9px;color:var(--muted);font-style:italic;"> · ${myLang==='fr'?'modifié':'edited'}</span>`:'';
+    const answerActions=isMe?`<div style="display:flex;gap:6px;margin-top:10px;justify-content:flex-end;">
+      <button onclick="editAnswer('${qk}')" style="background:rgba(212,148,60,0.12);border:1px solid var(--goldD);color:var(--gold);border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer;font-family:'Outfit',sans-serif;">✏️ ${myLang==='fr'?'Modifier':'Edit'}</button>
+      <button onclick="deleteAnswer('${qk}')" style="background:rgba(232,80,80,0.08);border:1px solid rgba(232,80,80,0.3);color:#E87070;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer;font-family:'Outfit',sans-serif;">🗑️ ${myLang==='fr'?'Supprimer':'Delete'}</button>
+    </div>`:'';
+
+    return `<div style="display:flex;flex-direction:${rowDir};gap:10px;align-items:flex-start;width:100%;box-sizing:border-box;margin-bottom:12px;">
+      ${getAvatarHtml(s,role,36)}
+      <div style="flex:1;max-width:80%;background:${bg};border:1px solid ${bd};border-radius:16px;${radius};padding:10px 14px;word-break:break-word;">
+        <div class="bubble-name" style="color:${col};">${nm}${isMe?` <span style="font-size:9px;color:var(--gold);">(vous)</span>`:''} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${editedFlag}</div>
+        <div id="answer-text-${isMe?'me':'th'}" style="font-size:13px;line-height:1.6;color:var(--cream);margin-top:4px;white-space:pre-wrap;">${ans}</div>
+        ${answerActions}
+      </div>
+    </div>`;
+  }).join('');
+
+  const bothAnswered=!!(s?.answers?.[qk+'_p1']&&s?.answers?.[qk+'_p2']);
+  const analysisBtnHtml=ardy?'':(bothAnswered
+    ?`<button id="analysis-btn" onclick="doAnalysis()" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--goldD);background:rgba(200,148,59,0.15);color:var(--gold);font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;margin-top:4px;">🔍 ${myLang==='fr'?'Analyser notre compatibilité':'Analyse our compatibility'}</button>`
+    :`<p style="text-align:center;font-size:12px;color:var(--muted);padding:8px 0;">⏳ ${myLang==='fr'?'En attente des deux réponses...':'Waiting for both answers...'}</p>`);
+
   z.innerHTML=`
     <div style="text-align:center;margin-bottom:14px;">
       <div class="reveal-title">✨ Réponses / Answers</div>
       <p style="font-size:12px;color:var(--muted);">Les réponses apparaissent dès qu'elles sont envoyées · Answers appear as they're sent</p>
     </div>
-    ${['p1','p2'].map(role=>{
-      const isMe=role===myRole;
-      const nm=s?.[role]?.name||'?';
-      const lg=s?.[role]?.lang||'fr';
-      const ans=s?.answers?.[qk+'_'+role];
-      const col=role==='p1'?'var(--p1)':'var(--p2)';
-      const bg=role==='p1'?'var(--p1d)':'var(--p2d)';
-      const bd=role==='p1'?'var(--p1b)':'var(--p2b)';
-      if(!ans){
-        // Pas encore répondu - afficher zone de saisie si c'est moi, sinon placeholder
-        if(isMe){
-          return `<div class="bubble-row left">
-            ${getAvatarHtml(s,role,36)}
-            <div class="bubble ${role}" style="flex:1;">
-              <div class="bubble-name" style="color:${col};">${nm} <span style="font-size:9px;color:var(--gold);">(vous)</span> <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
-              <textarea id="my-answer" rows="3" placeholder="${lg==='fr'?'Ta réponse...':'Your answer...'}" style="width:100%;box-sizing:border-box;font-size:13px;padding:8px 10px;resize:none;margin-top:6px;border-radius:8px;background:var(--d2);border:1px solid ${bd};color:var(--cream);font-family:'Outfit',sans-serif;"></textarea>
-              <button onclick="submitAnswer()" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,${bg},${col});color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">${lg==='fr'?'Envoyer →':'Send →'}</button>
-            </div>
-          </div>`;
-        } else {
-          return `<div class="bubble-row right" style="opacity:0.6;">
-            ${getAvatarHtml(s,role,36)}
-            <div class="bubble ${role}" style="opacity:0.5;font-style:italic;">
-              <div class="bubble-name" style="color:${col};">${nm} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
-              <span style="color:var(--muted);font-size:12px;">${lg==='fr'?'⏳ Pas encore répondu...':'⏳ Hasn\'t answered yet...'}</span>
-            </div>
-          </div>`;
-        }
-      }
-      const editedFlag = s?.answers?.[qk+'_'+role+'_edited'] ? `<span style="font-size:9px;color:var(--muted);font-style:italic;"> · ${myLang==='fr'?'modifié':'edited'}</span>` : '';
-      const answerActions = isMe ? `
-        <div style="display:flex;gap:4px;margin-top:8px;justify-content:flex-end;">
-          <button onclick="editAnswer('${qk}')" style="background:rgba(212,148,60,0.12);border:1px solid var(--goldD);color:var(--gold);border-radius:8px;font-size:11px;padding:4px 10px;cursor:pointer;font-family:'Outfit',sans-serif;">✏️ ${myLang==='fr'?'Modifier':'Edit'}</button>
-          <button onclick="deleteAnswer('${qk}')" style="background:rgba(232,80,80,0.08);border:1px solid rgba(232,80,80,0.3);color:#E87070;border-radius:8px;font-size:11px;padding:4px 10px;cursor:pointer;font-family:'Outfit',sans-serif;">🗑️ ${myLang==='fr'?'Supprimer':'Delete'}</button>
-        </div>` : '';
-      return `<div class="bubble-row ${isMe?'left':'right'}">
-        ${getAvatarHtml(s,role,36)}
-        <div class="bubble ${role}" style="${isMe?'flex:1;':''}">
-          <div class="bubble-name" style="color:${col};">${nm}${isMe?` <span style="font-size:9px;color:var(--gold);">(vous)</span>`:''} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${editedFlag}</div>
-          <div id="answer-text-${isMe?'me':'th'}">${ans}</div>
-          ${answerActions}
-        </div>
-      </div>`;
-    }).join('')}
-    <div style="margin-top:14px;" id="analysis-btn-zone">
-      ${(()=>{
-        const bothAnswered = !!(s?.answers?.[qk+'_p1'] && s?.answers?.[qk+'_p2']);
-        if(ardy) return '';
-        if(!bothAnswered) return `<p style="text-align:center;font-size:12px;color:var(--muted);padding:10px 0;">⏳ ${myLang==='fr'?'En attente de la réponse des deux partenaires...':'Waiting for both partners to answer...'}</p>`;
-        return `<button id="analysis-btn" onclick="doAnalysis()" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--goldD);background:rgba(200,148,59,0.15);color:var(--gold);font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">🔍 ${myLang==='fr'?'Analyser notre compatibilité':'Analyse our compatibility'}</button>`;
-      })()}
-    </div>
+    <div style="display:flex;flex-direction:column;width:100%;">${bubblesHtml}</div>
+    <div style="margin-top:10px;" id="analysis-btn-zone">${analysisBtnHtml}</div>
     <div id="ai-zone"></div>
     <div id="nav-zone">${navHTML(s,qk)}</div>`;
   z.style.display='block';
   if(ardy) renderAI(s.aiResult);
-  else scheduleAutoAnalysis(s, qk);
+  else scheduleAutoAnalysis(s,qk);
   renderLiveChat(s,qk);
 }
 
@@ -3619,8 +3627,39 @@ function renderAI(result){
   if(!el)return;
   const lang=myLang==='fr'?'fr':'en';
   const txt=result[lang]||result.fr||result.en||'';
-  el.innerHTML=`<div class="card card-gold" style="margin-top:14px;">${strip()}<div class="card-body"><p style="font-size:11px;color:var(--gold);font-weight:700;margin-bottom:8px;">🤖 Analyse IA / AI Analysis</p><div style="font-size:13px;line-height:1.7;color:var(--cream);">${txt}</div></div></div>`;
+  const fr=myLang==='fr';
+  // Analyse pliable — cachée par défaut, ouvrable au clic
+  el.innerHTML=`
+    <div style="margin-top:14px;">
+      <button onclick="toggleAIPanel(this)" style="width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--goldD);background:rgba(212,148,60,0.1);color:var(--gold);font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span>🤖 ${fr?'Voir l\'analyse IA':'See AI analysis'}</span>
+        <span id="ai-arrow" style="font-size:11px;transition:transform 0.25s;">▾</span>
+      </button>
+      <div id="ai-panel" style="max-height:0;overflow:hidden;transition:max-height 0.4s ease,opacity 0.3s;opacity:0;">
+        <div class="card card-gold" style="margin-top:8px;border-radius:12px;">
+          ${strip()}
+          <div class="card-body">
+            <p style="font-size:11px;color:var(--gold);font-weight:700;margin-bottom:8px;">🤖 Analyse IA / AI Analysis</p>
+            <div style="font-size:13px;line-height:1.7;color:var(--cream);">${txt}</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
   const _nz=document.getElementById('nav-zone');if(_nz)_nz.innerHTML=navHTML(lastRoom,currentCat?.id+'_'+currentQi);
+}
+
+function toggleAIPanel(btn){
+  const panel=document.getElementById('ai-panel');
+  const arrow=document.getElementById('ai-arrow');
+  if(!panel)return;
+  const isOpen=panel.style.maxHeight!=='0px'&&panel.style.maxHeight!=='';
+  if(isOpen){
+    panel.style.maxHeight='0';panel.style.opacity='0';
+    if(arrow)arrow.style.transform='rotate(0deg)';
+  } else {
+    panel.style.maxHeight=panel.scrollHeight+200+'px';panel.style.opacity='1';
+    if(arrow)arrow.style.transform='rotate(180deg)';
+  }
 }
 
 async function doAnalysis(){
@@ -3998,8 +4037,10 @@ function buildMsgHtml(s,msgs){
     const time=new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
     const edited=m.edited?'<span style="font-size:9px;color:var(--muted);font-style:italic;"> · '+(myLang==='fr'?'modifié':'edited')+'</span>':'';
     const deleted=!!m.deleted;
-    const rowDir=isMe?'row':'row-reverse';
-    const radiusCorner=isMe?'border-bottom-left-radius:4px':'border-bottom-right-radius:4px';
+    // WhatsApp: MOI = bulle droite, AUTRE = bulle gauche
+    const rowDir=isMe?'row-reverse':'row';
+    const radiusCorner=isMe?'border-bottom-right-radius:4px':'border-bottom-left-radius:4px';
+    const bubbleAlign=isMe?'align-self:flex-end':'align-self:flex-start';
     const msgId=m.id||m.ts;
     // Menu édition/suppression (seulement mes messages, pas supprimés)
     const actionsHtml = isMe && !deleted ? `
@@ -4025,7 +4066,7 @@ function buildMsgHtml(s,msgs){
     } else {
       textHtml=`<div style="font-size:13px;line-height:1.6;color:var(--cream);white-space:pre-wrap;">${m.text}</div>`;
     }
-    const bubbleContent = `<div style="max-width:72%;min-width:0;background:${bg};border:1px solid ${bd};border-radius:14px;${radiusCorner};padding:8px 12px;word-break:break-word;">`
+    const bubbleContent = `<div style="max-width:72%;min-width:0;background:${bg};border:1px solid ${bd};border-radius:14px;${radiusCorner};padding:8px 12px;word-break:break-word;${bubbleAlign}">`
       +`<div style="font-size:10px;font-weight:700;color:${col};margin-bottom:4px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">`
         +nm+` <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>`
         +`<span style="font-size:9px;color:var(--muted);margin-left:auto;white-space:nowrap;">${time}${edited}</span>`
