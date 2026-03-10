@@ -3255,10 +3255,14 @@ window.addEventListener('load',()=>{
       const d=JSON.parse(sess);
       myRole=d.myRole;myName=d.myName;myLang=d.myLang;roomCode=d.roomCode;
       if(roomCode){
-        // Masquer pg-home immédiatement pour éviter le flash
+        // Masquer pg-home pour éviter le flash — on sait qu'on a une session
         document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-        // Spinner de chargement discret
-        document.body.insertAdjacentHTML('beforeend','<div id="restore-loader" style="position:fixed;inset:0;background:var(--d1,#0d0509);display:flex;align-items:center;justify-content:center;z-index:9999;"><div style="font-size:28px;animation:spin 1s linear infinite;">⏳</div></div>');
+        // Overlay opaque immédiat (même couleur que le fond)
+        const loaderEl = document.createElement('div');
+        loaderEl.id='restore-loader';
+        loaderEl.style.cssText='position:fixed;inset:0;background:#0d0509;display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:12px;';
+        loaderEl.innerHTML='<div style="font-size:32px;">💑</div><div style="font-size:12px;color:#8a7060;font-family:Outfit,sans-serif;">Chargement...</div>';
+        document.body.appendChild(loaderEl);
         loadRoom(roomCode).then(async s=>{
           const loader=document.getElementById('restore-loader');
           if(loader)loader.remove();
@@ -5468,4 +5472,54 @@ async function _markAllCatRead(catId, qCount){
 }
 
 async function markChatRead(qk){
-  // Marquer localement immédiatement → badge dispara
+  // Marquer localement immédiatement → badge disparaît tout de suite
+  _readQks.add(qk);_saveReadQks();
+  clearBadge(currentCat?.id);
+  // Puis sauvegarder dans Firebase en arrière-plan
+  const s=lastRoom||await loadRoom(roomCode);
+  if(!s||!s.chat)return;
+  const key=getChatKey(qk);
+  const msgs=s.chat[key]||[];
+  let changed=false;
+  msgs.forEach(m=>{
+    if(m.role!==myRole&&(!m.readBy||!m.readBy[myRole])){
+      m.readBy=m.readBy||{};
+      m.readBy[myRole]=true;
+      changed=true;
+    }
+  });
+  if(changed){await saveRoom(s);lastRoom=s;}
+}
+
+// ═══════════════════════════════════════
+// INSIGHTS
+// ═══════════════════════════════════════
+function showInsights(){
+  const s=lastRoom;
+  if(!s){goPage('pg-insights');return;}
+  const el=document.getElementById('insights-list');
+  const allCats=[...CATS,...settings.customThemes,...(settings.customQs.length>0?[{id:'custom',e:'💬',fr:'Nos Questions',en:'Our Questions'}]:[])];
+  const done=allCats.filter(c=>{
+    const qs=getQsForCat(c.id);
+    return qs.some((_,qi)=>{
+      const qk=c.id+'_'+qi;
+      return s.answers?.[qk+'_p1']&&s.answers?.[qk+'_p2'];
+    });
+  });
+  if(!done.length){
+    el.innerHTML='<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">'+(myLang==='fr'?'Aucune révélation encore. Répondez à des questions ensemble !':'No reveals yet. Answer questions together!')+'</p>';
+  } else {
+    el.innerHTML=done.map(c=>{
+      const qs=getQsForCat(c.id);
+      const completed=qs.filter((_,qi)=>{const qk=c.id+'_'+qi;return s.answers?.[qk+'_p1']&&s.answers?.[qk+'_p2'];}).length;
+      return `<div class="card mb8" style="border-color:var(--goldD);">${strip()}<div class="card-body"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:20px;">${c.e}</span><div style="flex:1;"><div style="font-weight:700;font-size:13px;color:#7EB8F7;">${c.fr}</div><div style="font-size:11px;color:#E8C878;">${c.en}</div></div><span style="font-size:11px;color:var(--gold);font-weight:700;">${completed}/${qs.length}</span></div></div></div>`;
+    }).join('');
+  }
+  goPage('pg-insights');
+}
+
+
+// ═══════════════════════════════════════
+// QR CODE GENERATOR — 100% pure JS, zéro réseau
+// Basé sur QR Code Model 2, version 1-10
+// ═════
