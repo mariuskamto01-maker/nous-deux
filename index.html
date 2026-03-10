@@ -340,6 +340,24 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
   font-size:9px;font-weight:700;
   padding:2px 6px;border-radius:99px;
 }
+/* ── Badge WhatsApp non-lu sur le chat ── */
+#chat-unread-badge{
+  display:none;
+  background:#25D366;color:#fff;
+  font-size:10px;font-weight:800;
+  min-width:18px;height:18px;
+  border-radius:99px;padding:0 5px;
+  align-items:center;justify-content:center;
+  animation:unreadPop 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  line-height:18px;text-align:center;
+}
+@keyframes unreadPop{0%{transform:scale(0);}100%{transform:scale(1);}}
+.chat-unread-dot{
+  display:inline-block;width:8px;height:8px;min-width:8px;
+  background:#25D366;border-radius:50%;margin-left:4px;
+  animation:unreadPulse 1.5s ease-in-out infinite;
+}
+@keyframes unreadPulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.4;transform:scale(0.6);}}
 
 /* ── QUESTION PAGE ── */
 .q-pair{
@@ -839,9 +857,9 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
         <div class="q-text" id="q-en"></div>
       </div>
     </div>
-    <div id="my-zone"></div>
-    <div id="sent-zone"></div>
-    <div id="reveal-zone"></div>
+    <div id="my-zone" style="display:none;"></div>
+    <div id="sent-zone" style="display:none;"></div>
+    <div id="reveal-zone" style="display:none;"></div>
     <!-- Chat permanent - structure fixe, jamais reconstruite -->
     <div id="chat-zone" style="margin-top:12px;background:var(--d3);border:1px solid var(--goldD);border-radius:16px;overflow:hidden;display:none;position:relative;z-index:1;">
       <div class="strip"><div style="background:var(--k1)"></div><div style="background:var(--k2)"></div><div style="background:var(--k3)"></div><div style="background:var(--k4)"></div><div style="background:var(--k1)"></div><div style="background:var(--k3)"></div><div style="background:var(--k2)"></div><div style="background:var(--k4)"></div></div>
@@ -850,6 +868,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
         <div style="display:flex;align-items:center;gap:7px;">
           <div id="chat-avatar-p1" style="width:30px;height:30px;border-radius:50%;background:var(--p1d);border:2px solid var(--p1b);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">🙂</div>
           <span id="chat-name-p1" style="font-size:11px;font-weight:700;color:var(--p1);">—</span>
+          <span id="chat-unread-badge" style="display:none;background:#25D366;color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:99px;padding:0 5px;align-items:center;justify-content:center;line-height:18px;text-align:center;"></span>
         </div>
         <p id="chat-title" style="font-size:10px;color:var(--gold);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;text-align:center;flex:1;padding:0 8px;">💬 Échange libre</p>
         <div style="display:flex;align-items:center;gap:7px;flex-direction:row-reverse;">
@@ -884,6 +903,10 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
       </div>
     </div>
   </div>
+  <!-- Zones analyse + navigation, mises à jour par checkQState -->
+  <div id="analysis-btn-zone" style="margin-top:10px;"></div>
+  <div id="ai-zone"></div>
+  <div id="nav-zone" style="margin-top:8px;"></div>
 </div>
 
 <!-- INSIGHTS -->
@@ -3856,15 +3879,14 @@ function renderQ(){
   // Status (seulement si pas de saisie active)
   if(document.activeElement?.id !== 'my-answer') renderStatus('q-status',s);
 
-  // Reset answer zones
-  const myZ=document.getElementById('my-zone');
-  const sentZ=document.getElementById('sent-zone');
-  const revZ=document.getElementById('reveal-zone');
+  // Le chat est l'unique espace — masquer les zones legacy
+  ['my-zone','sent-zone','reveal-zone'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.style.display='none';el.innerHTML='';}
+  });
+
+  // Chat — espace principal
   const chatZ=document.getElementById('chat-zone');
-  if(myZ){myZ.style.display='none';myZ.innerHTML='';}
-  if(sentZ){sentZ.style.display='none';sentZ.innerHTML='';}
-  if(revZ){revZ.style.display='none';revZ.innerHTML='';}
-  // Chat toujours visible - juste vider les messages
   if(chatZ){
     chatZ.style.display='block';
     renderLiveChat(s, currentCat.id+'_'+currentQi);
@@ -3876,67 +3898,48 @@ function renderQ(){
 function checkQState(s){
   if(!s||!currentCat)return;
   const qk=currentCat.id+'_'+currentQi;
-  const myA=s.answers?.[qk+'_'+myRole];
   const thRole=myRole==='p1'?'p2':'p1';
-  const thA=s.answers?.[qk+'_'+thRole];
-
-  // ── Logique ouverte: on affiche toujours les réponses existantes + textarea si pas encore répondu ──
-  // Mode solo: chacun peut avancer sans attendre l'autre
-  const revZ=document.getElementById('reveal-zone');
   const bothNow=!!(s?.answers?.[qk+'_p1']&&s?.answers?.[qk+'_p2']);
 
-  // Si j'ai répondu mais mon textarea est encore visible → le masquer immédiatement
-  if(myA){
-    const myZ=document.getElementById('my-zone');
-    if(myZ && myZ.style.display !== 'none' && myZ.querySelector('#my-answer')){
-      myZ.style.display='none'; myZ.innerHTML='';
+  // Masquer les anciennes zones — le chat est l'unique espace
+  ['my-zone','sent-zone','reveal-zone'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.style.display='none';el.innerHTML='';}
+  });
+
+  // ── Mettre à jour la zone de navigation (nav-zone) ──
+  let nz=document.getElementById('nav-zone');
+  if(!nz){
+    // Créer nav-zone sous le chat si elle n'existe pas
+    const chatZ=document.getElementById('chat-zone');
+    if(chatZ){
+      nz=document.createElement('div');
+      nz.id='nav-zone';
+      nz.style.marginTop='10px';
+      chatZ.parentNode.insertBefore(nz, chatZ.nextSibling);
     }
   }
+  if(nz) nz.innerHTML=navHTML(s,qk);
 
-  if(myA || thA){
-    // Au moins une réponse → zone révélation
-    if(revZ&&revZ.style.display==='block'){
-      // Si je viens de soumettre (textarea encore dans DOM) → reconstruire
-      if(revZ.querySelector('#my-answer')){
-        document.getElementById('sent-zone').style.display='none';
-        document.getElementById('my-zone').style.display='none';
-        showReveal(s,qk); return;
-      }
-      // L'autre vient de répondre → reconstruire
-      const shownTh=revZ.querySelector('#answer-text-th');
-      const thAnswerNow=s?.answers?.[qk+'_'+thRole];
-      const thAnswerShown=shownTh&&shownTh.textContent.trim()!==''&&!shownTh.closest('[style*="opacity:0.55"]');
-      if(thAnswerNow && !thAnswerShown){
-        document.getElementById('sent-zone').style.display='none';
-        document.getElementById('my-zone').style.display='none';
-        showReveal(s,qk); return;
-      }
-      // Sinon juste mettre à jour nav + bouton analyse
-      const nz=document.getElementById('nav-zone');
-      if(nz) nz.innerHTML=navHTML(s,qk);
-      const abz=document.getElementById('analysis-btn-zone');
-      const ardy=s?.aiResult?.qk===qk;
-      if(abz&&bothNow&&!ardy&&!document.getElementById('analysis-btn')){
-        abz.innerHTML=`<button id="analysis-btn" onclick="doAnalysis()" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--goldD);background:rgba(200,148,59,0.15);color:var(--gold);font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">🔍 ${myLang==='fr'?'Analyser notre compatibilité':'Analyse our compatibility'}</button>`;
-      }
-      if(ardy&&!document.getElementById('ai-panel')) renderAI(s.aiResult);
-      return;
-    }
-    document.getElementById('sent-zone').style.display='none';
-    document.getElementById('my-zone').style.display='none';
-    showReveal(s,qk);
-  } else {
-    // Aucune réponse encore → textarea + nav solo
-    if(document.getElementById('my-answer'))return;
-    showMyInput();
+  // ── Analyse IA si les deux ont répondu au chat ──
+  const ardy=s?.aiResult?.qk===qk;
+  let abz=document.getElementById('analysis-btn-zone');
+  if(!abz){
+    abz=document.createElement('div');
+    abz.id='analysis-btn-zone';
+    if(nz) nz.parentNode.insertBefore(abz, nz);
+  }
+  if(bothNow&&!ardy&&!document.getElementById('analysis-btn')){
+    abz.innerHTML=`<button id="analysis-btn" onclick="doAnalysis()" style="width:100%;margin-bottom:8px;padding:12px;border-radius:12px;border:1px solid var(--goldD);background:rgba(200,148,59,0.15);color:var(--gold);font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">🔍 ${myLang==='fr'?'Analyser notre compatibilité':'Analyse our compatibility'}</button>`;
+  }
+  if(ardy&&!document.getElementById('ai-panel')){
+    let aiz=document.getElementById('ai-zone');
+    if(!aiz){aiz=document.createElement('div');aiz.id='ai-zone';if(abz)abz.parentNode.insertBefore(aiz,abz.nextSibling);}
+    renderAI(s.aiResult);
   }
 
-  // ── Chat TOUJOURS visible ──
-  const chatZ=document.getElementById('chat-zone');
-  if(chatZ){
-    chatZ.style.display='block';
-    renderLiveChat(s,qk);
-  }
+  // ── Programmer analyse auto ──
+  scheduleAutoAnalysis(s,qk);
 }
 
 function showMyInput(){
@@ -4222,10 +4225,17 @@ function prevQ(){if(currentQi>0){currentQi--;renderQ();}}
 function nextQ(){if(currentQi<currentQs.length-1){currentQi++;renderQ();}}
 
 function showReveal(s,qk){
+  // Le chat est l'unique espace — reveal-zone n'est plus utilisée
   document.getElementById('sent-zone').style.display='none';
   document.getElementById('my-zone').style.display='none';
-  const ardy=s?.aiResult?.qk===qk;
   const z=document.getElementById('reveal-zone');
+  if(z){z.style.display='none';z.innerHTML='';}
+  // Déléguer à checkQState qui gère nav + analyse
+  checkQState(s);
+  return;
+  // ── Code legacy ci-dessous conservé pour référence ──
+  const ardy=s?.aiResult?.qk===qk;
+  const _z=document.getElementById('reveal-zone');
 
   // Ordre : AUTRE en haut, MOI en bas
   // MOI = droite (avatar à droite), AUTRE = gauche (avatar à gauche) — comme WhatsApp
@@ -4853,10 +4863,22 @@ function _updateChatMsgs(s, qk){
     }
   }
   _lastMsgCount[qk] = msgs.length;
-  // Toujours rendre les messages (même si pas sur cette question actuellement)
+  // Toujours rendre les messages
   msgsEl.innerHTML = buildMsgHtml(s, msgs);
   showTypingIndicator(s);
   setTimeout(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; }, 50);
+
+  // ── Badge WhatsApp non-lu ──
+  const unreadMsgs = msgs.filter(m=>m.role!==myRole && !m.readBy?.[myRole] && !m.deleted);
+  const badge = document.getElementById('chat-unread-badge');
+  if(badge){
+    if(unreadMsgs.length>0){
+      badge.textContent = unreadMsgs.length>99?'99+':String(unreadMsgs.length);
+      badge.style.display='inline-flex';
+    } else {
+      badge.style.display='none';
+    }
+  }
 }
 
 function refreshLiveChat(s, qk){
