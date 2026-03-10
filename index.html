@@ -2689,6 +2689,36 @@ function drawAll(){['home','create','join','wait','settings','cats','q','insight
 window.addEventListener('load',()=>{
   drawAll();loadSettings();
   _themeQsBuf=[];
+
+  // ── Détection QR code : ?join=CODE ──
+  const _urlParams = new URLSearchParams(window.location.search);
+  const _qrJoinCode = _urlParams.get('join');
+  if(_qrJoinCode && _qrJoinCode.length >= 4){
+    // Pré-remplir le formulaire de rejoindre et naviguer dessus
+    setTimeout(()=>{
+      goPage('pg-join');
+      const jCode = document.getElementById('j-code');
+      if(jCode){
+        jCode.value = _qrJoinCode.toUpperCase();
+        jCode.dispatchEvent(new Event('input'));
+      }
+      // Nettoyer l'URL sans recharger
+      window.history.replaceState({}, '', window.location.pathname);
+      // Petit message d'indication
+      const jErr = document.getElementById('j-err');
+      if(jErr){
+        jErr.style.display='block';
+        jErr.style.color='var(--gold)';
+        jErr.style.background='rgba(212,148,60,0.1)';
+        jErr.style.border='1px solid var(--goldD)';
+        jErr.textContent = myLang==='fr'
+          ? '✅ Code scanné ! Entre ton prénom pour rejoindre.'
+          : '✅ Code scanned! Enter your name to join.';
+      }
+    }, 300);
+    return; // Ne pas restaurer session
+  }
+
   // Restaurer session si page rechargée
   try{
     const sess=sessionStorage.getItem('nd_session');
