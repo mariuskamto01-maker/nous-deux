@@ -3384,7 +3384,9 @@ async function createRoom(){
   myName=document.getElementById('c-name').value.trim();myLang=createLang;myRole='p1';
   roomCode=genCode();
   const btn=document.getElementById('c-btn');btn.textContent='Création...';btn.disabled=true;
-  const state={code:roomCode,p1:{name:myName,lang:myLang,ts:Date.now()},p2:null,answers:{},insights:[],aiResult:null,
+  const state={code:roomCode,p1:{name:myName,lang:myLang,ts:Date.now(),
+    avatar:settings.avatar||null, avatarType:settings.avatarType||'emoji'},
+    p2:null,answers:{},insights:[],aiResult:null,
     customThemes:settings.customThemes, customQs:settings.customQs};
   await saveRoom(state);lastRoom=state;
   localStorage.setItem('nd_session',JSON.stringify({myRole,myName,myLang,roomCode}));
@@ -3451,7 +3453,7 @@ async function joinRoom(){
   } else {
     // Nouveau p2
     myRole='p2'; myName=name; myLang=joinLang||'en';
-    state.p2={name:myName, lang:myLang, ts:Date.now()};
+    state.p2={name:myName, lang:myLang, ts:Date.now(), avatar:settings.avatar||null, avatarType:settings.avatarType||'emoji'};
   }
 
   roomCode=code;
@@ -4825,12 +4827,24 @@ function initProfileTab(){
 }
 
 async function saveProfileToRoom(){
-  if(!roomCode || !lastRoom || !myRole) return;
-  lastRoom[myRole] = lastRoom[myRole] || {};
-  lastRoom[myRole].avatar = settings.avatar;
-  lastRoom[myRole].avatarType = settings.avatarType || 'emoji';
-  await saveRoom(lastRoom);
-  // Mettre à jour les avatars partout
+  if(!roomCode || !myRole) return;
+  const avatarData = {avatar: settings.avatar||null, avatarType: settings.avatarType||'emoji'};
+  // PATCH direct — ne touche que l'avatar, pas toute la room
+  try{
+    await fetch(`${FB}/rooms/${roomCode}/${myRole}/avatar.json`,{
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(settings.avatar||null)
+    });
+    await fetch(`${FB}/rooms/${roomCode}/${myRole}/avatarType.json`,{
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(settings.avatarType||'emoji')
+    });
+    // Mettre à jour lastRoom localement
+    if(lastRoom && lastRoom[myRole]){
+      lastRoom[myRole].avatar = settings.avatar||null;
+      lastRoom[myRole].avatarType = settings.avatarType||'emoji';
+    }
+  }catch(e){ console.warn('avatar save failed',e); }
   initAvatars(lastRoom);
   localStorage.setItem('nd_settings', JSON.stringify(settings));
 }
