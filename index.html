@@ -1045,7 +1045,11 @@ let _themeQsBuf = [];
 function loadSettings() {
   try {
     const s = localStorage.getItem('nd_settings');
-    if(s) settings = {...settings, ...JSON.parse(s)};
+    if(s) {
+      const parsed = JSON.parse(s);
+      settings = {...settings, ...parsed};
+      settings.qCount = 0; // Toujours toutes les questions — ignore l'ancienne valeur sauvée
+    }
   } catch(e){}
   applySettingsUI();
 }
@@ -1058,7 +1062,15 @@ function loadSettings() {
 // ═══════════════════════════════════════
 const _notified={};
 const _badges={}; // catId -> {count, type: 'answer'|'chat'|'reveal'}
-const _readQks=new Set(); // qks dont les messages chat ont été lus localement
+// _readQks persiste dans localStorage pour survivre aux reloads
+function _loadReadQks(){
+  try{ const v=localStorage.getItem('nd_readqks'); if(v) return new Set(JSON.parse(v)); }catch(e){}
+  return new Set();
+}
+function _saveReadQks(){
+  try{ localStorage.setItem('nd_readqks', JSON.stringify([..._readQks])); }catch(e){}
+}
+const _readQks=_loadReadQks();
 
 function addBadge(catId, type){
   if(!_badges[catId]) _badges[catId]={count:0,type};
@@ -1380,6 +1392,7 @@ function logout(){
   }
   sessionStorage.removeItem('nd_session');
   roomCode='';myName='';myRole='';myLang='fr';mySecret='';lastRoom=null;
+  _readQks.clear();_saveReadQks(); // Réinitialiser les lectures pour la nouvelle room
   currentCat=null;currentQi=0;currentQs=[];
   window._wentToCats=false;
   if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
@@ -2716,7 +2729,7 @@ function renderCatList(s){
     }).catch(()=>{});
   }
   // Marquer TOUTES les questions de ce thème comme lues — local + Firebase
-  currentQs.forEach((_q,qi)=>{ _readQks.add(catId+'_'+qi); });
+  currentQs.forEach((_q,qi)=>{ _readQks.add(catId+'_'+qi); }); _saveReadQks();
   clearBadge(catId);
   _markAllCatRead(catId, currentQs.length);
 }
@@ -3517,7 +3530,7 @@ async function _markAllCatRead(catId, qCount){
 
 async function markChatRead(qk){
   // Marquer localement immédiatement → badge disparaît tout de suite
-  _readQks.add(qk);
+  _readQks.add(qk);_saveReadQks();
   clearBadge(currentCat?.id);
   // Puis sauvegarder dans Firebase en arrière-plan
   const s=lastRoom||await loadRoom(roomCode);
