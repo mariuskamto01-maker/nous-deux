@@ -3502,10 +3502,15 @@ function startPoll(){
   if(pollTimer)clearInterval(pollTimer);
   pollTimer=setInterval(async()=>{
     const s=await loadRoom(roomCode);if(!s)return;
-    // Mettre a jour le timestamp de presence
-    if(myRole==='p1')s.p1.ts=Date.now();
-    else if(s.p2)s.p2.ts=Date.now();
-    await saveRoom(s);lastRoom=s;
+    // PATCH minimal du timestamp de présence — ne jamais écraser toute la room
+    try{
+      await fetch(`${FB}/rooms/${roomCode}/${myRole}/ts.json`,{
+        method:'PUT',headers:{'Content-Type':'application/json'},body:String(Date.now())
+      });
+      // Mettre à jour lastRoom localement sans re-sauvegarder
+      if(s[myRole]) s[myRole].ts=Date.now();
+    }catch(e){console.warn('ts patch failed',e);}
+    lastRoom=s;
     const pg=document.querySelector('.page.active')?.id;
     // Mettre a jour les indicateurs de presence partout
     renderStatus('wait-status',s);renderStatus('cat-status',s);renderStatus('q-status',s);
@@ -4089,14 +4094,24 @@ async function submitAnswer(){
   const btn=document.querySelector('#my-zone button[onclick="submitAnswer()"]');
   if(btn){btn.disabled=true;btn.textContent=myLang==='fr'?'⏳ Envoi...':'⏳ Sending...';}
 
-  const s=await loadRoom(roomCode)||lastRoom;
-  if(!s){if(btn){btn.disabled=false;btn.textContent=myLang==='fr'?'Valider ma réponse →':'Submit my answer →';}return;}
-
   const qk=currentCat.id+'_'+currentQi;
-  s.answers=s.answers||{};
-  s.answers[qk+'_'+myRole]=val;
-  await saveRoom(s);
-  lastRoom=s;
+
+  // PATCH ciblé sur la réponse uniquement — pas de PUT complet
+  try{
+    const chatKey='answers/'+qk+'_'+myRole;
+    await fetch(`${FB}/rooms/${roomCode}/answers/${qk}_${myRole}.json`,{
+      method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(val)
+    });
+    // Mettre à jour lastRoom localement
+    if(lastRoom){
+      lastRoom.answers=lastRoom.answers||{};
+      lastRoom.answers[qk+'_'+myRole]=val;
+    }
+  }catch(e){
+    console.error('submitAnswer PATCH failed',e);
+    if(btn){btn.disabled=false;btn.textContent=myLang==='fr'?'Valider ma réponse →':'Submit my answer →';}
+    return;
+  }
 
   // Masquer my-zone AVANT de reconstruire pour éviter le doublon
   const myZ=document.getElementById('my-zone');
