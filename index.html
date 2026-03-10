@@ -602,7 +602,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
         <!-- QR Code -->
         <div style="margin-top:16px;text-align:center;">
           <p style="font-size:10px;color:var(--muted);margin-bottom:8px;letter-spacing:0.5px;">SCANNER POUR REJOINDRE · SCAN TO JOIN</p>
-          <div id="wait-qr" style="display:inline-block;padding:10px;background:#fff;border-radius:14px;border:3px solid var(--goldD);box-shadow:0 0 20px rgba(212,148,60,0.3);">
+          <div id="wait-qr" style="display:inline-block;padding:12px;background:#fff;border-radius:16px;border:3px solid var(--goldD);box-shadow:0 0 24px rgba(212,148,60,0.4);">
           </div>
         </div>
         <p style="font-size:12px;color:var(--muted);margin-top:10px;text-align:center;" id="wait-share-msg"></p>
@@ -2900,7 +2900,7 @@ function showWaiting(state){
   // Code p1 = son code secret, code p2 = p1PartnerCode
   document.getElementById('wait-code').textContent=state.code;
   document.getElementById('wait-share-msg').textContent=myLang==='fr'?'Partage ce code par WhatsApp':'Share this code via WhatsApp';
-  // Générer le QR code avec qrcode.js
+  // Générer le QR code avec qrcode.js — haute qualité
   const joinUrl = window.location.href.split('?')[0]+'?join='+state.code;
   const qrContainer = document.getElementById('wait-qr');
   if(qrContainer){
@@ -2908,12 +2908,19 @@ function showWaiting(state){
     try{
       new QRCode(qrContainer, {
         text: joinUrl,
-        width: 150,
-        height: 150,
+        width: 220,
+        height: 220,
         colorDark: '#1a1020',
         colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.M
+        correctLevel: QRCode.CorrectLevel.H
       });
+      // Forcer rendu net : désactiver anti-aliasing sur l'img générée
+      setTimeout(()=>{
+        const img = qrContainer.querySelector('img');
+        if(img){ img.style.imageRendering='pixelated'; img.style.width='220px'; img.style.height='220px'; }
+        const cv = qrContainer.querySelector('canvas');
+        if(cv){ cv.style.imageRendering='pixelated'; cv.style.width='220px'; cv.style.height='220px'; }
+      }, 100);
     } catch(e){
       // Fallback: canvas maison
       const c = document.createElement('canvas');
@@ -3602,59 +3609,56 @@ function showReveal(s,qk){
 
   function _bubble(role){
     const isMe = role===myRole;
-    const nm = s?.[role]?.name||'?';
-    const lg = s?.[role]?.lang||'fr';
-    const ans = s?.answers?.[qk+'_'+role];
-    const col = role==='p1'?'var(--p1)':'var(--p2)';
-    const bg  = role==='p1'?'var(--p1d)':'var(--p2d)';
-    const bd  = role==='p1'?'var(--p1b)':'var(--p2b)';
-    const av  = getAvatarHtml(s,role,36);
-    const editedFlag = s?.answers?.[qk+'_'+role+'_edited']
+    const nm   = s?.[role]?.name||'?';
+    const lg   = s?.[role]?.lang||'fr';
+    const ans  = s?.answers?.[qk+'_'+role];
+    const col  = role==='p1'?'var(--p1)':'var(--p2)';
+    const bg   = role==='p1'?'var(--p1d)':'var(--p2d)';
+    const bd   = role==='p1'?'var(--p1b)':'var(--p2b)';
+    const av   = getAvatarHtml(s,role,38);
+    const edited = s?.answers?.[qk+'_'+role+'_edited']
       ? `<span style="font-size:9px;color:var(--muted);font-style:italic;"> · ${myLang==='fr'?'modifié':'edited'}</span>` : '';
 
-    // ── Pas encore répondu ──
     if(!ans){
-      if(isMe){
-        // MOI sans réponse → rien dans reveal-zone, le textarea est dans my-zone (showMyInput)
-        return '';
-      } else {
-        // AUTRE sans réponse → placeholder, côté gauche
-        return `<div style="display:flex;flex-direction:row;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;opacity:0.55;">
+      // AUTRE pas encore répondu → gauche, grisé
+      if(!isMe){
+        return `
+        <div style="display:flex;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;opacity:0.5;">
           ${av}
-          <div style="background:${bg};border:1px solid ${bd};border-radius:16px;border-bottom-left-radius:4px;padding:10px 14px;max-width:75%;">
-            <div class="bubble-name" style="color:${col};">${nm} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
+          <div style="background:${bg};border:1px solid ${bd};border-radius:0 16px 16px 16px;padding:10px 14px;max-width:72%;">
+            <div style="font-size:11px;font-weight:700;color:${col};margin-bottom:4px;">${nm} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
             <span style="color:var(--muted);font-size:12px;font-style:italic;">${lg==='fr'?'⏳ Pas encore répondu...':'⏳ Hasn\'t answered yet...'}</span>
           </div>
         </div>`;
       }
+      return ''; // MOI sans réponse → géré par showMyInput, pas ici
     }
 
-    // ── A répondu ──
-    const actions = isMe ? `<div style="display:flex;gap:6px;margin-top:10px;justify-content:flex-end;">
-      <button onclick="editAnswer('${qk}')" style="background:rgba(212,148,60,0.12);border:1px solid var(--goldD);color:var(--gold);border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer;font-family:'Outfit',sans-serif;">✏️ ${myLang==='fr'?'Modifier':'Edit'}</button>
-      <button onclick="deleteAnswer('${qk}')" style="background:rgba(232,80,80,0.08);border:1px solid rgba(232,80,80,0.3);color:#E87070;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer;font-family:'Outfit',sans-serif;">🗑️ ${myLang==='fr'?'Supprimer':'Delete'}</button>
-    </div>` : '';
+    const actions = isMe ? `
+      <div style="display:flex;gap:6px;margin-top:10px;justify-content:flex-end;">
+        <button onclick="editAnswer('${qk}')" style="background:rgba(212,148,60,0.12);border:1px solid var(--goldD);color:var(--gold);border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer;font-family:'Outfit',sans-serif;">✏️ ${myLang==='fr'?'Modifier':'Edit'}</button>
+        <button onclick="deleteAnswer('${qk}')" style="background:rgba(232,80,80,0.08);border:1px solid rgba(232,80,80,0.3);color:#E87070;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer;font-family:'Outfit',sans-serif;">🗑️ ${myLang==='fr'?'Supprimer':'Delete'}</button>
+      </div>` : '';
 
     if(isMe){
-      // MOI avec réponse → droite
-      // flex row normal + margin-left:auto sur inner = pousse tout à droite
-      return `<div style="display:flex;flex-direction:row;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;">
-        <div style="display:flex;flex-direction:row;align-items:flex-start;gap:10px;margin-left:auto;">
-          <div style="max-width:78%;background:${bg};border:1px solid ${bd};border-radius:16px;border-bottom-right-radius:4px;padding:10px 14px;word-break:break-word;">
-            <div class="bubble-name" style="color:${col};text-align:right;">${nm} <span style="font-size:9px;color:var(--gold);">(vous)</span> <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${editedFlag}</div>
-            <div id="answer-text-me" style="font-size:13px;line-height:1.6;color:var(--cream);margin-top:4px;white-space:pre-wrap;">${ans}</div>
-            ${actions}
-          </div>
-          ${av}
+      // ── MOI → droite, avatar à DROITE de la bulle ──
+      return `
+      <div style="display:flex;justify-content:flex-end;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;">
+        <div style="background:${bg};border:1px solid ${bd};border-radius:16px 0 16px 16px;padding:10px 14px;max-width:72%;word-break:break-word;">
+          <div style="font-size:11px;font-weight:700;color:${col};margin-bottom:4px;text-align:right;">${nm} <span style="font-size:9px;color:var(--gold);">(vous)</span> <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${edited}</div>
+          <div id="answer-text-me" style="font-size:13px;line-height:1.6;color:var(--cream);margin-top:2px;white-space:pre-wrap;">${ans}</div>
+          ${actions}
         </div>
+        ${av}
       </div>`;
     } else {
-      // AUTRE avec réponse → gauche, avatar à gauche
-      return `<div style="display:flex;flex-direction:row;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;">
+      // ── AUTRE → gauche, avatar à GAUCHE de la bulle ──
+      return `
+      <div style="display:flex;justify-content:flex-start;align-items:flex-start;gap:10px;width:100%;margin-bottom:14px;box-sizing:border-box;">
         ${av}
-        <div style="max-width:78%;background:${bg};border:1px solid ${bd};border-radius:16px;border-bottom-left-radius:4px;padding:10px 14px;word-break:break-word;">
-          <div class="bubble-name" style="color:${col};">${nm} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${editedFlag}</div>
-          <div id="answer-text-th" style="font-size:13px;line-height:1.6;color:var(--cream);margin-top:4px;white-space:pre-wrap;">${ans}</div>
+        <div style="background:${bg};border:1px solid ${bd};border-radius:0 16px 16px 16px;padding:10px 14px;max-width:72%;word-break:break-word;">
+          <div style="font-size:11px;font-weight:700;color:${col};margin-bottom:4px;">${nm} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${edited}</div>
+          <div id="answer-text-th" style="font-size:13px;line-height:1.6;color:var(--cream);margin-top:2px;white-space:pre-wrap;">${ans}</div>
         </div>
       </div>`;
     }
