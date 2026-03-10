@@ -3307,20 +3307,33 @@ function checkQState(s){
   const thA=s.answers?.[qk+'_'+thRole];
 
   // ── Logique ouverte: on voit les réponses dès qu'elles existent ──
-  // Si l'autre a répondu → on affiche sa réponse immédiatement (pas besoin d'attendre)
   if(myA || thA){
     const revZ=document.getElementById('reveal-zone');
+    const bothNow=!!(s?.answers?.[qk+'_p1']&&s?.answers?.[qk+'_p2']);
     if(revZ&&revZ.style.display==='block'){
-      // Déjà en révélation → mettre à jour si nouvelle réponse arrivée
-      // Mettre à jour juste la nav sans reconstruire tout le reveal
+      // Déjà en révélation — vérifier si une nouvelle réponse est arrivée
+      // Compter les réponses actuellement affichées
+      const shownTh=revZ.querySelector('#answer-text-th');
+      const thAnswerNow=s?.answers?.[qk+'_'+thRole];
+      const thAnswerShown=shownTh&&shownTh.textContent.trim()!=='' && !shownTh.closest('[style*="opacity:0.55"]');
+      // Si l'autre vient de répondre alors qu'il n'avait pas encore répondu → reconstruire
+      if(thAnswerNow && !thAnswerShown){
+        document.getElementById('sent-zone').style.display='none';
+        document.getElementById('my-zone').style.display='none';
+        showReveal(s,qk);
+        return;
+      }
+      // Sinon juste mettre à jour nav + bouton analyse
       const nz=document.getElementById('nav-zone');
       if(nz) nz.innerHTML=navHTML(s,qk);
-      // Mettre à jour analyse btn
-      const bothNow=!!(s?.answers?.[qk+'_p1']&&s?.answers?.[qk+'_p2']);
       const abz=document.getElementById('analysis-btn-zone');
       const ardy=s?.aiResult?.qk===qk;
       if(abz&&bothNow&&!ardy&&!document.getElementById('analysis-btn')){
         abz.innerHTML=`<button id="analysis-btn" onclick="doAnalysis()" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--goldD);background:rgba(200,148,59,0.15);color:var(--gold);font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">🔍 ${myLang==='fr'?'Analyser notre compatibilité':'Analyse our compatibility'}</button>`;
+      }
+      // Si l'analyse vient d'arriver (depuis l'autre)
+      if(ardy&&!document.getElementById('ai-panel')){
+        renderAI(s.aiResult);
       }
       return;
     }
@@ -3561,25 +3574,31 @@ function showReveal(s,qk){
     const col=role==='p1'?'var(--p1)':'var(--p2)';
     const bg=role==='p1'?'var(--p1d)':'var(--p2d)';
     const bd=role==='p1'?'var(--p1b)':'var(--p2b)';
+    // MOI → droite (row-reverse) | AUTRE → gauche (row)
     const rowDir=isMe?'row-reverse':'row';
     const radius=isMe?'border-bottom-right-radius:4px':'border-bottom-left-radius:4px';
+    const justify=isMe?'justify-content:flex-end':'justify-content:flex-start';
 
     if(!ans){
       if(isMe){
-        return `<div style="display:flex;flex-direction:${rowDir};gap:10px;align-items:flex-start;width:100%;box-sizing:border-box;margin-bottom:12px;">
-          ${getAvatarHtml(s,role,36)}
-          <div style="flex:1;background:${bg};border:1px solid ${bd};border-radius:16px;${radius};padding:10px 14px;">
-            <div class="bubble-name" style="color:${col};">${nm} <span style="font-size:9px;color:var(--gold);">(vous)</span> <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
-            <textarea id="my-answer" rows="3" placeholder="${lg==='fr'?'Ta réponse...':'Your answer...'}" style="width:100%;box-sizing:border-box;font-size:13px;padding:8px 10px;resize:none;margin-top:6px;border-radius:8px;background:var(--d1);border:1px solid ${bd};color:var(--cream);font-family:'Outfit',sans-serif;"></textarea>
-            <button onclick="submitAnswer()" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,${bg},${col});color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">${lg==='fr'?'Envoyer →':'Send →'}</button>
+        return `<div style="display:flex;${justify};width:100%;box-sizing:border-box;margin-bottom:12px;">
+          <div style="display:flex;flex-direction:${rowDir};gap:10px;align-items:flex-start;width:100%;">
+            ${getAvatarHtml(s,role,36)}
+            <div style="flex:1;max-width:82%;background:${bg};border:1px solid ${bd};border-radius:16px;${radius};padding:10px 14px;">
+              <div class="bubble-name" style="color:${col};">${nm} <span style="font-size:9px;color:var(--gold);">(vous)</span> <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
+              <textarea id="my-answer" rows="3" placeholder="${lg==='fr'?'Ta réponse...':'Your answer...'}" style="width:100%;box-sizing:border-box;font-size:13px;padding:8px 10px;resize:none;margin-top:6px;border-radius:8px;background:var(--d1);border:1px solid ${bd};color:var(--cream);font-family:'Outfit',sans-serif;"></textarea>
+              <button onclick="submitAnswer()" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,${bg},${col});color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">${lg==='fr'?'Envoyer →':'Send →'}</button>
+            </div>
           </div>
         </div>`;
       } else {
-        return `<div style="display:flex;flex-direction:${rowDir};gap:10px;align-items:flex-start;width:100%;box-sizing:border-box;margin-bottom:12px;opacity:0.55;">
-          ${getAvatarHtml(s,role,36)}
-          <div style="background:${bg};border:1px solid ${bd};border-radius:16px;${radius};padding:10px 14px;max-width:75%;">
-            <div class="bubble-name" style="color:${col};">${nm} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
-            <span style="color:var(--muted);font-size:12px;font-style:italic;">${lg==='fr'?'⏳ Pas encore répondu...':'⏳ Hasn\'t answered yet...'}</span>
+        return `<div style="display:flex;${justify};width:100%;box-sizing:border-box;margin-bottom:12px;opacity:0.55;">
+          <div style="display:flex;flex-direction:${rowDir};gap:10px;align-items:flex-start;max-width:78%;">
+            ${getAvatarHtml(s,role,36)}
+            <div style="background:${bg};border:1px solid ${bd};border-radius:16px;${radius};padding:10px 14px;">
+              <div class="bubble-name" style="color:${col};">${nm} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
+              <span style="color:var(--muted);font-size:12px;font-style:italic;">${lg==='fr'?'⏳ Pas encore répondu...':'⏳ Hasn\'t answered yet...'}</span>
+            </div>
           </div>
         </div>`;
       }
@@ -3591,20 +3610,23 @@ function showReveal(s,qk){
       <button onclick="deleteAnswer('${qk}')" style="background:rgba(232,80,80,0.08);border:1px solid rgba(232,80,80,0.3);color:#E87070;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer;font-family:'Outfit',sans-serif;">🗑️ ${myLang==='fr'?'Supprimer':'Delete'}</button>
     </div>`:'';
 
-    return `<div style="display:flex;flex-direction:${rowDir};gap:10px;align-items:flex-start;width:100%;box-sizing:border-box;margin-bottom:12px;">
-      ${getAvatarHtml(s,role,36)}
-      <div style="flex:1;max-width:80%;background:${bg};border:1px solid ${bd};border-radius:16px;${radius};padding:10px 14px;word-break:break-word;">
-        <div class="bubble-name" style="color:${col};">${nm}${isMe?` <span style="font-size:9px;color:var(--gold);">(vous)</span>`:''} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${editedFlag}</div>
-        <div id="answer-text-${isMe?'me':'th'}" style="font-size:13px;line-height:1.6;color:var(--cream);margin-top:4px;white-space:pre-wrap;">${ans}</div>
-        ${answerActions}
+    return `<div style="display:flex;${justify};width:100%;box-sizing:border-box;margin-bottom:12px;">
+      <div style="display:flex;flex-direction:${rowDir};gap:10px;align-items:flex-start;max-width:82%;">
+        ${getAvatarHtml(s,role,36)}
+        <div style="background:${bg};border:1px solid ${bd};border-radius:16px;${radius};padding:10px 14px;word-break:break-word;">
+          <div class="bubble-name" style="color:${col};">${nm}${isMe?` <span style="font-size:9px;color:var(--gold);">(vous)</span>`:''} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${editedFlag}</div>
+          <div id="answer-text-${isMe?'me':'th'}" style="font-size:13px;line-height:1.6;color:var(--cream);margin-top:4px;white-space:pre-wrap;">${ans}</div>
+          ${answerActions}
+        </div>
       </div>
     </div>`;
   }).join('');
 
   const bothAnswered=!!(s?.answers?.[qk+'_p1']&&s?.answers?.[qk+'_p2']);
+  // N'afficher le bouton analyse QUE si les deux ont répondu et analyse pas encore faite
   const analysisBtnHtml=ardy?'':(bothAnswered
     ?`<button id="analysis-btn" onclick="doAnalysis()" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--goldD);background:rgba(200,148,59,0.15);color:var(--gold);font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;margin-top:4px;">🔍 ${myLang==='fr'?'Analyser notre compatibilité':'Analyse our compatibility'}</button>`
-    :`<p style="text-align:center;font-size:12px;color:var(--muted);padding:8px 0;">⏳ ${myLang==='fr'?'En attente des deux réponses...':'Waiting for both answers...'}</p>`);
+    :'');  // Rien si pas les deux — le polling mettra à jour quand l'autre répond
 
   z.innerHTML=`
     <div style="text-align:center;margin-bottom:14px;">
@@ -3617,7 +3639,11 @@ function showReveal(s,qk){
     <div id="nav-zone">${navHTML(s,qk)}</div>`;
   z.style.display='block';
   if(ardy) renderAI(s.aiResult);
-  else scheduleAutoAnalysis(s,qk);
+  else {
+    // Programmer l'analyse seulement si les deux ont DÉJÀ répondu au moment de l'affichage
+    const _ba=!!(s?.answers?.[qk+'_p1']&&s?.answers?.[qk+'_p2']);
+    if(_ba) scheduleAutoAnalysis(s,qk);
+  }
   renderLiveChat(s,qk);
 }
 
@@ -3846,16 +3872,9 @@ async function _triggerAutoAnalysis(qk){
   if(s.aiResult?.qk === qk) return; // Déjà fait entre temps
   if(currentCat?.id+'_'+currentQi !== qk) return; // Question changée
   _analysisInProgress = true;
-  // Afficher l'indicateur de chargement dans ai-zone
-  const aiEl = document.getElementById('ai-zone');
-  if(aiEl) aiEl.innerHTML = `<div style="margin-top:14px;text-align:center;padding:16px;background:rgba(212,148,60,0.08);border:1px solid var(--goldD);border-radius:12px;">
-    <div style="width:28px;height:28px;border:3px solid var(--gold);border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 10px;"></div>
-    <p style="color:var(--gold);font-size:12px;font-weight:600;">${myLang==='fr'?'🤖 Analyse de votre compatibilité...':'🤖 Analysing your compatibility...'}</p>
-    <p style="color:var(--muted);font-size:11px;margin-top:4px;">${myLang==='fr'?'Inactivité détectée — analyse automatique':'Inactivity detected — auto analysis'}</p>
-  </div>`;
-  // Cacher le bouton manuel
+  // Analyse silencieuse — pas de spinner visible, juste mettre à jour le bouton discrètement
   const manualBtn = document.getElementById('analysis-btn');
-  if(manualBtn) manualBtn.style.display='none';
+  if(manualBtn){ manualBtn.disabled=true; manualBtn.textContent=myLang==='fr'?'⏳ Analyse...':'⏳ Analysing...'; }
   await doAnalysis();
   _analysisInProgress = false;
 }
