@@ -239,6 +239,18 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
   padding:0 10px 10px;
 }
 
+/* ── TYPING INDICATOR ── */
+@keyframes typingBounce{
+  0%,60%,100%{transform:translateY(0);opacity:0.4;}
+  30%{transform:translateY(-5px);opacity:1;}
+}
+.typing-dot{
+  display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:var(--gold);margin:0 2px;
+  animation:typingBounce 1.1s infinite ease-in-out;
+}
+.typing-dot:nth-child(2){animation-delay:0.18s;}
+.typing-dot:nth-child(3){animation-delay:0.36s;}
 /* ── CHAT MESSAGE ACTIONS ── */
 .msg-actions{
   display:inline-flex;align-items:center;gap:0;margin-left:4px;
@@ -808,7 +820,8 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
       </div>
       <!-- Zone messages -->
       <div style="padding:10px 14px 0;">
-        <div id="chat-msgs" style="display:flex;flex-direction:column;min-height:60px;max-height:260px;overflow-y:auto;padding-bottom:4px;"></div>
+        <div id="typing-indicator" style="display:none;padding:4px 0 2px;min-height:24px;"></div>
+        <div id="chat-msgs" style="display:flex;flex-direction:column;min-height:60px;max-height:320px;overflow-y:auto;overflow-x:hidden;padding-bottom:4px;width:100%;"></div>
       </div>
       <!-- Zone saisie -->
       <div style="padding:10px 14px 14px;display:flex;gap:8px;align-items:flex-end;border-top:1px solid var(--faint);margin-top:8px;">
@@ -1021,6 +1034,45 @@ window.addEventListener('resize', ()=>{ initBackground(); });
 // FIREBASE REST API
 // ═══════════════════════════════════════
 const FB = "https://nous-deux-fb69a-default-rtdb.europe-west1.firebasedatabase.app";
+
+// ── TYPING INDICATOR ──
+let _typingTimer = null;
+
+async function setTyping(isTyping){
+  if(!roomCode) return;
+  const val = isTyping ? Date.now() : 0;
+  try{
+    await fetch(`${FB}/rooms/${roomCode}/typing/${myRole}.json`,{
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(val)
+    });
+  }catch(e){}
+}
+
+function showTypingIndicator(s){
+  const el = document.getElementById('typing-indicator');
+  if(!el) return;
+  const thRole = myRole==='p1'?'p2':'p1';
+  const thName = s?.[thRole]?.name || '';
+  const ts = s?.typing?.[thRole] || 0;
+  const isActive = ts > 0 && (Date.now() - ts) < 6000; // actif si < 6s
+  if(isActive){
+    el.style.display = 'flex';
+    el.style.alignItems = 'center';
+    el.style.gap = '8px';
+    el.style.padding = '6px 4px 2px';
+    const col = thRole==='p1'?'var(--p1)':'var(--p2)';
+    el.innerHTML = `<span style="font-size:11px;color:${col};font-weight:600;">${thName}</span>
+      <span style="display:inline-flex;align-items:center;background:var(--d2);border-radius:12px;padding:6px 10px;gap:1px;">
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+      </span>`;
+  } else {
+    el.style.display = 'none';
+    el.innerHTML = '';
+  }
+}
 
 async function saveRoom(s) {
   try {
@@ -2511,6 +2563,8 @@ function startPoll(){
     renderStatus('wait-status',s);renderStatus('cat-status',s);renderStatus('q-status',s);
     // Mettre à jour uniquement les badges sans reconstruire la liste
     if(document.querySelector('.page.active')?.id==='pg-cats') updateBadgesOnly(s);
+    // Afficher indicateur "en train d'écrire" si on est sur pg-q
+    if(document.querySelector('.page.active')?.id==='pg-q') showTypingIndicator(s);
     // Transitions de page
     if(pg==='pg-wait'&&s.p2){
       if(!window._wentToCats){
@@ -3535,22 +3589,22 @@ function buildMsgHtml(s,msgs){
     const radiusCorner=isMe?'border-bottom-left-radius:4px':'border-bottom-right-radius:4px';
     const msgId=m.id||m.ts;
     // Menu édition/suppression (seulement mes messages, pas supprimés)
-    const actionsHtml = isMe && !deleted ? `<div class="msg-actions" data-msgid="${msgId}">
-      <button onclick="editChatMsg('${msgId}')" title="${myLang==='fr'?'Modifier':'Edit'}" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--muted)'">✏️</button>
-      <button onclick="deleteChatMsg('${msgId}')" title="${myLang==='fr'?'Supprimer':'Delete'}" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px;" onmouseover="this.style.color='#E87070'" onmouseout="this.style.color='var(--muted)'">🗑️</button>
-    </div>` : '';
+    const actionsHtml = isMe && !deleted ? `
+      <button onclick="editChatMsg('${msgId}')" title="${myLang==='fr'?'Modifier':'Edit'}" style="background:rgba(212,148,60,0.1);border:1px solid var(--goldD);color:var(--gold);cursor:pointer;font-size:11px;padding:3px 8px;border-radius:6px;font-family:'Outfit',sans-serif;">✏️</button>
+      <button onclick="deleteChatMsg('${msgId}')" title="${myLang==='fr'?'Supprimer':'Delete'}" style="background:rgba(232,80,80,0.08);border:1px solid rgba(232,80,80,0.25);color:#E87070;cursor:pointer;font-size:11px;padding:3px 8px;border-radius:6px;font-family:'Outfit',sans-serif;">🗑️</button>
+    ` : '';
     const textHtml = deleted
       ? `<span style="font-size:12px;color:var(--muted);font-style:italic;">🚫 ${myLang==='fr'?'Message supprimé':'Message deleted'}</span>`
       : `<div style="font-size:13px;line-height:1.6;color:var(--cream);">${m.text}</div>`;
-    return `<div class="chat-msg-row" style="display:flex;flex-direction:${rowDir};gap:8px;align-items:flex-end;margin-bottom:10px;position:relative;" data-msgid="${msgId}">`
+    return `<div class="chat-msg-row" style="display:flex;flex-direction:${rowDir};gap:8px;align-items:flex-end;margin-bottom:10px;position:relative;min-width:0;width:100%;box-sizing:border-box;" data-msgid="${msgId}">`
       +avatarHtml
-      +`<div style="max-width:75%;background:${bg};border:1px solid ${bd};border-radius:14px;${radiusCorner};padding:8px 12px;">`
-        +`<div style="font-size:10px;font-weight:700;color:${col};margin-bottom:4px;display:flex;align-items:center;gap:5px;">`
+      +`<div style="max-width:72%;min-width:0;background:${bg};border:1px solid ${bd};border-radius:14px;${radiusCorner};padding:8px 12px;">`
+        +`<div style="font-size:10px;font-weight:700;color:${col};margin-bottom:4px;display:flex;align-items:center;gap:5px;flex-wrap:nowrap;">`
           +nm+` <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>`
-          +`<span style="font-size:9px;color:var(--muted);margin-left:auto;">${time}${edited}</span>`
-          +(isMe && !deleted ? actionsHtml : '')
+          +`<span style="font-size:9px;color:var(--muted);margin-left:auto;white-space:nowrap;">${time}${edited}</span>`
         +'</div>'
         +textHtml
+        +(isMe && !deleted ? `<div style="display:flex;justify-content:flex-end;gap:2px;margin-top:4px;">${actionsHtml}</div>` : '')
       +'</div>'
     +'</div>';
   }).join('');
@@ -3577,7 +3631,21 @@ function renderLiveChat(s, qk){
   if(input && !input.dataset.bound){
     input.placeholder = myLang==='fr' ? 'Ton message...' : 'Your message...';
     input.addEventListener('keydown', e=>{
-      if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChatMsg(_currentChatQk); }
+      if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChatMsg(_currentChatQk); return; }
+      // Signaler "en train d'écrire"
+      setTyping(true);
+      clearTimeout(_typingTimer);
+      _typingTimer = setTimeout(()=>setTyping(false), 4000);
+    });
+    input.addEventListener('input', ()=>{
+      if(input.value.trim()){
+        setTyping(true);
+        clearTimeout(_typingTimer);
+        _typingTimer = setTimeout(()=>setTyping(false), 4000);
+      } else {
+        clearTimeout(_typingTimer);
+        setTyping(false);
+      }
     });
     input.dataset.bound = '1';
   }
@@ -3614,6 +3682,7 @@ function _updateChatMsgs(s, qk){
   _lastMsgCount[qk] = msgs.length;
   // Toujours rendre les messages (même si pas sur cette question actuellement)
   msgsEl.innerHTML = buildMsgHtml(s, msgs);
+  showTypingIndicator(s);
   setTimeout(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; }, 50);
 }
 
@@ -3720,6 +3789,8 @@ async function sendChatMsg(qk){
   const text=input?.value.trim();
   if(!text)return;
   input.value='';
+  clearTimeout(_typingTimer);
+  setTyping(false);
   const s=await loadRoom(roomCode)||lastRoom;
   s.chat=s.chat||{};
   const key=getChatKey(qk);
