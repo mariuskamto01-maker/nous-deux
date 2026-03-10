@@ -660,12 +660,13 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
       </div>
     </div>
     <div class="status-row" id="wait-status"></div>
-    <div class="card card-gold" id="wait-spinner-box" style="text-align:center;">
-      <div class="strip"><div style="background:var(--k1)"></div><div style="background:var(--k2)"></div><div style="background:var(--k3)"></div><div style="background:var(--k4)"></div><div style="background:var(--k1)"></div><div style="background:var(--k3)"></div><div style="background:var(--k2)"></div><div style="background:var(--k4)"></div></div>
-      <div class="card-body">
-        <div class="spinner mb12"></div>
-        <p style="color:var(--gold);font-weight:600;font-size:14px;" id="wait-msg"></p>
-      </div>
+    <div id="wait-spinner-box" style="text-align:center;width:100%;max-width:440px;">
+      <!-- Bouton commencer seul immédiatement -->
+      <button onclick="startSolo()" id="wait-start-btn" style="width:100%;padding:16px;border-radius:14px;border:none;background:linear-gradient(135deg,#4A3010,var(--gold));color:#0D0A06;font-size:15px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;margin-bottom:10px;letter-spacing:0.02em;">
+        ▶ Commencer seul · Start solo
+      </button>
+      <!-- Statut attente partenaire — discret -->
+      <p id="wait-msg" style="font-size:11px;color:var(--muted);font-style:italic;margin:0;"></p>
     </div>
   </div>
 </div>
@@ -3305,7 +3306,9 @@ async function createRoom(){
   await saveRoom(state);lastRoom=state;
   sessionStorage.setItem('nd_session',JSON.stringify({myRole,myName,myLang,roomCode}));
   window._wentToCats=false;
-  startPoll();showWaiting(state);
+  startPoll();
+  // Afficher pg-wait avec code+QR mais ne pas bloquer — bouton "Commencer seul" visible
+  showWaiting(state);
 }
 async function joinRoom(){
   const code = document.getElementById('j-code').value.trim().toUpperCase();
@@ -3451,11 +3454,28 @@ function showWaiting(state){
   renderStatus('wait-status',state);
   const box=document.getElementById('wait-spinner-box');
   if(state.p2){
+    // Partenaire déjà connecté → aller directement aux thèmes
     box.style.display='none';
-    if(!window._wentToCats){window._wentToCats=true;setTimeout(()=>showCats(),600);}
+    if(!window._wentToCats){window._wentToCats=true;setTimeout(()=>showCats(),400);}
+  } else {
+    // Pas de partenaire → afficher bouton "Commencer seul" + message discret
+    box.style.display='block';
+    const btn=document.getElementById('wait-start-btn');
+    const msg=document.getElementById('wait-msg');
+    if(msg) msg.textContent=myLang==='fr'
+      ? "Ton partenaire pourra rejoindre avec le code ou le QR ci-dessus."
+      : "Your partner can join later with the code or QR above.";
+    // Langue du bouton
+    if(btn) btn.textContent=myLang==='fr'
+      ? '▶ Commencer seul — il·elle rejoindra plus tard'
+      : '▶ Start now — they can join later';
   }
-  else{box.style.display='block';document.getElementById('wait-msg').textContent=myLang==='fr'?"En attente que l'autre personne rejoigne...":'Waiting for the other person to join...';}
   goPage('pg-wait');
+}
+
+function startSolo(){
+  window._wentToCats=true;
+  showCats();
 }
 function copyCode(){
   navigator.clipboard.writeText(roomCode).then(()=>{
