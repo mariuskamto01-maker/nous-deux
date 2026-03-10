@@ -830,6 +830,20 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
       <button onclick="goPage('pg-settings')" style="background:var(--d3);border:1px solid var(--faint);border-radius:var(--radius-xs);color:var(--muted);cursor:pointer;font-size:11px;padding:6px 10px;font-family:'Outfit',sans-serif;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--goldL)'" onmouseout="this.style.borderColor='var(--faint)';this.style.color='var(--muted)'">⚙️</button>
       <button onclick="confirmLogout()" style="background:rgba(200,48,32,0.1);border:1px solid rgba(200,48,32,0.2);border-radius:var(--radius-xs);color:#E87070;cursor:pointer;font-size:11px;padding:6px 10px;font-family:'Outfit',sans-serif;">🚪</button>
     </div>
+    <!-- Code du salon — cliquable pour copier -->
+    <div id="cats-room-code" onclick="copyCatsCode()" style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--d3);border:1px solid var(--goldD);border-radius:12px;padding:8px 14px;margin-bottom:12px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--gold)';this.style.background='rgba(212,148,60,0.08)'" onmouseout="this.style.borderColor='var(--goldD)';this.style.background='var(--d3)'">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:13px;">🔑</span>
+        <div>
+          <div style="font-size:9px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:1px;">Code du salon</div>
+          <div id="cats-code-text" style="font-family:'DM Mono',monospace;font-size:16px;font-weight:800;color:var(--gold);letter-spacing:0.12em;">——</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span id="cats-code-copied" style="display:none;font-size:10px;color:#25D366;font-weight:700;">✓ Copié</span>
+        <span style="font-size:16px;color:var(--muted);">📋</span>
+      </div>
+    </div>
     <div class="status-row" id="cat-status"></div>
     
     <div id="cat-list"></div>
@@ -3269,6 +3283,7 @@ window.addEventListener('resize',drawAll);
 let _navHistory = [];
 
 function goPage(id, addToHistory=true){
+  if(id==='pg-cats') updateCatsRoomCode();
   if(['pg-home','pg-cats','pg-wait'].includes(id)){
     setTimeout(initBackground, 50);
   }
@@ -3296,7 +3311,7 @@ function goBack(){
     return;
   }
   // Fallback: si en session → cats, sinon home
-  if(roomCode){ goPage('pg-cats', false); setTimeout(()=>{ if(lastRoom) updateBadgesOnly(lastRoom); },100); }
+  if(roomCode){ goPage('pg-cats', false); updateCatsRoomCode(); setTimeout(()=>{ if(lastRoom) updateBadgesOnly(lastRoom); },100); }
   else goPage('pg-home', false);
 }
 function genCode(){
@@ -3500,6 +3515,23 @@ function startSolo(){
   window._wentToCats=true;
   showCats();
 }
+function updateCatsRoomCode(){
+  const el = document.getElementById('cats-code-text');
+  if(el && roomCode) el.textContent = roomCode;
+  const widget = document.getElementById('cats-room-code');
+  if(widget) widget.style.display = roomCode ? 'flex' : 'none';
+}
+
+function copyCatsCode(){
+  if(!roomCode) return;
+  navigator.clipboard.writeText(roomCode).catch(()=>{});
+  const copied = document.getElementById('cats-code-copied');
+  if(copied){
+    copied.style.display='inline';
+    setTimeout(()=>{ copied.style.display='none'; }, 2000);
+  }
+}
+
 function copyCode(){
   navigator.clipboard.writeText(roomCode).then(()=>{
     const b=document.getElementById('copy-btn');
