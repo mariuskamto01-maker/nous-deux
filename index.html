@@ -42,7 +42,7 @@ body{
   z-index:0;pointer-events:none;
   opacity:0;transition:opacity 1.8s ease;
 }
-#bg-canvas.visible{opacity:1;}
+#bg-canvas.visible{opacity:0.55;}
 /* ── PAGES ── */
 .page{position:relative;z-index:1;display:none;flex-direction:column;align-items:center;min-height:100vh;padding-bottom:80px;}
 .page.active{display:flex;animation:fadeUp 0.3s ease;}
@@ -968,12 +968,12 @@ const BG_THEMES = [
     name:'aurora',
     draw(ctx,W,H){
       const g=ctx.createRadialGradient(W*0.3,H*0.2,0,W*0.3,H*0.2,W*0.8);
-      g.addColorStop(0,'rgba(180,60,20,0.18)');
-      g.addColorStop(0.4,'rgba(120,30,60,0.12)');
+      g.addColorStop(0,'rgba(180,60,20,0.0171)');
+      g.addColorStop(0.4,'rgba(120,30,60,0.0343)');
       g.addColorStop(1,'rgba(6,4,8,0)');
       ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
       const g2=ctx.createRadialGradient(W*0.8,H*0.7,0,W*0.8,H*0.7,W*0.6);
-      g2.addColorStop(0,'rgba(30,60,140,0.14)');
+      g2.addColorStop(0,'rgba(30,60,140,0.04)');
       g2.addColorStop(1,'rgba(6,4,8,0)');
       ctx.fillStyle=g2;ctx.fillRect(0,0,W,H);
       // étoiles
@@ -1011,12 +1011,12 @@ const BG_THEMES = [
     name:'nebula',
     draw(ctx,W,H){
       const g=ctx.createRadialGradient(W*0.5,H*0.3,0,W*0.5,H*0.3,W*0.7);
-      g.addColorStop(0,'rgba(100,40,180,0.15)');
-      g.addColorStop(0.5,'rgba(40,20,80,0.08)');
+      g.addColorStop(0,'rgba(100,40,180,0.0143)');
+      g.addColorStop(0.5,'rgba(40,20,80,0.0229)');
       g.addColorStop(1,'rgba(6,4,8,0)');
       ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
       const g2=ctx.createRadialGradient(W*0.1,H*0.8,0,W*0.1,H*0.8,W*0.5);
-      g2.addColorStop(0,'rgba(200,80,120,0.1)');
+      g2.addColorStop(0,'rgba(200,80,120,0.0286)');
       g2.addColorStop(1,'rgba(6,4,8,0)');
       ctx.fillStyle=g2;ctx.fillRect(0,0,W,H);
       // étoiles + poussière
@@ -1035,19 +1035,19 @@ const BG_THEMES = [
     draw(ctx,W,H){
       const sky=ctx.createLinearGradient(0,0,0,H*0.75);
       sky.addColorStop(0,'rgba(10,8,20,0)');
-      sky.addColorStop(0.4,'rgba(80,20,10,0.1)');
-      sky.addColorStop(0.7,'rgba(160,60,10,0.12)');
-      sky.addColorStop(1,'rgba(200,80,10,0.06)');
+      sky.addColorStop(0.4,'rgba(80,20,10,0.0286)');
+      sky.addColorStop(0.7,'rgba(160,60,10,0.0343)');
+      sky.addColorStop(1,'rgba(200,80,10,0.0171)');
       ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
       // cercle soleil/lune à l'horizon
       const sunX=W*0.75,sunY=H*0.55;
       const sunG=ctx.createRadialGradient(sunX,sunY,0,sunX,sunY,W*0.25);
-      sunG.addColorStop(0,'rgba(240,160,40,0.18)');
-      sunG.addColorStop(0.4,'rgba(200,80,20,0.08)');
+      sunG.addColorStop(0,'rgba(240,160,40,0.0171)');
+      sunG.addColorStop(0.4,'rgba(200,80,20,0.0229)');
       sunG.addColorStop(1,'rgba(6,4,8,0)');
       ctx.fillStyle=sunG;ctx.fillRect(0,0,W,H);
       // silhouettes arbres
-      ctx.fillStyle='rgba(8,5,14,0.5)';
+      ctx.fillStyle='rgba(8,5,14,0.0476)';
       [[0.1,0.85,18,120],[0.2,0.88,12,80],[0.35,0.82,22,150],[0.65,0.84,16,100],[0.85,0.87,14,90],[0.92,0.83,20,130]].forEach(([rx,ry,rw,rh])=>{
         ctx.fillRect(W*rx-rw/2,H*ry-rh,rw,rh);
         // branche arrondie haut
@@ -1060,12 +1060,12 @@ const BG_THEMES = [
     name:'ocean',
     draw(ctx,W,H){
       const g=ctx.createLinearGradient(0,0,W,H);
-      g.addColorStop(0,'rgba(10,30,80,0.12)');
-      g.addColorStop(0.5,'rgba(20,60,120,0.08)');
-      g.addColorStop(1,'rgba(10,20,60,0.1)');
+      g.addColorStop(0,'rgba(10,30,80,0.0343)');
+      g.addColorStop(0.5,'rgba(20,60,120,0.0229)');
+      g.addColorStop(1,'rgba(10,20,60,0.0286)');
       ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
       // vagues horizontales subtiles
-      ctx.strokeStyle='rgba(107,170,255,0.06)';ctx.lineWidth=1;
+      ctx.strokeStyle='rgba(107,170,255,0.0171)';ctx.lineWidth=1;
       for(let y=H*0.4;y<H;y+=30){
         ctx.beginPath();
         for(let x=0;x<=W;x+=20){
@@ -1076,7 +1076,7 @@ const BG_THEMES = [
       }
       // reflet lune sur l'eau
       const moonG=ctx.createRadialGradient(W*0.5,H*0.6,0,W*0.5,H*0.6,W*0.3);
-      moonG.addColorStop(0,'rgba(180,200,255,0.08)');
+      moonG.addColorStop(0,'rgba(180,200,255,0.0229)');
       moonG.addColorStop(1,'rgba(6,4,8,0)');
       ctx.fillStyle=moonG;ctx.fillRect(0,0,W,H);
     }
@@ -1086,7 +1086,7 @@ const BG_THEMES = [
     name:'ndop',
     draw(ctx,W,H){
       const sz=Math.floor(W/10);
-      ctx.strokeStyle='rgba(107,170,255,0.05)';ctx.lineWidth=1;
+      ctx.strokeStyle='rgba(107,170,255,0.0143)';ctx.lineWidth=1;
       // grille losange
       for(let y=-sz;y<H+sz;y+=sz){
         for(let x=-sz;x<W+sz;x+=sz*2){
@@ -1115,12 +1115,12 @@ const BG_THEMES = [
     draw(ctx,W,H){
       // Fond dégradé chaud
       const g=ctx.createLinearGradient(0,0,W,H);
-      g.addColorStop(0,'rgba(100,30,0,0.08)');
-      g.addColorStop(1,'rgba(40,10,0,0.04)');
+      g.addColorStop(0,'rgba(100,30,0,0.0229)');
+      g.addColorStop(1,'rgba(40,10,0,0.0114)');
       ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
       // Grille de symboles Adinkra (cercle+croix)
       const sz=70;
-      ctx.strokeStyle='rgba(212,148,60,0.07)';ctx.lineWidth=1;
+      ctx.strokeStyle='rgba(212,148,60,0.02)';ctx.lineWidth=1;
       for(let y=sz/2;y<H+sz;y+=sz){
         for(let x=sz/2;x<W+sz;x+=sz){
           const off=(Math.floor(y/sz)%2)*sz/2;
@@ -1132,12 +1132,12 @@ const BG_THEMES = [
           ctx.beginPath();ctx.moveTo(cx,cy-sz*0.22);ctx.lineTo(cx,cy+sz*0.22);ctx.stroke();
           // Petit cercle centre
           ctx.beginPath();ctx.arc(cx,cy,sz*0.08,0,Math.PI*2);
-          ctx.fillStyle='rgba(212,148,60,0.05)';ctx.fill();
+          ctx.fillStyle='rgba(212,148,60,0.0143)';ctx.fill();
         }
       }
       // Lueur centrale dorée
       const gl=ctx.createRadialGradient(W*0.5,H*0.5,0,W*0.5,H*0.5,W*0.5);
-      gl.addColorStop(0,'rgba(212,148,60,0.06)');gl.addColorStop(1,'rgba(6,4,8,0)');
+      gl.addColorStop(0,'rgba(212,148,60,0.0171)');gl.addColorStop(1,'rgba(6,4,8,0)');
       ctx.fillStyle=gl;ctx.fillRect(0,0,W,H);
     }
   },
@@ -1146,26 +1146,26 @@ const BG_THEMES = [
     name:'bogolan',
     draw(ctx,W,H){
       const g=ctx.createLinearGradient(0,0,0,H);
-      g.addColorStop(0,'rgba(60,20,0,0.1)');g.addColorStop(1,'rgba(20,8,0,0.04)');
+      g.addColorStop(0,'rgba(60,20,0,0.0286)');g.addColorStop(1,'rgba(20,8,0,0.0114)');
       ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
       // Bandes horizontales épaisses
       const bandH=Math.floor(H/12);
       for(let i=0;i<12;i++){
         if(i%2===0){
-          ctx.fillStyle=`rgba(${90+i*5},${40+i*2},0,0.05)`;
+          ctx.fillStyle=`rgba(${90+i*5},${40+i*2},0,0.018)`;
           ctx.fillRect(0,i*bandH,W,bandH);
         }
         // Petits carrés en quinconce dans les bandes
         if(i%3===0){
           const sq=bandH*0.5;
           for(let x=0;x<W;x+=bandH*1.5){
-            ctx.fillStyle='rgba(212,148,60,0.06)';
+            ctx.fillStyle='rgba(212,148,60,0.0171)';
             ctx.fillRect(x+(i%2)*bandH*0.75,i*bandH+bandH*0.25,sq,sq);
           }
         }
       }
       // Lignes verticales en pointillé
-      ctx.setLineDash([4,8]);ctx.strokeStyle='rgba(180,100,20,0.05)';ctx.lineWidth=2;
+      ctx.setLineDash([4,8]);ctx.strokeStyle='rgba(180,100,20,0.0143)';ctx.lineWidth=2;
       for(let x=40;x<W;x+=80){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
       ctx.setLineDash([]);
     }
@@ -1175,9 +1175,9 @@ const BG_THEMES = [
     name:'ankara',
     draw(ctx,W,H){
       const palette=[
-        'rgba(200,56,32,0.06)','rgba(212,148,60,0.06)',
-        'rgba(26,104,48,0.06)','rgba(26,58,144,0.06)',
-        'rgba(180,40,120,0.05)'
+        'rgba(200,56,32,0.0171)','rgba(212,148,60,0.0171)',
+        'rgba(26,104,48,0.0171)','rgba(26,58,144,0.0171)',
+        'rgba(180,40,120,0.0143)'
       ];
       // Grand cercle central
       const cx=W*0.5,cy=H*0.5;
@@ -1201,7 +1201,7 @@ const BG_THEMES = [
   {
     name:'zulu',
     draw(ctx,W,H){
-      const cols=['rgba(220,30,30,0.06)','rgba(212,148,60,0.07)','rgba(255,255,255,0.03)','rgba(10,10,10,0.05)'];
+      const cols=['rgba(220,30,30,0.012)','rgba(212,148,60,0.014)','rgba(255,255,255,0.005)','rgba(10,10,10,0.008)'];
       const sz=36;
       for(let row=0;row*sz<H+sz;row++){
         for(let col=0;col*sz<W+sz;col++){
@@ -1212,7 +1212,7 @@ const BG_THEMES = [
           ctx.beginPath();ctx.moveTo(x,y+sz);ctx.lineTo(x+sz/2,y);ctx.lineTo(x+sz,y+sz);ctx.closePath();
           ctx.fillStyle=cols[ci];ctx.fill();
           // Trait de contour
-          ctx.strokeStyle='rgba(212,148,60,0.04)';ctx.lineWidth=0.5;ctx.stroke();
+          ctx.strokeStyle='rgba(212,148,60,0.008)';ctx.lineWidth=0.3;ctx.stroke();
         }
       }
     }
@@ -1222,7 +1222,7 @@ const BG_THEMES = [
     name:'berbere',
     draw(ctx,W,H){
       const g=ctx.createLinearGradient(0,0,W,0);
-      g.addColorStop(0,'rgba(180,80,0,0.06)');g.addColorStop(0.5,'rgba(212,148,60,0.04)');g.addColorStop(1,'rgba(100,40,0,0.06)');
+      g.addColorStop(0,'rgba(180,80,0,0.0171)');g.addColorStop(0.5,'rgba(212,148,60,0.0114)');g.addColorStop(1,'rgba(100,40,0,0.0171)');
       ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
       const sz=50;
       // Zigzag horizontal répété
@@ -1235,7 +1235,7 @@ const BG_THEMES = [
         ctx.stroke();
       }
       // Losanges centraux
-      ctx.strokeStyle='rgba(212,148,60,0.06)';ctx.lineWidth=1;
+      ctx.strokeStyle='rgba(212,148,60,0.0171)';ctx.lineWidth=1;
       for(let y=sz;y<H;y+=sz*2){
         for(let x=sz;x<W;x+=sz*2){
           ctx.beginPath();ctx.moveTo(x,y-sz/2);ctx.lineTo(x+sz/2,y);ctx.lineTo(x,y+sz/2);ctx.lineTo(x-sz/2,y);ctx.closePath();ctx.stroke();
@@ -1249,12 +1249,12 @@ const BG_THEMES = [
     draw(ctx,W,H){
       const cx=W*0.5,cy=H*0.5;
       const g=ctx.createRadialGradient(cx,cy,0,cx,cy,W*0.6);
-      g.addColorStop(0,'rgba(20,60,160,0.15)');g.addColorStop(0.5,'rgba(10,20,80,0.08)');g.addColorStop(1,'rgba(6,4,8,0)');
+      g.addColorStop(0,'rgba(20,60,160,0.0143)');g.addColorStop(0.5,'rgba(10,20,80,0.0229)');g.addColorStop(1,'rgba(6,4,8,0)');
       ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
       // Bras spirale
       for(let arm=0;arm<3;arm++){
         const offset=arm*(Math.PI*2/3);
-        ctx.strokeStyle=`rgba(100,160,255,0.04)`;ctx.lineWidth=6;
+        ctx.strokeStyle=`rgba(100,160,255,0.0114)`;ctx.lineWidth=6;
         ctx.beginPath();
         for(let t=0;t<Math.PI*4;t+=0.05){
           const r=t*25;
@@ -1278,7 +1278,7 @@ const BG_THEMES = [
     name:'kuba',
     draw(ctx,W,H){
       const sz=44;
-      ctx.strokeStyle='rgba(212,148,60,0.07)';ctx.lineWidth=1.5;
+      ctx.strokeStyle='rgba(212,148,60,0.02)';ctx.lineWidth=1.5;
       // Grille de carrés tournés à 45°
       for(let y=-sz;y<H+sz;y+=sz){
         for(let x=-sz;x<W+sz;x+=sz){
@@ -1290,7 +1290,7 @@ const BG_THEMES = [
         }
       }
       // Lignes diagonales croisées
-      ctx.strokeStyle='rgba(200,56,32,0.04)';ctx.lineWidth=1;
+      ctx.strokeStyle='rgba(200,56,32,0.0114)';ctx.lineWidth=1;
       for(let i=-H;i<W;i+=sz*2){
         ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i+H,H);ctx.stroke();
         ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i-H,H);ctx.stroke();
@@ -1306,8 +1306,8 @@ const BG_THEMES = [
         const x=W*(0.1+i*0.15);
         const g=ctx.createLinearGradient(x-80,0,x+80,H);
         g.addColorStop(0,'rgba(20,120,60,0)');
-        g.addColorStop(0.3,`rgba(${20+i*10},${140-i*5},${60+i*8},0.08)`);
-        g.addColorStop(0.6,'rgba(60,200,120,0.04)');
+        g.addColorStop(0.3,`rgba(${20+i*10},${140-i*5},${60+i*8},0.0229)`);
+        g.addColorStop(0.6,'rgba(60,200,120,0.0114)');
         g.addColorStop(1,'rgba(10,40,20,0)');
         ctx.fillStyle=g;ctx.fillRect(x-100,0,200,H);
       }
@@ -1323,7 +1323,7 @@ const BG_THEMES = [
     name:'shibori',
     draw(ctx,W,H){
       const g=ctx.createLinearGradient(0,0,0,H);
-      g.addColorStop(0,'rgba(10,30,80,0.12)');g.addColorStop(1,'rgba(20,10,60,0.06)');
+      g.addColorStop(0,'rgba(10,30,80,0.0343)');g.addColorStop(1,'rgba(20,10,60,0.0171)');
       ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
       // Cercles concentriques style shibori
       const pts=[[0.2,0.3],[0.7,0.2],[0.5,0.7],[0.85,0.65],[0.1,0.8]];
@@ -1342,7 +1342,7 @@ const BG_THEMES = [
     name:'sahara',
     draw(ctx,W,H){
       const sky=ctx.createLinearGradient(0,0,0,H);
-      sky.addColorStop(0,'rgba(30,10,0,0.06)');sky.addColorStop(0.6,'rgba(120,50,10,0.1)');sky.addColorStop(1,'rgba(180,100,20,0.08)');
+      sky.addColorStop(0,'rgba(30,10,0,0.0171)');sky.addColorStop(0.6,'rgba(120,50,10,0.0286)');sky.addColorStop(1,'rgba(180,100,20,0.0229)');
       ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
       // Courbes de dunes
       for(let d=0;d<5;d++){
@@ -1368,8 +1368,8 @@ const BG_THEMES = [
     draw(ctx,W,H){
       const sz=Math.floor(W/16);
       const colors=[
-        'rgba(200,56,32,0.06)','rgba(26,104,48,0.06)',
-        'rgba(212,148,60,0.06)','rgba(26,58,144,0.05)'
+        'rgba(200,56,32,0.02)','rgba(26,104,48,0.02)',
+        'rgba(212,148,60,0.022)','rgba(26,58,144,0.018)'
       ];
       for(let row=0;row*sz<H+sz;row++){
         for(let col=0;col*sz<W+sz;col++){
@@ -1379,9 +1379,9 @@ const BG_THEMES = [
         }
       }
       // Bordure décorative
-      ctx.strokeStyle='rgba(212,148,60,0.06)';ctx.lineWidth=3;
+      ctx.strokeStyle='rgba(212,148,60,0.0171)';ctx.lineWidth=3;
       ctx.strokeRect(12,12,W-24,H-24);
-      ctx.strokeStyle='rgba(200,56,32,0.05)';ctx.lineWidth=1.5;
+      ctx.strokeStyle='rgba(200,56,32,0.0143)';ctx.lineWidth=1.5;
       ctx.strokeRect(20,20,W-40,H-40);
     }
   },
@@ -1390,10 +1390,10 @@ const BG_THEMES = [
     name:'lagos',
     draw(ctx,W,H){
       const sky=ctx.createLinearGradient(0,0,0,H);
-      sky.addColorStop(0,'rgba(6,4,8,0)');sky.addColorStop(0.6,'rgba(40,10,0,0.08)');sky.addColorStop(1,'rgba(100,40,0,0.12)');
+      sky.addColorStop(0,'rgba(6,4,8,0)');sky.addColorStop(0.6,'rgba(40,10,0,0.0229)');sky.addColorStop(1,'rgba(100,40,0,0.0343)');
       ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
       // Silhouettes buildings
-      ctx.fillStyle='rgba(6,4,8,0.6)';
+      ctx.fillStyle='rgba(6,4,8,0.0333)';
       const buildings=[[0,0.7,0.12,0.3],[0.1,0.65,0.08,0.35],[0.17,0.72,0.1,0.28],[0.3,0.6,0.07,0.4],[0.38,0.68,0.12,0.32],[0.52,0.58,0.09,0.42],[0.62,0.65,0.11,0.35],[0.75,0.7,0.08,0.3],[0.84,0.62,0.1,0.38],[0.92,0.72,0.08,0.28]];
       buildings.forEach(([rx,ry,rw,rh])=>ctx.fillRect(W*rx,H*ry,W*rw,H*rh));
       // Lumières fenêtres
@@ -1403,7 +1403,7 @@ const BG_THEMES = [
       }
       // Reflets dans l'eau (bas)
       const waterG=ctx.createLinearGradient(0,H*0.85,0,H);
-      waterG.addColorStop(0,'rgba(100,40,0,0.06)');waterG.addColorStop(1,'rgba(6,4,8,0)');
+      waterG.addColorStop(0,'rgba(100,40,0,0.0171)');waterG.addColorStop(1,'rgba(6,4,8,0)');
       ctx.fillStyle=waterG;ctx.fillRect(0,H*0.85,W,H*0.15);
     }
   },
@@ -1411,7 +1411,7 @@ const BG_THEMES = [
   {
     name:'korhogo',
     draw(ctx,W,H){
-      ctx.strokeStyle='rgba(180,80,20,0.06)';ctx.lineWidth=1;
+      ctx.strokeStyle='rgba(180,80,20,0.0171)';ctx.lineWidth=1;
       const sz=90;
       for(let row=0;row<H/sz+1;row++){
         for(let col=0;col<W/sz+1;col++){
@@ -1429,7 +1429,7 @@ const BG_THEMES = [
       }
       // Fond brun chaud
       const g=ctx.createLinearGradient(0,0,W,H);
-      g.addColorStop(0,'rgba(80,30,0,0.06)');g.addColorStop(1,'rgba(40,10,0,0.03)');
+      g.addColorStop(0,'rgba(80,30,0,0.0171)');g.addColorStop(1,'rgba(40,10,0,0.0086)');
       ctx.globalCompositeOperation='destination-over';ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
       ctx.globalCompositeOperation='source-over';
     }
@@ -1439,13 +1439,13 @@ const BG_THEMES = [
     name:'aurora_rose',
     draw(ctx,W,H){
       const g1=ctx.createRadialGradient(W*0.3,H*0.2,0,W*0.3,H*0.2,W*0.7);
-      g1.addColorStop(0,'rgba(180,40,120,0.14)');g1.addColorStop(1,'rgba(6,4,8,0)');
+      g1.addColorStop(0,'rgba(180,40,120,0.04)');g1.addColorStop(1,'rgba(6,4,8,0)');
       ctx.fillStyle=g1;ctx.fillRect(0,0,W,H);
       const g2=ctx.createRadialGradient(W*0.75,H*0.4,0,W*0.75,H*0.4,W*0.6);
-      g2.addColorStop(0,'rgba(100,20,160,0.12)');g2.addColorStop(1,'rgba(6,4,8,0)');
+      g2.addColorStop(0,'rgba(100,20,160,0.0343)');g2.addColorStop(1,'rgba(6,4,8,0)');
       ctx.fillStyle=g2;ctx.fillRect(0,0,W,H);
       const g3=ctx.createRadialGradient(W*0.5,H*0.8,0,W*0.5,H*0.8,W*0.4);
-      g3.addColorStop(0,'rgba(212,80,40,0.08)');g3.addColorStop(1,'rgba(6,4,8,0)');
+      g3.addColorStop(0,'rgba(212,80,40,0.0229)');g3.addColorStop(1,'rgba(6,4,8,0)');
       ctx.fillStyle=g3;ctx.fillRect(0,0,W,H);
       for(let i=0;i<220;i++){
         const x=Math.random()*W,y=Math.random()*H;
@@ -1460,10 +1460,10 @@ const BG_THEMES = [
     draw(ctx,W,H){
       // Bandes larges horizontales
       const bandes=[
-        {h:0.08,c:'rgba(212,148,60,0.08)'},{h:0.03,c:'rgba(200,56,32,0.07)'},
-        {h:0.06,c:'rgba(26,58,144,0.07)'},{h:0.03,c:'rgba(212,148,60,0.06)'},
-        {h:0.08,c:'rgba(26,104,48,0.07)'},{h:0.03,c:'rgba(200,56,32,0.06)'},
-        {h:0.06,c:'rgba(212,148,60,0.08)'},{h:0.03,c:'rgba(26,58,144,0.07)'},
+        {h:0.08,c:'rgba(212,148,60,0.025)'},{h:0.03,c:'rgba(200,56,32,0.02)'},
+        {h:0.06,c:'rgba(26,58,144,0.022)'},{h:0.03,c:'rgba(212,148,60,0.018)'},
+        {h:0.08,c:'rgba(26,104,48,0.022)'},{h:0.03,c:'rgba(200,56,32,0.018)'},
+        {h:0.06,c:'rgba(212,148,60,0.025)'},{h:0.03,c:'rgba(26,58,144,0.02)'},
       ];
       let y=0;
       while(y<H){
@@ -1475,7 +1475,7 @@ const BG_THEMES = [
         });
       }
       // Fils brillants dorés (lignes verticales fines)
-      ctx.strokeStyle='rgba(212,148,60,0.06)';ctx.lineWidth=1;
+      ctx.strokeStyle='rgba(212,148,60,0.0171)';ctx.lineWidth=1;
       for(let x=0;x<W;x+=8){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
     }
   },
@@ -1484,7 +1484,7 @@ const BG_THEMES = [
     name:'batik',
     draw(ctx,W,H){
       const g=ctx.createLinearGradient(0,0,W,H);
-      g.addColorStop(0,'rgba(60,20,80,0.08)');g.addColorStop(1,'rgba(20,60,40,0.06)');
+      g.addColorStop(0,'rgba(60,20,80,0.025)');g.addColorStop(1,'rgba(20,60,40,0.018)');
       ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
       // Motifs floraux répétés
       const sz=80;
@@ -1498,11 +1498,11 @@ const BG_THEMES = [
             const px=cx+Math.cos(angle)*sz*0.22;
             const py=cy+Math.sin(angle)*sz*0.22;
             ctx.beginPath();ctx.arc(px,py,sz*0.13,0,Math.PI*2);
-            ctx.strokeStyle=`rgba(212,148,60,0.05)`;ctx.lineWidth=1;ctx.stroke();
+            ctx.strokeStyle=`rgba(212,148,60,0.0143)`;ctx.lineWidth=1;ctx.stroke();
           }
           // Centre
           ctx.beginPath();ctx.arc(cx,cy,sz*0.1,0,Math.PI*2);
-          ctx.strokeStyle='rgba(200,56,32,0.06)';ctx.lineWidth=1.5;ctx.stroke();
+          ctx.strokeStyle='rgba(200,56,32,0.0171)';ctx.lineWidth=1.5;ctx.stroke();
         }
       }
     }
@@ -3294,83 +3294,9 @@ window.addEventListener('load',()=>{
     return; // Ne pas restaurer session
   }
 
-  // Afficher bouton "Reprendre" sur la home si session sauvegardée
+  // Afficher le bandeau "Reprendre" si une session est sauvegardée
+  // (pas de restauration automatique — l'user choisit de reprendre)
   setTimeout(_renderResumeBtn, 0);
-
-  // Restaurer session si page rechargée
-  try{
-    const sess=localStorage.getItem('nd_session');
-    if(sess){
-      const d=JSON.parse(sess);
-      // Valider que la session est complète avant de restaurer
-      if(!d.roomCode||!d.myRole||!d.myName){ localStorage.removeItem('nd_session'); return; }
-      myRole=d.myRole;myName=d.myName;myLang=d.myLang||'fr';roomCode=d.roomCode;
-      if(roomCode){
-        // Masquer pg-home pour éviter le flash — on sait qu'on a une session
-        document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-        // Overlay opaque immédiat (même couleur que le fond)
-        const loaderEl = document.createElement('div');
-        loaderEl.id='restore-loader';
-        loaderEl.style.cssText='position:fixed;inset:0;background:#0d0509;display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:12px;';
-        loaderEl.innerHTML='<div style="font-size:32px;">💑</div><div style="font-size:12px;color:#8a7060;font-family:Outfit,sans-serif;">Chargement...</div>';
-        document.body.appendChild(loaderEl);
-        const _removeLoader=()=>{const l=document.getElementById('restore-loader');if(l)l.remove();};
-        loadRoom(roomCode).then(async s=>{
-          _removeLoader();
-          if(!s){ // Room introuvable → retour accueil
-            roomCode='';myRole='';myName='';
-            localStorage.removeItem('nd_session');
-            goPage('pg-home'); return;
-          }
-          // Mettre à jour timestamp de présence via PATCH (pas saveRoom complet)
-          try{
-            await fetch(`${FB}/rooms/${roomCode}/${myRole}/ts.json`,{
-              method:'PUT',headers:{'Content-Type':'application/json'},
-              body:JSON.stringify(Date.now())
-            });
-          }catch(e){}
-          lastRoom=s;window._wentToCats=true;
-          startPoll();
-          // Reprendre exactement là où on était
-          const savedCatId = d.catId;
-          const savedQi = d.qi || 0;
-          if(savedCatId){
-            // Retrouver le thème par son ID
-            const allCats2 = [...CATS, ...(s.customThemes||[])];
-            const savedCat = savedCatId==='custom'
-              ? {id:'custom',e:'💬',fr:'Nos Questions',en:'Our Questions'}
-              : allCats2.find(c=>c.id===savedCatId);
-            if(savedCat){
-              currentCat=savedCat;
-              currentQs=getQsForCat(savedCat.id);
-              currentQi=Math.min(savedQi, Math.max(0, currentQs.length-1));
-              renderQ(); goPage('pg-q');
-            } else {
-              showCats();
-            }
-          } else {
-            // Fallback : détecter une question en attente
-            const pending=detectPending(s);
-            if(pending&&pending.cat){
-              currentCat=pending.cat;currentQi=pending.qi;currentQs=getQsForCat(pending.cat.id);
-              renderQ();goPage('pg-q');
-            } else {
-              showCats();
-            }
-          }
-        }).catch(e=>{
-          _removeLoader();
-          localStorage.removeItem('nd_session');
-          goPage('pg-home');
-          console.log('restore err',e);
-        });
-      }
-    }
-  }catch(e){
-    const loader=document.getElementById('restore-loader');
-    if(loader)loader.remove();
-    console.log('restore err',e);
-  }
 });
 window.addEventListener('resize',drawAll);
 
@@ -3380,7 +3306,17 @@ window.addEventListener('resize',drawAll);
 let _navHistory = [];
 
 function goPage(id, addToHistory=true){
-  if(id==='pg-cats') updateCatsRoomCode();
+  if(id==='pg-cats'){
+    updateCatsRoomCode();
+    // S'assurer que les tuiles sont rendues même si showCats() n'a pas été appelé
+    setTimeout(()=>{
+      const listEl = document.getElementById('cat-list');
+      if(listEl && !listEl.querySelector('.cat-tile')){
+        renderCatList(lastRoom);
+      }
+      if(lastRoom) updateBadgesOnly(lastRoom);
+    }, 80);
+  }
   if(['pg-home','pg-cats','pg-wait'].includes(id)){
     setTimeout(initBackground, 50);
   }
@@ -3425,39 +3361,83 @@ function _renderResumeBtn(){
     const d = JSON.parse(sess);
     if(!d.roomCode||!d.myName){ zone.innerHTML=''; return; }
     const fr = (d.myLang||'fr')==='fr';
+    // Trouver le nom du thème
+    let catLabel = '';
+    if(d.catId && window.CATS){
+      const foundCat = d.catId==='custom'
+        ? {e:'💬',fr:'Nos Questions',en:'Our Questions'}
+        : CATS.find(c=>c.id===d.catId);
+      if(foundCat) catLabel = foundCat.e+' '+(fr?foundCat.fr:foundCat.en);
+    }
     zone.innerHTML = `
-      <div style="background:linear-gradient(135deg,rgba(212,148,60,0.12),rgba(200,56,32,0.08));border:1.5px solid var(--goldD);border-radius:16px;padding:14px 18px;margin-bottom:16px;cursor:pointer;transition:opacity 0.2s;" onclick="_resumeSession()">
+      <button id="resume-btn" style="width:100%;background:linear-gradient(135deg,rgba(212,148,60,0.15),rgba(200,56,32,0.1));border:1.5px solid var(--goldD);border-radius:16px;padding:14px 18px;margin-bottom:16px;cursor:pointer;text-align:left;color:inherit;font-family:'Outfit',sans-serif;">
         <div style="display:flex;align-items:center;gap:10px;">
-          <div style="font-size:26px;">💑</div>
+          <div style="font-size:28px;">💑</div>
           <div style="flex:1;">
-            <div style="font-size:12px;font-weight:800;color:var(--gold);margin-bottom:2px;">${fr?'Session en cours':'Active session'}</div>
-            <div style="font-size:13px;color:var(--cream);font-weight:700;">${d.myName} <span style="color:var(--muted);font-weight:400;">· ${d.roomCode}</span></div>
-            ${d.catId ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;">${fr?'Question':'Question'} ${(d.qi||0)+1} · ${d.catId}</div>` : ''}
+            <div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:3px;letter-spacing:0.04em;">${fr?'SESSION EN COURS ·':'ACTIVE SESSION ·'} <span style="color:var(--muted);font-weight:400;">${d.roomCode}</span></div>
+            <div style="font-size:14px;color:var(--cream);font-weight:700;">${d.myName}</div>
+            ${catLabel?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${catLabel}${d.qi!=null?' · Q'+(d.qi+1):''}</div>`:''}
           </div>
-          <div style="font-size:20px;color:var(--gold);">→</div>
+          <div style="font-size:20px;color:var(--gold);">▶</div>
         </div>
-      </div>`;
+      </button>`;
+    // Attacher le listener via JS (pas inline onclick) pour éviter les problèmes de scope
+    document.getElementById('resume-btn').addEventListener('click', _resumeSession);
   }catch(e){ if(zone) zone.innerHTML=''; }
 }
 
 async function _resumeSession(){
   const sess = localStorage.getItem('nd_session');
   if(!sess) return;
+  let d;
+  try{ d = JSON.parse(sess); }catch(e){ return; }
+  if(!d.roomCode||!d.myName||!d.myRole) return;
+
+  // Remplir les variables globales
+  myRole=d.myRole; myName=d.myName; myLang=d.myLang||'fr'; roomCode=d.roomCode;
+
+  // Overlay de chargement
+  const loaderEl = document.createElement('div');
+  loaderEl.id='_resume-loader';
+  loaderEl.style.cssText='position:fixed;inset:0;background:#0d0509;display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:12px;';
+  loaderEl.innerHTML='<div style="font-size:32px;">💑</div><div style="font-size:12px;color:#D4943C;font-family:Outfit,sans-serif;">'+(myLang==='fr'?'Reprise en cours...':'Resuming...')+'</div>';
+  document.body.appendChild(loaderEl);
+  const removeLoader = ()=>{ const l=document.getElementById('_resume-loader'); if(l)l.remove(); };
+
   try{
-    const d = JSON.parse(sess);
-    if(!d.roomCode||!d.myName) return;
-    myRole=d.myRole; myName=d.myName; myLang=d.myLang||'fr'; roomCode=d.roomCode;
-    // Overlay de chargement
-    const loaderEl = document.createElement('div');
-    loaderEl.style.cssText='position:fixed;inset:0;background:#0d0509;display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:12px;';
-    loaderEl.innerHTML='<div style="font-size:32px;">💑</div><div style="font-size:12px;color:#8a7060;font-family:Outfit,sans-serif;">'+(myLang==='fr'?'Reprise en cours...':'Resuming...')+'</div>';
-    document.body.appendChild(loaderEl);
     const s = await loadRoom(roomCode);
-    loaderEl.remove();
-    if(!s){ localStorage.removeItem('nd_session'); _renderResumeBtn(); return; }
-    lastRoom=s; startPoll();
-    // Mettre à jour présence
-    try{ await fetch(`${FB}/rooms/${roomCode}/${myRole}/ts.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(Date.now())}); }catch(e){}
+    removeLoader();
+
+    if(!s){
+      // Room introuvable (supprimée ?) → effacer ET rester sur home
+      localStorage.removeItem('nd_session');
+      myRole=''; myName=''; myLang='fr'; roomCode='';
+      _renderResumeBtn();
+      const fr = d.myLang==='fr';
+      alert(fr?'❌ Salon introuvable — il a peut-être expiré.':'❌ Room not found — it may have expired.');
+      return;
+    }
+
+    lastRoom=s;
+    window._wentToCats=true;
+
+    // Charger les settings partagés (customThemes, customQs) depuis la room
+    mergeSharedSettings(s);
+
+    // Restaurer l'avatar depuis la room
+    if(s[myRole]?.avatar){
+      settings.avatar = s[myRole].avatar;
+      settings.avatarType = s[myRole].avatarType || 'emoji';
+    }
+
+    startPoll();
+
+    // Mettre à jour présence (non-bloquant)
+    fetch(`${FB}/rooms/${roomCode}/${myRole}/ts.json`,{
+      method:'PUT',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(Date.now())
+    }).catch(()=>{});
+
     // Reprendre à la position sauvegardée
     if(d.catId){
       const allCats2 = [...CATS,...(s.customThemes||[])];
@@ -3473,7 +3453,15 @@ async function _resumeSession(){
       }
     }
     showCats();
-  }catch(e){ console.error('resume',e); goPage('pg-home'); }
+
+  }catch(e){
+    removeLoader();
+    // Erreur réseau → NE PAS effacer la session, juste rester sur home
+    myRole=''; myName=''; myLang='fr'; roomCode='';
+    console.error('_resumeSession error',e);
+    const fr = d.myLang==='fr';
+    alert(fr?'⚠️ Erreur réseau. Vérifiez votre connexion et réessayez.':'⚠️ Network error. Check your connection and try again.');
+  }
 }
 function strip(){
   return `<div class="strip"><div style="background:var(--k1)"></div><div style="background:var(--k2)"></div><div style="background:var(--k3)"></div><div style="background:var(--k4)"></div><div style="background:var(--k1)"></div><div style="background:var(--k3)"></div><div style="background:var(--k2)"></div><div style="background:var(--k4)"></div></div>`;
@@ -3909,17 +3897,22 @@ async function showCats(){
 }
 
 function _ensureCatList(s, attempt){
-  if(attempt > 10) return; // max 10 essais
+  if(attempt > 15) return;
   const listEl = document.getElementById('cat-list');
-  if(!listEl){ setTimeout(()=>_ensureCatList(s,attempt+1),100); return; }
+  if(!listEl){ setTimeout(()=>_ensureCatList(s,attempt+1),80); return; }
+  // S'assurer que la page est active avant de rendre
+  const pgCats = document.getElementById('pg-cats');
+  if(!pgCats?.classList.contains('active')){
+    setTimeout(()=>_ensureCatList(s,attempt+1),80); return;
+  }
   renderCatList(s);
-  // Vérifier que des tuiles ont été insérées
+  // Vérifier que les tuiles sont bien dans le DOM
   setTimeout(()=>{
-    if(!listEl.querySelector('.cat-tile')){
+    if(!document.querySelector('#cat-list .cat-tile')){
       console.warn('cat-list vide, retry', attempt+1);
       _ensureCatList(lastRoom||s, attempt+1);
     }
-  }, 150);
+  }, 120);
 }
 
 function renderCatList(s){
