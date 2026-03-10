@@ -234,8 +234,8 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
 }
 .grp-add-btn:hover{background:rgba(212,148,60,0.2);}
 .cat-group-body{
-  max-height:600px;overflow:hidden;
-  transition:max-height 0.3s ease,opacity 0.25s ease;
+  max-height:2000px;overflow:hidden;
+  transition:max-height 0.4s ease,opacity 0.25s ease;
   padding:0 10px 10px;
 }
 
@@ -2693,14 +2693,23 @@ function renderCatList(s){
     if(addBtn){ e.stopPropagation(); goPage('pg-settings'); switchTab('themes'); initEmojiPicker(); }
   };
 
-  // Restaurer l'état ouvert/fermé
-  const hasAlert = order.find(g=>grouped[g]&&grouped[g].some(c=>badges[c.id]>0));
-  const firstGroup = order.find(o=>grouped[o]&&grouped[o].length>0);
-  order.forEach(g=>{
-    if(!grouped[g]||grouped[g].length===0) return;
-    const wasOpen = openGroups.has(g);
-    const shouldOpen = wasOpen || (!openGroups.size && (g===hasAlert || g===firstGroup));
-    if(!shouldOpen) collapseGroup(g, false);
+  // Restaurer l'état ouvert/fermé — après rendu DOM (requestAnimationFrame)
+  requestAnimationFrame(()=>{
+    const hasAlert = order.find(g=>grouped[g]&&grouped[g].some(c=>badges[c.id]>0));
+    const firstGroup = order.find(o=>grouped[o]&&grouped[o].length>0);
+    order.forEach(g=>{
+      if(!grouped[g]||grouped[g].length===0) return;
+      const wasOpen = openGroups.has(g);
+      const shouldOpen = wasOpen || (!openGroups.size && (g===hasAlert || g===firstGroup));
+      if(shouldOpen){
+        const body=document.getElementById('body-'+g);
+        const arrow=document.getElementById('arrow-'+g);
+        if(body){body.style.transition='none';body.style.maxHeight=body.scrollHeight+'px';body.style.opacity='1';setTimeout(()=>body.style.transition='',50);}
+        if(arrow)arrow.textContent='▾';
+      } else {
+        collapseGroup(g, false);
+      }
+    });
   });
 }function startCat(catId){
   clearBadge(catId);
@@ -2749,7 +2758,7 @@ function toggleGroup(id){
   if(!body)return;
   const isOpen=body.style.maxHeight!=='0px'&&body.style.maxHeight!=='';
   if(isOpen){collapseGroup(id,true);}
-  else{body.style.maxHeight=body.scrollHeight+'px';body.style.opacity='1';if(arrow)arrow.textContent='▾';}
+  else{body.style.maxHeight=Math.max(body.scrollHeight,2000)+'px';body.style.opacity='1';if(arrow)arrow.textContent='▾';}
 }
 
 function collapseGroup(id,animate=true){
