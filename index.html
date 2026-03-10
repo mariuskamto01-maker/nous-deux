@@ -3440,11 +3440,9 @@ function goPage(id, addToHistory=true){
       if(lastRoom) updateBadgesOnly(lastRoom);
     }, 80);
   }
-  if(['pg-home','pg-cats','pg-wait','pg-q'].includes(id)){
-    setTimeout(initBackground, 50);
-  }
   if(id==='pg-home'){
-    // Toujours rafraîchir le bouton de session quand on revient à l'accueil
+    // Nouveau fond africain à chaque retour sur l'accueil
+    setTimeout(initBackground, 50);
     setTimeout(_renderResumeBtn, 80);
   }
   const current = document.querySelector('.page.active')?.id;
