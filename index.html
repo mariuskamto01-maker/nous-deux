@@ -3311,8 +3311,14 @@ function checkQState(s){
     const revZ=document.getElementById('reveal-zone');
     const bothNow=!!(s?.answers?.[qk+'_p1']&&s?.answers?.[qk+'_p2']);
     if(revZ&&revZ.style.display==='block'){
+      // Si #my-answer encore dans le DOM → je viens de soumettre, reconstruire complètement
+      if(revZ.querySelector('#my-answer')){
+        document.getElementById('sent-zone').style.display='none';
+        document.getElementById('my-zone').style.display='none';
+        showReveal(s,qk);
+        return;
+      }
       // Déjà en révélation — vérifier si une nouvelle réponse est arrivée
-      // Compter les réponses actuellement affichées
       const shownTh=revZ.querySelector('#answer-text-th');
       const thAnswerNow=s?.answers?.[qk+'_'+thRole];
       const thAnswerShown=shownTh&&shownTh.textContent.trim()!=='' && !shownTh.closest('[style*="opacity:0.55"]');
@@ -3582,9 +3588,9 @@ function showReveal(s,qk){
     if(!ans){
       if(isMe){
         return `<div style="display:flex;${justify};width:100%;box-sizing:border-box;margin-bottom:12px;">
-          <div style="display:flex;flex-direction:${rowDir};gap:10px;align-items:flex-start;width:100%;">
+          <div style="display:flex;flex-direction:${rowDir};gap:10px;align-items:flex-start;max-width:90%;min-width:0;flex:1;">
             ${getAvatarHtml(s,role,36)}
-            <div style="flex:1;max-width:82%;background:${bg};border:1px solid ${bd};border-radius:16px;${radius};padding:10px 14px;">
+            <div style="flex:1;min-width:0;background:${bg};border:1px solid ${bd};border-radius:16px;${radius};padding:10px 14px;">
               <div class="bubble-name" style="color:${col};">${nm} <span style="font-size:9px;color:var(--gold);">(vous)</span> <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span></div>
               <textarea id="my-answer" rows="3" placeholder="${lg==='fr'?'Ta réponse...':'Your answer...'}" style="width:100%;box-sizing:border-box;font-size:13px;padding:8px 10px;resize:none;margin-top:6px;border-radius:8px;background:var(--d1);border:1px solid ${bd};color:var(--cream);font-family:'Outfit',sans-serif;"></textarea>
               <button onclick="submitAnswer()" style="width:100%;margin-top:8px;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,${bg},${col});color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">${lg==='fr'?'Envoyer →':'Send →'}</button>
@@ -3611,9 +3617,9 @@ function showReveal(s,qk){
     </div>`:'';
 
     return `<div style="display:flex;${justify};width:100%;box-sizing:border-box;margin-bottom:12px;">
-      <div style="display:flex;flex-direction:${rowDir};gap:10px;align-items:flex-start;max-width:82%;">
+      <div style="display:flex;flex-direction:${rowDir};gap:10px;align-items:flex-start;max-width:82%;min-width:0;">
         ${getAvatarHtml(s,role,36)}
-        <div style="background:${bg};border:1px solid ${bd};border-radius:16px;${radius};padding:10px 14px;word-break:break-word;">
+        <div style="min-width:0;flex:1;background:${bg};border:1px solid ${bd};border-radius:16px;${radius};padding:10px 14px;word-break:break-word;">
           <div class="bubble-name" style="color:${col};">${nm}${isMe?` <span style="font-size:9px;color:var(--gold);">(vous)</span>`:''} <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${editedFlag}</div>
           <div id="answer-text-${isMe?'me':'th'}" style="font-size:13px;line-height:1.6;color:var(--cream);margin-top:4px;white-space:pre-wrap;">${ans}</div>
           ${answerActions}
