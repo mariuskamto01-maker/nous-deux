@@ -4857,6 +4857,8 @@ function renderLiveChat(s, qk){
 }
 
 function _buildAnswerPins(s, qk){
+  // Supprimé — le chat est l'unique espace, pas de doublons
+  return '';
   const thRole=myRole==='p1'?'p2':'p1';
   const fr=myLang==='fr';
   let html='';
@@ -4871,8 +4873,8 @@ function _buildAnswerPins(s, qk){
     const bd=role==='p1'?'var(--p1b)':'var(--p2b)';
     const av=getAvatarHtml(s,role,30);
     const youBadge=isMe?`<span style="font-size:8px;color:var(--gold);font-weight:700;">(${fr?'vous':'you'})</span>`:'';
-    const rowDir=isMe?'row':'row-reverse';
-    const radius=isMe?'0 12px 12px 12px':'12px 0 12px 12px';
+    const rowDir=isMe?'row-reverse':'row';
+    const radius=isMe?'12px 0 12px 12px':'0 12px 12px 12px';
     const badge=`<span style="font-size:8px;letter-spacing:.05em;color:var(--gold);background:rgba(212,148,60,0.15);border:1px solid var(--goldD);border-radius:4px;padding:0 4px;margin-left:2px;">${fr?'RÉPONSE':'ANSWER'}</span>`;
 
     if(!ans){
