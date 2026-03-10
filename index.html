@@ -4929,8 +4929,8 @@ function _updateChatMsgs(s, qk){
     }
   }
   _lastMsgCount[qk] = msgs.length;
-  // Réponses épinglées + messages chat libre
-  msgsEl.innerHTML = _buildAnswerPins(s, qk) + buildMsgHtml(s, msgs);
+  // Messages uniquement — pas de doublons (comme WhatsApp)
+  msgsEl.innerHTML = buildMsgHtml(s, msgs);
   showTypingIndicator(s);
   setTimeout(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; }, 50);
 
