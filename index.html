@@ -2042,12 +2042,28 @@ function setQCount(n, save=true) {
 }
 
 // Get questions for a category (respecting qCount)
+// Shuffle déterministe basé sur une graine (seed)
+// Même seed = même ordre garanti pour les deux partenaires
+function _seededShuffle(arr, seed){
+  const a = [...arr];
+  let s = 0;
+  for(let i=0;i<seed.length;i++) s = (s * 31 + seed.charCodeAt(i)) >>> 0;
+  for(let i=a.length-1;i>0;i--){
+    s = (s * 1664525 + 1013904223) >>> 0;
+    const j = s % (i+1);
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
 function getQsForCat(catId) {
   if(catId === 'custom') return settings.customQs.map(q=>[q.fr, q.en]);
   // Thème personnalisé
   const customTheme = settings.customThemes.find(t=>t.id===catId);
   if(customTheme) return customTheme.qs.map(q=>[q.fr, q.en]);
   let qs = [...(QS[catId]||[])];
+  // Mélanger avec le code du salon comme graine — ordre unique par salon
+  if(roomCode) qs = _seededShuffle(qs, roomCode + catId);
   if(settings.qCount > 0) qs = qs.slice(0, settings.qCount);
   return qs;
 }
