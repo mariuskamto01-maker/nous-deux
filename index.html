@@ -671,9 +671,9 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
           <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">How many questions per theme</p>
           <div class="seg-row">
             <button class="seg-btn" id="seg-3" onclick="setQCount(3)">3</button>
-            <button class="seg-btn active" id="seg-5" onclick="setQCount(5)">5</button>
+            <button class="seg-btn" id="seg-5" onclick="setQCount(5)">5</button>
             <button class="seg-btn" id="seg-8" onclick="setQCount(8)">8</button>
-            <button class="seg-btn" id="seg-0" onclick="setQCount(0)">Toutes / All</button>
+            <button class="seg-btn active" id="seg-0" onclick="setQCount(0)">Toutes / All</button>
           </div>
           <p style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center;" id="qcount-label">5 questions par thème sélectionnées</p>
         </div>
@@ -1034,7 +1034,7 @@ async function loadRoom(code) {
 // SETTINGS (localStorage)
 // ═══════════════════════════════════════
 let settings = {
-  qCount: 5,
+  qCount: 0,
   customQs: [],
   customThemes: []  // [{id, e, fr, en, qs:[{fr,en}]}]
 };
@@ -1206,7 +1206,7 @@ function updateBadgesOnly(s){
 }
 
 function checkAllBadges(s){
-  if(!s||!s.answers)return;
+  if(!s)return;
   const allCats=[...CATS,...settings.customThemes,
     ...(settings.customQs.length>0?[{id:'custom'}]:[])];
   allCats.forEach(c=>{
@@ -1217,7 +1217,9 @@ function checkAllBadges(s){
       const thA=s.answers?.[qk+'_'+(myRole==='p1'?'p2':'p1')];
       const key=getChatKey(qk);
       const chatMsgs=s.chat?.[key]||[];
-      const hasNewChat=chatMsgs.some(m=>m.role!==myRole);
+      // Respecter _readQks (lu localement) ET readBy (sauvé Firebase)
+      const hasUnread=chatMsgs.some(m=>m.role!==myRole&&!m.readBy?.[myRole]);
+      const hasNewChat=!_readQks.has(qk)&&hasUnread;
       if(!myA&&thA) addBadge(c.id,'answer');
       if(hasNewChat) addBadge(c.id,'chat');
     });
@@ -2594,8 +2596,6 @@ function showCats(){
   const lc=document.getElementById('cat-me-lang');lc.textContent=myLang==='fr'?'🇫🇷 FR':'🇬🇧 EN';lc.className='lang-chip '+myLang;
   renderCatList(lastRoom);
   if(lastRoom)renderStatus('cat-status',lastRoom);
-  // Vérifier les badges pour toutes les catégories
-  checkAllBadges(lastRoom);
   goPage('pg-cats');
 }
 
@@ -2715,11 +2715,10 @@ function renderCatList(s){
       }
     }).catch(()=>{});
   }
-  // Marquer les messages chat comme lus (immédiat + Firebase)
-  const _qkRead=currentCat.id+'_'+currentQi;
-  _readQks.add(_qkRead); // Immédiat pour les badges
+  // Marquer TOUTES les questions de ce thème comme lues — local + Firebase
+  currentQs.forEach((_q,qi)=>{ _readQks.add(catId+'_'+qi); });
   clearBadge(catId);
-  markChatRead(_qkRead).catch(()=>{});
+  _markAllCatRead(catId, currentQs.length);
 }
 
 function toggleGroup(id){
@@ -3491,6 +3490,29 @@ async function sendChatMsg(qk){
   // Réinitialiser le timer d'inactivité — quelqu'un vient d'écrire
   cancelAutoAnalysis();
   scheduleAutoAnalysis(s, qk);
+}
+
+async function _markAllCatRead(catId, qCount){
+  // Marque toutes les questions d'un thème comme lues dans Firebase
+  // Appelé quand on entre dans un thème → badge ne reviendra pas après refresh
+  try {
+    const s = lastRoom || await loadRoom(roomCode);
+    if(!s||!s.chat) return;
+    let changed = false;
+    for(let qi=0; qi<qCount; qi++){
+      const qk = catId+'_'+qi;
+      const key = getChatKey(qk);
+      const msgs = s.chat[key]||[];
+      msgs.forEach(m=>{
+        if(m.role!==myRole&&(!m.readBy||!m.readBy[myRole])){
+          m.readBy = m.readBy||{};
+          m.readBy[myRole] = true;
+          changed = true;
+        }
+      });
+    }
+    if(changed){ await saveRoom(s); lastRoom=s; }
+  } catch(e){}
 }
 
 async function markChatRead(qk){
