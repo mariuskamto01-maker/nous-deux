@@ -42,7 +42,7 @@ body{
   z-index:0;pointer-events:none;
   opacity:0;transition:opacity 1.8s ease;
 }
-#bg-canvas.visible{opacity:0.55;}
+#bg-canvas.visible{opacity:0.35;}
 /* ── PAGES ── */
 .page{position:relative;z-index:1;display:none;flex-direction:column;align-items:center;min-height:100vh;padding-bottom:80px;}
 .page.active{display:flex;animation:fadeUp 0.3s ease;}
@@ -2001,11 +2001,16 @@ function logout(){
 function saveSession(){
   if(!roomCode) return;
   try{
-    localStorage.setItem('nd_session', JSON.stringify({
+    // Lire la session existante pour préserver catId/qi si on n'est pas sur une question
+    let existing = {};
+    try{ const raw=localStorage.getItem('nd_session'); if(raw) existing=JSON.parse(raw); }catch(e){}
+    const data = {
       myRole, myName, myLang, roomCode,
-      catId: currentCat?.id || null,
-      qi: currentQi || 0
-    }));
+      // Sauvegarder la position courante si on est sur une question, sinon garder l'ancienne
+      catId: currentCat?.id || existing.catId || null,
+      qi: currentCat ? (currentQi || 0) : (existing.qi || 0)
+    };
+    localStorage.setItem('nd_session', JSON.stringify(data));
   }catch(e){}
 }
 
@@ -3320,6 +3325,10 @@ function goPage(id, addToHistory=true){
   if(['pg-home','pg-cats','pg-wait'].includes(id)){
     setTimeout(initBackground, 50);
   }
+  if(id==='pg-home'){
+    // Toujours rafraîchir le bouton de session quand on revient à l'accueil
+    setTimeout(_renderResumeBtn, 80);
+  }
   const current = document.querySelector('.page.active')?.id;
   if(current && addToHistory && current !== id){
     _navHistory.push(current);
@@ -3355,35 +3364,37 @@ function genCode(){
 function _renderResumeBtn(){
   const zone = document.getElementById('home-resume-zone');
   if(!zone) return;
-  try{
-    const sess = localStorage.getItem('nd_session');
-    if(!sess){ zone.innerHTML=''; return; }
-    const d = JSON.parse(sess);
-    if(!d.roomCode||!d.myName){ zone.innerHTML=''; return; }
-    const fr = (d.myLang||'fr')==='fr';
-    // Trouver le nom du thème
-    let catLabel = '';
-    if(d.catId && window.CATS){
+  const sess = localStorage.getItem('nd_session');
+  if(!sess){ zone.innerHTML=''; return; }
+  let d;
+  try{ d = JSON.parse(sess); }catch(e){ zone.innerHTML=''; return; }
+  if(!d.roomCode||!d.myName){ zone.innerHTML=''; return; }
+  const fr = (d.myLang||'fr')==='fr';
+  // Trouver le nom du thème (CATS est une const du scope global du script)
+  let catLabel = '';
+  if(d.catId){
+    try{
       const foundCat = d.catId==='custom'
         ? {e:'💬',fr:'Nos Questions',en:'Our Questions'}
-        : CATS.find(c=>c.id===d.catId);
+        : (typeof CATS !== 'undefined' ? CATS.find(c=>c.id===d.catId) : null);
       if(foundCat) catLabel = foundCat.e+' '+(fr?foundCat.fr:foundCat.en);
-    }
-    zone.innerHTML = `
-      <button id="resume-btn" style="width:100%;background:linear-gradient(135deg,rgba(212,148,60,0.15),rgba(200,56,32,0.1));border:1.5px solid var(--goldD);border-radius:16px;padding:14px 18px;margin-bottom:16px;cursor:pointer;text-align:left;color:inherit;font-family:'Outfit',sans-serif;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="font-size:28px;">💑</div>
-          <div style="flex:1;">
-            <div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:3px;letter-spacing:0.04em;">${fr?'SESSION EN COURS ·':'ACTIVE SESSION ·'} <span style="color:var(--muted);font-weight:400;">${d.roomCode}</span></div>
-            <div style="font-size:14px;color:var(--cream);font-weight:700;">${d.myName}</div>
-            ${catLabel?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${catLabel}${d.qi!=null?' · Q'+(d.qi+1):''}</div>`:''}
-          </div>
-          <div style="font-size:20px;color:var(--gold);">▶</div>
+    }catch(e){}
+  }
+  zone.innerHTML = `
+    <button id="resume-btn" style="width:100%;background:linear-gradient(135deg,rgba(212,148,60,0.15),rgba(200,56,32,0.1));border:1.5px solid var(--goldD);border-radius:16px;padding:14px 18px;margin-bottom:16px;cursor:pointer;text-align:left;color:inherit;font-family:'Outfit',sans-serif;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="font-size:28px;">💑</div>
+        <div style="flex:1;">
+          <div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:3px;letter-spacing:0.04em;">${fr?'SESSION EN COURS ·':'ACTIVE SESSION ·'} <span style="color:var(--muted);font-weight:400;">${d.roomCode}</span></div>
+          <div style="font-size:14px;color:var(--cream);font-weight:700;">${d.myName}</div>
+          ${catLabel?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${catLabel}${d.qi!=null?' · Q'+(d.qi+1):''}</div>`:''}
         </div>
-      </button>`;
-    // Attacher le listener via JS (pas inline onclick) pour éviter les problèmes de scope
-    document.getElementById('resume-btn').addEventListener('click', _resumeSession);
-  }catch(e){ if(zone) zone.innerHTML=''; }
+        <div style="font-size:20px;color:var(--gold);">▶</div>
+      </div>
+    </button>`;
+  // Attacher le listener — getElementById APRÈS innerHTML pour être sûr
+  const btn = document.getElementById('resume-btn');
+  if(btn) btn.addEventListener('click', function(){ _resumeSession(); });
 }
 
 async function _resumeSession(){
@@ -3753,7 +3764,8 @@ function startPoll(){
       if(s[myRole]) s[myRole].ts=Date.now();
     }catch(e){console.warn('ts patch failed',e);}
     lastRoom=s;
-    const pg=document.querySelector('.page.active')?.id;
+    // Persister la session à chaque poll (garde catId/qi à jour, survit aux refreshs)
+    saveSession();
     // Mettre a jour les indicateurs de presence partout
     renderStatus('wait-status',s);renderStatus('cat-status',s);renderStatus('q-status',s);
     // Mettre à jour uniquement les badges sans reconstruire la liste
