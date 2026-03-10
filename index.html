@@ -321,7 +321,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
 .q-text{font-family:'Playfair Display',serif;font-size:15px;line-height:1.5;color:var(--cream);margin-top:6px;}
 
 /* ── BUBBLE CHAT ── */
-.bubble-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;}
+.bubble-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;width:100%;box-sizing:border-box;}
 .bubble-row.right{flex-direction:row-reverse;}
 .avatar{
   width:32px;height:32px;border-radius:50%;
@@ -824,9 +824,24 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
         <div id="chat-msgs" style="display:flex;flex-direction:column;min-height:60px;max-height:320px;overflow-y:auto;overflow-x:hidden;padding-bottom:4px;width:100%;"></div>
       </div>
       <!-- Zone saisie -->
-      <div style="padding:10px 14px 14px;display:flex;gap:8px;align-items:flex-end;border-top:1px solid var(--faint);margin-top:8px;">
-        <textarea id="chat-input" rows="2" placeholder="Ton message..." style="flex:1;font-size:13px;padding:10px 12px;border-radius:12px;resize:none;width:100%;background:var(--d2);border:1.5px solid var(--faint);color:var(--cream);font-family:'Outfit',sans-serif;outline:none;transition:border-color 0.2s;box-sizing:border-box;" onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--faint)'"></textarea>
-        <button id="chat-send-btn" style="background:linear-gradient(135deg,var(--goldD),var(--gold));border:none;border-radius:12px;color:#12090A;font-weight:700;font-size:18px;cursor:pointer;padding:10px 14px;flex-shrink:0;align-self:flex-end;">➤</button>
+      <div style="padding:8px 14px 14px;border-top:1px solid var(--faint);margin-top:4px;">
+        <!-- Boutons média -->
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <button onclick="triggerPhoto()" title="Photo" style="background:rgba(212,148,60,0.1);border:1px solid var(--goldD);border-radius:10px;padding:6px 12px;cursor:pointer;font-size:14px;color:var(--gold);">📷</button>
+          <button id="voice-btn" onclick="toggleVoiceRecord()" title="Message vocal" style="background:rgba(212,148,60,0.1);border:1px solid var(--goldD);border-radius:10px;padding:6px 12px;cursor:pointer;font-size:14px;color:var(--gold);">🎙️</button>
+          <div id="voice-rec-status" style="display:none;align-items:center;gap:6px;flex:1;">
+            <span style="width:8px;height:8px;border-radius:50%;background:#E84040;display:inline-block;animation:pulse 1s infinite;"></span>
+            <span id="voice-rec-time" style="font-size:12px;color:#E84040;font-weight:700;">0:00</span>
+            <span style="font-size:11px;color:var(--muted);">${myLang==='fr'?'Enregistrement...':'Recording...'}</span>
+          </div>
+        </div>
+        <!-- Input texte + envoyer -->
+        <div style="display:flex;gap:8px;align-items:flex-end;">
+          <textarea id="chat-input" rows="2" placeholder="Ton message..." style="flex:1;font-size:13px;padding:10px 12px;border-radius:12px;resize:none;background:var(--d2);border:1.5px solid var(--faint);color:var(--cream);font-family:'Outfit',sans-serif;outline:none;transition:border-color 0.2s;box-sizing:border-box;width:100%;" onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--faint)'"></textarea>
+          <button id="chat-send-btn" style="background:linear-gradient(135deg,var(--goldD),var(--gold));border:none;border-radius:12px;color:#12090A;font-weight:700;font-size:18px;cursor:pointer;padding:10px 14px;flex-shrink:0;align-self:flex-end;">➤</button>
+        </div>
+        <!-- Input caché pour photo -->
+        <input type="file" id="photo-input" accept="image/*" style="display:none;" onchange="sendPhotoMsg(this)">
       </div>
     </div>
   </div>
@@ -990,6 +1005,404 @@ const BG_THEMES = [
           ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
           ctx.strokeStyle=`rgba(212,148,60,${0.03+i*0.01})`;
           ctx.lineWidth=1;ctx.stroke();
+        }
+      }
+    }
+  },
+  // 7. Adinkra Sankofa — symboles circulaires dorés
+  {
+    name:'adinkra',
+    draw(ctx,W,H){
+      // Fond dégradé chaud
+      const g=ctx.createLinearGradient(0,0,W,H);
+      g.addColorStop(0,'rgba(100,30,0,0.08)');
+      g.addColorStop(1,'rgba(40,10,0,0.04)');
+      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+      // Grille de symboles Adinkra (cercle+croix)
+      const sz=70;
+      ctx.strokeStyle='rgba(212,148,60,0.07)';ctx.lineWidth=1;
+      for(let y=sz/2;y<H+sz;y+=sz){
+        for(let x=sz/2;x<W+sz;x+=sz){
+          const off=(Math.floor(y/sz)%2)*sz/2;
+          const cx=x+off, cy=y;
+          // Cercle extérieur
+          ctx.beginPath();ctx.arc(cx,cy,sz*0.38,0,Math.PI*2);ctx.stroke();
+          // Croix intérieure
+          ctx.beginPath();ctx.moveTo(cx-sz*0.22,cy);ctx.lineTo(cx+sz*0.22,cy);ctx.stroke();
+          ctx.beginPath();ctx.moveTo(cx,cy-sz*0.22);ctx.lineTo(cx,cy+sz*0.22);ctx.stroke();
+          // Petit cercle centre
+          ctx.beginPath();ctx.arc(cx,cy,sz*0.08,0,Math.PI*2);
+          ctx.fillStyle='rgba(212,148,60,0.05)';ctx.fill();
+        }
+      }
+      // Lueur centrale dorée
+      const gl=ctx.createRadialGradient(W*0.5,H*0.5,0,W*0.5,H*0.5,W*0.5);
+      gl.addColorStop(0,'rgba(212,148,60,0.06)');gl.addColorStop(1,'rgba(6,4,8,0)');
+      ctx.fillStyle=gl;ctx.fillRect(0,0,W,H);
+    }
+  },
+  // 8. Bogolan Mudcloth — traits horizontaux irréguliers style Mali
+  {
+    name:'bogolan',
+    draw(ctx,W,H){
+      const g=ctx.createLinearGradient(0,0,0,H);
+      g.addColorStop(0,'rgba(60,20,0,0.1)');g.addColorStop(1,'rgba(20,8,0,0.04)');
+      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+      // Bandes horizontales épaisses
+      const bandH=Math.floor(H/12);
+      for(let i=0;i<12;i++){
+        if(i%2===0){
+          ctx.fillStyle=`rgba(${90+i*5},${40+i*2},0,0.05)`;
+          ctx.fillRect(0,i*bandH,W,bandH);
+        }
+        // Petits carrés en quinconce dans les bandes
+        if(i%3===0){
+          const sq=bandH*0.5;
+          for(let x=0;x<W;x+=bandH*1.5){
+            ctx.fillStyle='rgba(212,148,60,0.06)';
+            ctx.fillRect(x+(i%2)*bandH*0.75,i*bandH+bandH*0.25,sq,sq);
+          }
+        }
+      }
+      // Lignes verticales en pointillé
+      ctx.setLineDash([4,8]);ctx.strokeStyle='rgba(180,100,20,0.05)';ctx.lineWidth=2;
+      for(let x=40;x<W;x+=80){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+      ctx.setLineDash([]);
+    }
+  },
+  // 9. Wax Ankara — cercles concentriques multicolores
+  {
+    name:'ankara',
+    draw(ctx,W,H){
+      const palette=[
+        'rgba(200,56,32,0.06)','rgba(212,148,60,0.06)',
+        'rgba(26,104,48,0.06)','rgba(26,58,144,0.06)',
+        'rgba(180,40,120,0.05)'
+      ];
+      // Grand cercle central
+      const cx=W*0.5,cy=H*0.5;
+      for(let r=40;r<Math.max(W,H)*0.9;r+=40){
+        ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+        ctx.strokeStyle=palette[Math.floor(r/40)%palette.length];
+        ctx.lineWidth=8;ctx.stroke();
+      }
+      // Petites rosettes aux 4 coins
+      [[0.15,0.2],[0.85,0.2],[0.15,0.8],[0.85,0.8]].forEach(([rx,ry])=>{
+        const px=W*rx,py=H*ry;
+        for(let r=10;r<60;r+=10){
+          ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);
+          ctx.strokeStyle=palette[r/10%palette.length];
+          ctx.lineWidth=3;ctx.stroke();
+        }
+      });
+    }
+  },
+  // 10. Zulu Beads — triangles et losanges répétés
+  {
+    name:'zulu',
+    draw(ctx,W,H){
+      const cols=['rgba(220,30,30,0.06)','rgba(212,148,60,0.07)','rgba(255,255,255,0.03)','rgba(10,10,10,0.05)'];
+      const sz=36;
+      for(let row=0;row*sz<H+sz;row++){
+        for(let col=0;col*sz<W+sz;col++){
+          const x=col*sz + (row%2?sz/2:0);
+          const y=row*sz;
+          const ci=(row+col)%cols.length;
+          // Triangle pointant en haut
+          ctx.beginPath();ctx.moveTo(x,y+sz);ctx.lineTo(x+sz/2,y);ctx.lineTo(x+sz,y+sz);ctx.closePath();
+          ctx.fillStyle=cols[ci];ctx.fill();
+          // Trait de contour
+          ctx.strokeStyle='rgba(212,148,60,0.04)';ctx.lineWidth=0.5;ctx.stroke();
+        }
+      }
+    }
+  },
+  // 11. Berbère / Amazigh — losanges et zigzags
+  {
+    name:'berbere',
+    draw(ctx,W,H){
+      const g=ctx.createLinearGradient(0,0,W,0);
+      g.addColorStop(0,'rgba(180,80,0,0.06)');g.addColorStop(0.5,'rgba(212,148,60,0.04)');g.addColorStop(1,'rgba(100,40,0,0.06)');
+      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+      const sz=50;
+      // Zigzag horizontal répété
+      for(let row=0;row<H/sz+1;row++){
+        ctx.beginPath();ctx.strokeStyle=`rgba(212,148,60,${0.05+row%3*0.01})`;ctx.lineWidth=1.5;
+        for(let x=0;x<=W;x+=sz/2){
+          const y=row*sz + (Math.floor(x/(sz/2))%2===0 ? 0 : sz/3);
+          x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+        }
+        ctx.stroke();
+      }
+      // Losanges centraux
+      ctx.strokeStyle='rgba(212,148,60,0.06)';ctx.lineWidth=1;
+      for(let y=sz;y<H;y+=sz*2){
+        for(let x=sz;x<W;x+=sz*2){
+          ctx.beginPath();ctx.moveTo(x,y-sz/2);ctx.lineTo(x+sz/2,y);ctx.lineTo(x,y+sz/2);ctx.lineTo(x-sz/2,y);ctx.closePath();ctx.stroke();
+        }
+      }
+    }
+  },
+  // 12. Galaxie bleue — spirale cosmique
+  {
+    name:'galaxy',
+    draw(ctx,W,H){
+      const cx=W*0.5,cy=H*0.5;
+      const g=ctx.createRadialGradient(cx,cy,0,cx,cy,W*0.6);
+      g.addColorStop(0,'rgba(20,60,160,0.15)');g.addColorStop(0.5,'rgba(10,20,80,0.08)');g.addColorStop(1,'rgba(6,4,8,0)');
+      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+      // Bras spirale
+      for(let arm=0;arm<3;arm++){
+        const offset=arm*(Math.PI*2/3);
+        ctx.strokeStyle=`rgba(100,160,255,0.04)`;ctx.lineWidth=6;
+        ctx.beginPath();
+        for(let t=0;t<Math.PI*4;t+=0.05){
+          const r=t*25;
+          const x=cx+r*Math.cos(t+offset);
+          const y=cy+r*Math.sin(t+offset);
+          t===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+        }
+        ctx.stroke();
+      }
+      // Étoiles denses
+      for(let i=0;i<300;i++){
+        const x=Math.random()*W,y=Math.random()*H;
+        const r=Math.random()*1+0.1;
+        ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+        ctx.fillStyle=`rgba(200,220,255,${Math.random()*0.5+0.1})`;ctx.fill();
+      }
+    }
+  },
+  // 13. Kuba (Congo) — entrelacs géométriques
+  {
+    name:'kuba',
+    draw(ctx,W,H){
+      const sz=44;
+      ctx.strokeStyle='rgba(212,148,60,0.07)';ctx.lineWidth=1.5;
+      // Grille de carrés tournés à 45°
+      for(let y=-sz;y<H+sz;y+=sz){
+        for(let x=-sz;x<W+sz;x+=sz){
+          const cx=x+(y%sz===0?sz/2:0);
+          ctx.save();ctx.translate(cx,y);ctx.rotate(Math.PI/4);
+          ctx.strokeRect(-sz*0.3,-sz*0.3,sz*0.6,sz*0.6);
+          ctx.strokeRect(-sz*0.15,-sz*0.15,sz*0.3,sz*0.3);
+          ctx.restore();
+        }
+      }
+      // Lignes diagonales croisées
+      ctx.strokeStyle='rgba(200,56,32,0.04)';ctx.lineWidth=1;
+      for(let i=-H;i<W;i+=sz*2){
+        ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i+H,H);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i-H,H);ctx.stroke();
+      }
+    }
+  },
+  // 14. Aurore boréale / Tropique — vagues lumineuses vertes
+  {
+    name:'aurora_green',
+    draw(ctx,W,H){
+      // Vagues de lumière verticales
+      for(let i=0;i<6;i++){
+        const x=W*(0.1+i*0.15);
+        const g=ctx.createLinearGradient(x-80,0,x+80,H);
+        g.addColorStop(0,'rgba(20,120,60,0)');
+        g.addColorStop(0.3,`rgba(${20+i*10},${140-i*5},${60+i*8},0.08)`);
+        g.addColorStop(0.6,'rgba(60,200,120,0.04)');
+        g.addColorStop(1,'rgba(10,40,20,0)');
+        ctx.fillStyle=g;ctx.fillRect(x-100,0,200,H);
+      }
+      for(let i=0;i<180;i++){
+        const x=Math.random()*W,y=Math.random()*H*0.6;
+        ctx.beginPath();ctx.arc(x,y,Math.random()*0.8+0.1,0,Math.PI*2);
+        ctx.fillStyle=`rgba(180,255,200,${Math.random()*0.4+0.05})`;ctx.fill();
+      }
+    }
+  },
+  // 15. Shibori Indigo — vagues japonaises/diaspora
+  {
+    name:'shibori',
+    draw(ctx,W,H){
+      const g=ctx.createLinearGradient(0,0,0,H);
+      g.addColorStop(0,'rgba(10,30,80,0.12)');g.addColorStop(1,'rgba(20,10,60,0.06)');
+      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+      // Cercles concentriques style shibori
+      const pts=[[0.2,0.3],[0.7,0.2],[0.5,0.7],[0.85,0.65],[0.1,0.8]];
+      pts.forEach(([rx,ry],i)=>{
+        const cx=W*rx,cy=H*ry;
+        for(let r=15;r<200;r+=18){
+          ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+          ctx.strokeStyle=`rgba(80,${120+i*10},220,${0.05-r*0.0001})`;
+          ctx.lineWidth=2;ctx.stroke();
+        }
+      });
+    }
+  },
+  // 16. Désert Sahara — dunes et vents de sable
+  {
+    name:'sahara',
+    draw(ctx,W,H){
+      const sky=ctx.createLinearGradient(0,0,0,H);
+      sky.addColorStop(0,'rgba(30,10,0,0.06)');sky.addColorStop(0.6,'rgba(120,50,10,0.1)');sky.addColorStop(1,'rgba(180,100,20,0.08)');
+      ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+      // Courbes de dunes
+      for(let d=0;d<5;d++){
+        const yBase=H*(0.4+d*0.12);
+        ctx.beginPath();ctx.moveTo(0,yBase);
+        for(let x=0;x<=W;x+=30){
+          const y=yBase+Math.sin(x*0.008+d*1.2)*40*(1-d*0.15);
+          ctx.lineTo(x,y);
+        }
+        ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();
+        ctx.fillStyle=`rgba(${140+d*10},${60+d*8},${10+d*5},${0.04+d*0.01})`;ctx.fill();
+      }
+      // Particules de sable
+      for(let i=0;i<120;i++){
+        ctx.beginPath();ctx.arc(Math.random()*W,Math.random()*H,Math.random()*1.5+0.2,0,Math.PI*2);
+        ctx.fillStyle=`rgba(220,160,60,${Math.random()*0.15+0.02})`;ctx.fill();
+      }
+    }
+  },
+  // 17. Tissu Kanga (Swahili) — damier coloré
+  {
+    name:'kanga',
+    draw(ctx,W,H){
+      const sz=Math.floor(W/16);
+      const colors=[
+        'rgba(200,56,32,0.06)','rgba(26,104,48,0.06)',
+        'rgba(212,148,60,0.06)','rgba(26,58,144,0.05)'
+      ];
+      for(let row=0;row*sz<H+sz;row++){
+        for(let col=0;col*sz<W+sz;col++){
+          const ci=(row+col)%colors.length;
+          ctx.fillStyle=colors[ci];
+          ctx.fillRect(col*sz,row*sz,sz,sz);
+        }
+      }
+      // Bordure décorative
+      ctx.strokeStyle='rgba(212,148,60,0.06)';ctx.lineWidth=3;
+      ctx.strokeRect(12,12,W-24,H-24);
+      ctx.strokeStyle='rgba(200,56,32,0.05)';ctx.lineWidth=1.5;
+      ctx.strokeRect(20,20,W-40,H-40);
+    }
+  },
+  // 18. Nuit de Lagos — gratte-ciel silhouette + lumières
+  {
+    name:'lagos',
+    draw(ctx,W,H){
+      const sky=ctx.createLinearGradient(0,0,0,H);
+      sky.addColorStop(0,'rgba(6,4,8,0)');sky.addColorStop(0.6,'rgba(40,10,0,0.08)');sky.addColorStop(1,'rgba(100,40,0,0.12)');
+      ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+      // Silhouettes buildings
+      ctx.fillStyle='rgba(6,4,8,0.6)';
+      const buildings=[[0,0.7,0.12,0.3],[0.1,0.65,0.08,0.35],[0.17,0.72,0.1,0.28],[0.3,0.6,0.07,0.4],[0.38,0.68,0.12,0.32],[0.52,0.58,0.09,0.42],[0.62,0.65,0.11,0.35],[0.75,0.7,0.08,0.3],[0.84,0.62,0.1,0.38],[0.92,0.72,0.08,0.28]];
+      buildings.forEach(([rx,ry,rw,rh])=>ctx.fillRect(W*rx,H*ry,W*rw,H*rh));
+      // Lumières fenêtres
+      for(let i=0;i<80;i++){
+        ctx.fillStyle=`rgba(${220+Math.random()*35},${150+Math.random()*60},${Math.random()*40},${Math.random()*0.4+0.1})`;
+        ctx.fillRect(Math.random()*W,H*0.6+Math.random()*H*0.3,3,3);
+      }
+      // Reflets dans l'eau (bas)
+      const waterG=ctx.createLinearGradient(0,H*0.85,0,H);
+      waterG.addColorStop(0,'rgba(100,40,0,0.06)');waterG.addColorStop(1,'rgba(6,4,8,0)');
+      ctx.fillStyle=waterG;ctx.fillRect(0,H*0.85,W,H*0.15);
+    }
+  },
+  // 19. Tissu Korhogo (Côte d'Ivoire) — animaux stylisés linéaires
+  {
+    name:'korhogo',
+    draw(ctx,W,H){
+      ctx.strokeStyle='rgba(180,80,20,0.06)';ctx.lineWidth=1;
+      const sz=90;
+      for(let row=0;row<H/sz+1;row++){
+        for(let col=0;col<W/sz+1;col++){
+          const cx=col*sz+sz/2+(row%2?sz/2:0);
+          const cy=row*sz+sz/2;
+          // Forme animale stylisée (rectangle corps + tête)
+          ctx.strokeRect(cx-sz*0.3,cy-sz*0.15,sz*0.6,sz*0.3);
+          ctx.strokeRect(cx+sz*0.2,cy-sz*0.2,sz*0.2,sz*0.2);
+          // Pattes
+          for(let p=0;p<4;p++){
+            const px=cx-sz*0.2+p*sz*0.13;
+            ctx.beginPath();ctx.moveTo(px,cy+sz*0.15);ctx.lineTo(px,cy+sz*0.3);ctx.stroke();
+          }
+        }
+      }
+      // Fond brun chaud
+      const g=ctx.createLinearGradient(0,0,W,H);
+      g.addColorStop(0,'rgba(80,30,0,0.06)');g.addColorStop(1,'rgba(40,10,0,0.03)');
+      ctx.globalCompositeOperation='destination-over';ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+      ctx.globalCompositeOperation='source-over';
+    }
+  },
+  // 20. Aurora Rose — ciel rose-violet romantique
+  {
+    name:'aurora_rose',
+    draw(ctx,W,H){
+      const g1=ctx.createRadialGradient(W*0.3,H*0.2,0,W*0.3,H*0.2,W*0.7);
+      g1.addColorStop(0,'rgba(180,40,120,0.14)');g1.addColorStop(1,'rgba(6,4,8,0)');
+      ctx.fillStyle=g1;ctx.fillRect(0,0,W,H);
+      const g2=ctx.createRadialGradient(W*0.75,H*0.4,0,W*0.75,H*0.4,W*0.6);
+      g2.addColorStop(0,'rgba(100,20,160,0.12)');g2.addColorStop(1,'rgba(6,4,8,0)');
+      ctx.fillStyle=g2;ctx.fillRect(0,0,W,H);
+      const g3=ctx.createRadialGradient(W*0.5,H*0.8,0,W*0.5,H*0.8,W*0.4);
+      g3.addColorStop(0,'rgba(212,80,40,0.08)');g3.addColorStop(1,'rgba(6,4,8,0)');
+      ctx.fillStyle=g3;ctx.fillRect(0,0,W,H);
+      for(let i=0;i<220;i++){
+        const x=Math.random()*W,y=Math.random()*H;
+        ctx.beginPath();ctx.arc(x,y,Math.random()*1+0.1,0,Math.PI*2);
+        ctx.fillStyle=`rgba(255,200,240,${Math.random()*0.5+0.05})`;ctx.fill();
+      }
+    }
+  },
+  // 21. Aso-Oke (Yoruba) — bandes horizontales tissées
+  {
+    name:'asooke',
+    draw(ctx,W,H){
+      // Bandes larges horizontales
+      const bandes=[
+        {h:0.08,c:'rgba(212,148,60,0.08)'},{h:0.03,c:'rgba(200,56,32,0.07)'},
+        {h:0.06,c:'rgba(26,58,144,0.07)'},{h:0.03,c:'rgba(212,148,60,0.06)'},
+        {h:0.08,c:'rgba(26,104,48,0.07)'},{h:0.03,c:'rgba(200,56,32,0.06)'},
+        {h:0.06,c:'rgba(212,148,60,0.08)'},{h:0.03,c:'rgba(26,58,144,0.07)'},
+      ];
+      let y=0;
+      while(y<H){
+        bandes.forEach(b=>{
+          const bh=H*b.h;
+          ctx.fillStyle=b.c;ctx.fillRect(0,y,W,bh);
+          y+=bh;
+          if(y>=H)return;
+        });
+      }
+      // Fils brillants dorés (lignes verticales fines)
+      ctx.strokeStyle='rgba(212,148,60,0.06)';ctx.lineWidth=1;
+      for(let x=0;x<W;x+=8){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    }
+  },
+  // 22. Batik — fleurs et spirales indonésien-africain
+  {
+    name:'batik',
+    draw(ctx,W,H){
+      const g=ctx.createLinearGradient(0,0,W,H);
+      g.addColorStop(0,'rgba(60,20,80,0.08)');g.addColorStop(1,'rgba(20,60,40,0.06)');
+      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+      // Motifs floraux répétés
+      const sz=80;
+      for(let row=-1;row<H/sz+1;row++){
+        for(let col=-1;col<W/sz+1;col++){
+          const cx=col*sz+(row%2?sz/2:0);
+          const cy=row*sz;
+          // Pétales
+          for(let p=0;p<6;p++){
+            const angle=p*(Math.PI/3);
+            const px=cx+Math.cos(angle)*sz*0.22;
+            const py=cy+Math.sin(angle)*sz*0.22;
+            ctx.beginPath();ctx.arc(px,py,sz*0.13,0,Math.PI*2);
+            ctx.strokeStyle=`rgba(212,148,60,0.05)`;ctx.lineWidth=1;ctx.stroke();
+          }
+          // Centre
+          ctx.beginPath();ctx.arc(cx,cy,sz*0.1,0,Math.PI*2);
+          ctx.strokeStyle='rgba(200,56,32,0.06)';ctx.lineWidth=1.5;ctx.stroke();
         }
       }
     }
@@ -3593,19 +4006,36 @@ function buildMsgHtml(s,msgs){
       <button onclick="editChatMsg('${msgId}')" title="${myLang==='fr'?'Modifier':'Edit'}" style="background:rgba(212,148,60,0.1);border:1px solid var(--goldD);color:var(--gold);cursor:pointer;font-size:11px;padding:3px 8px;border-radius:6px;font-family:'Outfit',sans-serif;">✏️</button>
       <button onclick="deleteChatMsg('${msgId}')" title="${myLang==='fr'?'Supprimer':'Delete'}" style="background:rgba(232,80,80,0.08);border:1px solid rgba(232,80,80,0.25);color:#E87070;cursor:pointer;font-size:11px;padding:3px 8px;border-radius:6px;font-family:'Outfit',sans-serif;">🗑️</button>
     ` : '';
-    const textHtml = deleted
-      ? `<span style="font-size:12px;color:var(--muted);font-style:italic;">🚫 ${myLang==='fr'?'Message supprimé':'Message deleted'}</span>`
-      : `<div style="font-size:13px;line-height:1.6;color:var(--cream);">${m.text}</div>`;
-    return `<div class="chat-msg-row" style="display:flex;flex-direction:${rowDir};gap:8px;align-items:flex-end;margin-bottom:10px;position:relative;min-width:0;width:100%;box-sizing:border-box;" data-msgid="${msgId}">`
-      +avatarHtml
-      +`<div style="max-width:72%;min-width:0;background:${bg};border:1px solid ${bd};border-radius:14px;${radiusCorner};padding:8px 12px;">`
-        +`<div style="font-size:10px;font-weight:700;color:${col};margin-bottom:4px;display:flex;align-items:center;gap:5px;flex-wrap:nowrap;">`
-          +nm+` <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>`
-          +`<span style="font-size:9px;color:var(--muted);margin-left:auto;white-space:nowrap;">${time}${edited}</span>`
-        +'</div>'
-        +textHtml
-        +(isMe && !deleted ? `<div style="display:flex;justify-content:flex-end;gap:2px;margin-top:4px;">${actionsHtml}</div>` : '')
+    let textHtml;
+    if(deleted){
+      textHtml=`<span style="font-size:12px;color:var(--muted);font-style:italic;">🚫 ${myLang==='fr'?'Message supprimé':'Message deleted'}</span>`;
+    } else if(m.type==='photo'){
+      textHtml=`<img src="${m.data}" alt="photo" style="max-width:100%;max-height:200px;border-radius:10px;display:block;cursor:pointer;" onclick="window.open(this.src,'_blank')">`;
+      if(m.text) textHtml+=`<div style="font-size:12px;color:var(--muted);margin-top:4px;">${m.text}</div>`;
+    } else if(m.type==='voice'){
+      textHtml=`<div style="display:flex;align-items:center;gap:8px;padding:2px 0;">
+        <button onclick="toggleVoice('${msgId}',this)" style="background:${col};border:none;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">▶️</button>
+        <div style="flex:1;">
+          <div style="height:3px;background:rgba(255,255,255,0.15);border-radius:3px;position:relative;">
+            <div id="vp-${msgId}" style="height:100%;width:0%;background:${col};border-radius:3px;transition:width 0.1s;"></div>
+          </div>
+          <span style="font-size:10px;color:var(--muted);margin-top:3px;display:block;" id="vd-${msgId}">${m.duration||'0:00'}</span>
+        </div>
+      </div>`;
+    } else {
+      textHtml=`<div style="font-size:13px;line-height:1.6;color:var(--cream);white-space:pre-wrap;">${m.text}</div>`;
+    }
+    const bubbleContent = `<div style="max-width:72%;min-width:0;background:${bg};border:1px solid ${bd};border-radius:14px;${radiusCorner};padding:8px 12px;word-break:break-word;">`
+      +`<div style="font-size:10px;font-weight:700;color:${col};margin-bottom:4px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">`
+        +nm+` <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>`
+        +`<span style="font-size:9px;color:var(--muted);margin-left:auto;white-space:nowrap;">${time}${edited}</span>`
       +'</div>'
+      +textHtml
+      +(isMe && !deleted ? `<div style="display:flex;justify-content:flex-end;gap:4px;margin-top:6px;">${actionsHtml}</div>` : '')
+    +'</div>';
+    return `<div class="chat-msg-row" style="display:flex;flex-direction:${rowDir};gap:8px;align-items:flex-end;width:100%;box-sizing:border-box;margin-bottom:10px;" data-msgid="${msgId}">`
+      +avatarHtml
+      +bubbleContent
     +'</div>';
   }).join('');
 }
@@ -3715,6 +4145,138 @@ function refreshLiveChat(s, qk){
       }
     }
   }
+}
+
+// ══ MEDIA — Photo ══
+function triggerPhoto(){
+  document.getElementById('photo-input')?.click();
+}
+
+async function sendPhotoMsg(input){
+  const file = input.files[0];
+  if(!file || !_currentChatQk) return;
+  if(file.size > 2*1024*1024){
+    alert(myLang==='fr'?'Image trop grande (max 2MB)':'Image too large (max 2MB)');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = async(e)=>{
+    const data = e.target.result;
+    const s = lastRoom || await loadRoom(roomCode);
+    if(!s) return;
+    s.chat = s.chat||{};
+    const key = getChatKey(_currentChatQk);
+    s.chat[key] = s.chat[key]||[];
+    s.chat[key].push({
+      id: Date.now()+'_'+Math.random().toString(36).slice(2,7),
+      role: myRole, type:'photo', data, text:'', ts: Date.now()
+    });
+    s.chat[key].forEach(m=>{ if(m.role!==myRole){m.readBy=m.readBy||{};m.readBy[myRole]=true;} });
+    await saveRoom(s); lastRoom=s;
+    _updateChatMsgs(s, _currentChatQk);
+  };
+  reader.readAsDataURL(file);
+  input.value=''; // Reset pour permettre re-sélection
+}
+
+// ══ MEDIA — Vocal ══
+let _mediaRecorder = null;
+let _audioChunks = [];
+let _recTimer = null;
+let _recSeconds = 0;
+
+async function toggleVoiceRecord(){
+  if(_mediaRecorder && _mediaRecorder.state==='recording'){
+    // Arrêter
+    _mediaRecorder.stop();
+    return;
+  }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    _audioChunks = [];
+    _recSeconds = 0;
+    _mediaRecorder = new MediaRecorder(stream);
+    
+    _mediaRecorder.ondataavailable = e=>{ if(e.data.size>0) _audioChunks.push(e.data); };
+    _mediaRecorder.onstop = async()=>{
+      clearInterval(_recTimer);
+      stream.getTracks().forEach(t=>t.stop());
+      const dur = _recSeconds;
+      const blob = new Blob(_audioChunks, {type:'audio/webm'});
+      if(blob.size > 1024*1024){ alert(myLang==='fr'?'Audio trop long (max ~1min)':'Audio too long (max ~1min)'); return; }
+      const reader = new FileReader();
+      reader.onload = async(e)=>{
+        const s = lastRoom || await loadRoom(roomCode);
+        if(!s) return;
+        s.chat = s.chat||{};
+        const key = getChatKey(_currentChatQk);
+        s.chat[key] = s.chat[key]||[];
+        const mins = Math.floor(dur/60);
+        const secs = String(dur%60).padStart(2,'0');
+        s.chat[key].push({
+          id: Date.now()+'_'+Math.random().toString(36).slice(2,7),
+          role: myRole, type:'voice', data: e.target.result,
+          duration: mins+':'+secs, ts: Date.now()
+        });
+        s.chat[key].forEach(m=>{ if(m.role!==myRole){m.readBy=m.readBy||{};m.readBy[myRole]=true;} });
+        await saveRoom(s); lastRoom=s;
+        _updateChatMsgs(s, _currentChatQk);
+      };
+      reader.readAsDataURL(blob);
+      // Reset UI
+      const btn = document.getElementById('voice-btn');
+      const status = document.getElementById('voice-rec-status');
+      if(btn){btn.textContent='🎙️';btn.style.background='rgba(212,148,60,0.1)';btn.style.borderColor='var(--goldD)';}
+      if(status) status.style.display='none';
+    };
+    
+    _mediaRecorder.start();
+    // UI recording
+    const btn = document.getElementById('voice-btn');
+    const status = document.getElementById('voice-rec-status');
+    if(btn){btn.textContent='⏹️';btn.style.background='rgba(232,64,64,0.15)';btn.style.borderColor='rgba(232,64,64,0.4)';}
+    if(status) status.style.display='flex';
+    _recTimer = setInterval(()=>{
+      _recSeconds++;
+      const el = document.getElementById('voice-rec-time');
+      const m=Math.floor(_recSeconds/60), s=String(_recSeconds%60).padStart(2,'0');
+      if(el) el.textContent=m+':'+s;
+      if(_recSeconds>=90){ _mediaRecorder.stop(); } // Max 90s
+    },1000);
+  } catch(e){
+    alert(myLang==='fr'?'Micro non disponible. Vérifiez les permissions.':'Microphone not available. Check permissions.');
+  }
+}
+
+// Lecture vocale
+const _audioPlayers = {};
+function toggleVoice(msgId, btn){
+  if(_audioPlayers[msgId]){
+    const a = _audioPlayers[msgId];
+    if(!a.paused){ a.pause(); btn.textContent='▶️'; return; }
+    a.play(); btn.textContent='⏸️'; return;
+  }
+  // Trouver le message
+  const qk = _currentChatQk;
+  if(!qk||!lastRoom) return;
+  const key = getChatKey(qk);
+  const msgs = lastRoom.chat?.[key]||[];
+  const msg = msgs.find(m=>(m.id||m.ts)==msgId);
+  if(!msg?.data) return;
+  const audio = new Audio(msg.data);
+  _audioPlayers[msgId] = audio;
+  audio.ontimeupdate = ()=>{
+    const bar = document.getElementById('vp-'+msgId);
+    if(bar && audio.duration) bar.style.width=(audio.currentTime/audio.duration*100)+'%';
+  };
+  audio.onended = ()=>{
+    btn.textContent='▶️';
+    const bar = document.getElementById('vp-'+msgId);
+    if(bar) bar.style.width='0%';
+    delete _audioPlayers[msgId];
+  };
+  audio.play();
+  btn.textContent='⏸️';
 }
 
 async function editChatMsg(msgId){
