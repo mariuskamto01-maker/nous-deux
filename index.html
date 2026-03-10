@@ -234,8 +234,8 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
 }
 .grp-add-btn:hover{background:rgba(212,148,60,0.2);}
 .cat-group-body{
-  max-height:2000px;overflow:hidden;
-  transition:max-height 0.4s ease,opacity 0.25s ease;
+  max-height:600px;overflow:hidden;
+  transition:max-height 0.3s ease,opacity 0.25s ease;
   padding:0 10px 10px;
 }
 
@@ -525,7 +525,6 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
     <button class="btn btn-gold mb12" onclick="goPage('pg-create')">✨ Créer une salle / Create a room</button>
     <button class="btn btn-ghost mb12" onclick="goPage('pg-join')">🚪 Rejoindre une salle / Join a room</button>
     <button class="btn btn-ghost" onclick="goPage('pg-settings')">⚙️ Paramètres / Settings</button>
-    <button onclick="hardReset()" style="background:none;border:none;color:var(--muted);font-size:11px;margin-top:16px;cursor:pointer;text-decoration:underline;">🔄 Réinitialiser l'app / Reset app</button>
   </div>
 </div>
 
@@ -1043,23 +1042,15 @@ let settings = {
 // Temp buffer for theme being created
 let _themeQsBuf = [];
 
-function hardReset(){
-  if(confirm('Réinitialiser toutes les données locales ? / Reset all local data?')){
-    localStorage.clear();
-    sessionStorage.clear();
-    location.reload();
-  }
-}
-
 function loadSettings() {
   try {
     const s = localStorage.getItem('nd_settings');
     if(s) {
       const parsed = JSON.parse(s);
       settings = {...settings, ...parsed};
+      settings.qCount = 0; // Toujours toutes les questions — ignore l'ancienne valeur sauvée
     }
   } catch(e){}
-  settings.qCount = 0; // Toujours toutes les questions — ignoré l'ancienne valeur sauvée
   applySettingsUI();
 }
 
@@ -2693,23 +2684,14 @@ function renderCatList(s){
     if(addBtn){ e.stopPropagation(); goPage('pg-settings'); switchTab('themes'); initEmojiPicker(); }
   };
 
-  // Restaurer l'état ouvert/fermé — après rendu DOM (requestAnimationFrame)
-  requestAnimationFrame(()=>{
-    const hasAlert = order.find(g=>grouped[g]&&grouped[g].some(c=>badges[c.id]>0));
-    const firstGroup = order.find(o=>grouped[o]&&grouped[o].length>0);
-    order.forEach(g=>{
-      if(!grouped[g]||grouped[g].length===0) return;
-      const wasOpen = openGroups.has(g);
-      const shouldOpen = wasOpen || (!openGroups.size && (g===hasAlert || g===firstGroup));
-      if(shouldOpen){
-        const body=document.getElementById('body-'+g);
-        const arrow=document.getElementById('arrow-'+g);
-        if(body){body.style.transition='none';body.style.maxHeight=body.scrollHeight+'px';body.style.opacity='1';setTimeout(()=>body.style.transition='',50);}
-        if(arrow)arrow.textContent='▾';
-      } else {
-        collapseGroup(g, false);
-      }
-    });
+  // Restaurer l'état ouvert/fermé
+  const hasAlert = order.find(g=>grouped[g]&&grouped[g].some(c=>badges[c.id]>0));
+  const firstGroup = order.find(o=>grouped[o]&&grouped[o].length>0);
+  order.forEach(g=>{
+    if(!grouped[g]||grouped[g].length===0) return;
+    const wasOpen = openGroups.has(g);
+    const shouldOpen = wasOpen || (!openGroups.size && (g===hasAlert || g===firstGroup));
+    if(!shouldOpen) collapseGroup(g, false);
   });
 }function startCat(catId){
   clearBadge(catId);
@@ -2758,7 +2740,7 @@ function toggleGroup(id){
   if(!body)return;
   const isOpen=body.style.maxHeight!=='0px'&&body.style.maxHeight!=='';
   if(isOpen){collapseGroup(id,true);}
-  else{body.style.maxHeight=Math.max(body.scrollHeight,2000)+'px';body.style.opacity='1';if(arrow)arrow.textContent='▾';}
+  else{body.style.maxHeight=body.scrollHeight+'px';body.style.opacity='1';if(arrow)arrow.textContent='▾';}
 }
 
 function collapseGroup(id,animate=true){
@@ -2839,16 +2821,7 @@ function checkQState(s){
     const revZ=document.getElementById('reveal-zone');
     if(revZ&&revZ.style.display==='block'){
       // Déjà en révélation → mettre à jour si nouvelle réponse arrivée
-      // Mettre à jour juste la nav sans reconstruire tout le reveal
-      const nz=document.getElementById('nav-zone');
-      if(nz) nz.innerHTML=navHTML(s,qk);
-      // Mettre à jour analyse btn
-      const bothNow=!!(s?.answers?.[qk+'_p1']&&s?.answers?.[qk+'_p2']);
-      const abz=document.getElementById('analysis-btn-zone');
-      const ardy=s?.aiResult?.qk===qk;
-      if(abz&&bothNow&&!ardy&&!document.getElementById('analysis-btn')){
-        abz.innerHTML=`<button id="analysis-btn" onclick="doAnalysis()" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--goldD);background:rgba(200,148,59,0.15);color:var(--gold);font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">🔍 ${myLang==='fr'?'Analyser notre compatibilité':'Analyse our compatibility'}</button>`;
-      }
+      showReveal(s,qk);
       return;
     }
     document.getElementById('sent-zone').style.display='none';
@@ -2943,75 +2916,19 @@ async function forceCheck(){
 // ═══════════════════════════════════════
 // RÉVÉLATION
 // ═══════════════════════════════════════
-function navHTML(s, qk){
-  const fr = myLang==='fr';
-  const isLast = currentQi >= currentQs.length-1;
-  const bothAnswered = !!(s?.answers?.[qk+'_p1'] && s?.answers?.[qk+'_p2']);
-  const myA = !!(s?.answers?.[qk+'_'+myRole]);
-  const thRole = myRole==='p1'?'p2':'p1';
-  const thA = !!(s?.answers?.[qk+'_'+thRole]);
-  const thName = s?.[thRole]?.name || (fr?'Ton partenaire':'Your partner');
-
-  // Barre de progression en haut
-  const progress = Math.round(((currentQi+1)/currentQs.length)*100);
-  const progressBar = `<div style="margin-bottom:14px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-      <span style="font-size:11px;color:var(--muted);">${fr?'Question':'Question'} ${currentQi+1} / ${currentQs.length}</span>
-      <span style="font-size:11px;color:var(--gold);font-weight:700;">${progress}%</span>
-    </div>
-    <div style="height:4px;background:var(--d2);border-radius:4px;overflow:hidden;">
-      <div style="height:100%;width:${progress}%;background:linear-gradient(90deg,var(--p1),var(--gold));border-radius:4px;transition:width 0.4s;"></div>
-    </div>
-  </div>`;
-
-  // Statut des deux réponses
-  const p1dot = (s?.answers?.[qk+'_p1']) ? '🟢' : '⚪';
-  const p2dot = (s?.answers?.[qk+'_p2']) ? '🟢' : '⚪';
-  const p1name = s?.p1?.name||'P1';
-  const p2name = s?.p2?.name||'P2';
-  const statusBar = `<div style="display:flex;justify-content:center;gap:20px;padding:10px 0;margin-bottom:8px;border-top:1px solid var(--d2);border-bottom:1px solid var(--d2);">
-    <span style="font-size:12px;color:var(--cream);">${p1dot} ${p1name}</span>
-    <span style="font-size:12px;color:var(--muted);">·</span>
-    <span style="font-size:12px;color:var(--cream);">${p2dot} ${p2name}</span>
-  </div>`;
-
-  // Message d'état
-  let stateMsg = '';
-  if(!myA) {
-    stateMsg = `<p style="text-align:center;font-size:12px;color:var(--gold);padding:8px 0;">✏️ ${fr?'Réponds d\'abord pour voir la réponse de '+thName:'Answer first to see '+thName+'\'s response'}</p>`;
-  } else if(!thA) {
-    stateMsg = `<p style="text-align:center;font-size:12px;color:var(--muted);padding:8px 0;">⏳ ${fr?'En attente de '+thName+'...':'Waiting for '+thName+'...'}</p>`;
-  } else {
-    stateMsg = `<p style="text-align:center;font-size:12px;color:#7ED67E;padding:8px 0;">✅ ${fr?'Vous avez tous les deux répondu !':'You\'ve both answered!'}</p>`;
-  }
-
-  // Boutons navigation — toujours visibles dès qu'on est dans reveal-zone
-  const prevBtn = currentQi > 0
-    ? `<button onclick="prevQ()" style="flex:1;padding:12px 8px;border-radius:12px;border:1px solid var(--d2);background:transparent;color:var(--muted);cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;">← ${fr?'Préc.':'Prev.'}</button>`
-    : '';
-
-  const nextLabel = isLast
-    ? (fr?'✅ Retour aux thèmes':'✅ Back to themes')
-    : (fr?'Question suivante →':'Next question →');
-  const nextAction = isLast ? "goPage('pg-cats')" : 'nextQ()';
-
-  // Couleur du bouton suivant: or si les deux ont répondu, grisé sinon
-  const nextStyle = bothAnswered
-    ? 'background:linear-gradient(135deg,#4A3010,#D4943C);color:#0D0A06;font-weight:700;cursor:pointer;'
-    : 'background:var(--d2);color:var(--muted);font-weight:600;cursor:pointer;border:1px solid var(--d2);';
-
-  const nextBtn = `<button onclick="${nextAction}" style="flex:2;padding:12px;border-radius:12px;border:none;${nextStyle}font-family:'Outfit',sans-serif;font-size:14px;">${nextLabel}</button>`;
-
-  return `<div style="margin-top:16px;padding:14px;background:var(--d2);border-radius:16px;border:1px solid var(--d2);">
-    ${progressBar}
-    ${statusBar}
-    ${stateMsg}
-    <div style="display:flex;gap:8px;margin-top:10px;">
-      ${prevBtn}
-      ${nextBtn}
-    </div>
-    ${!bothAnswered && myA ? `<p style="text-align:center;font-size:11px;color:var(--muted);margin-top:8px;">${fr?'Tu peux passer à la suivante et revenir plus tard.':'You can skip and come back later.'}</p>` : ''}
-  </div>`;
+function navHTML(){
+  const isLast=currentQi>=currentQs.length-1;
+  const prevBtn=currentQi>0
+    ?'<button onclick="prevQ()" style="flex:1;padding:12px;border-radius:12px;border:1px solid #2A2238;background:transparent;color:#7A6E8A;cursor:pointer;">← '+(myLang==='fr'?'Précédent':'Previous')+'</button>'
+    :'';
+  const nextLabel=isLast
+    ?(myLang==='fr'?'✅ Retour aux thèmes':'✅ Back to themes')
+    :(myLang==='fr'?'Question suivante →':'Next question →');
+  const nextAction=isLast?"goPage('pg-cats')":'nextQ()';
+  return '<div style="display:flex;gap:8px;margin-top:12px;">'
+    +prevBtn
+    +'<button onclick="'+nextAction+'" style="flex:2;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#4A3010,#D4943C);color:#0D0A06;font-weight:700;cursor:pointer;">'+nextLabel+'</button>'
+    +'</div>';
 }
 function prevQ(){if(currentQi>0){currentQi--;renderQ();}}
 function nextQ(){if(currentQi<currentQs.length-1){currentQi++;renderQ();}}
@@ -3072,10 +2989,10 @@ function showReveal(s,qk){
       })()}
     </div>
     <div id="ai-zone"></div>
-    <div id="nav-zone">${navHTML(s,qk)}</div>`;
+    <div id="nav-zone">${ardy?navHTML():''}</div>`;
   z.style.display='block';
   if(ardy) renderAI(s.aiResult);
-  else scheduleAutoAnalysis(s, qk);
+  else scheduleAutoAnalysis(s, qk); // Déclencher l'analyse auto si pas encore faite
   renderLiveChat(s,qk);
 }
 
@@ -3086,7 +3003,7 @@ function renderAI(result){
   const lang=myLang==='fr'?'fr':'en';
   const txt=result[lang]||result.fr||result.en||'';
   el.innerHTML=`<div class="card card-gold" style="margin-top:14px;">${strip()}<div class="card-body"><p style="font-size:11px;color:var(--gold);font-weight:700;margin-bottom:8px;">🤖 Analyse IA / AI Analysis</p><div style="font-size:13px;line-height:1.7;color:var(--cream);">${txt}</div></div></div>`;
-  const _nz=document.getElementById('nav-zone');if(_nz)_nz.innerHTML=navHTML(lastRoom,currentCat?.id+'_'+currentQi);
+  document.getElementById('nav-zone').innerHTML=navHTML();
 }
 
 async function doAnalysis(){
