@@ -1666,6 +1666,8 @@ function _saveReadQks(){
   try{ localStorage.setItem('nd_readqks', JSON.stringify([..._readQks])); }catch(e){}
 }
 const _readQks=_loadReadQks();
+// IDs des messages lus localement — badge disparaît immédiatement sans attendre Firebase
+const _localReadMsgIds = new Set();
 
 function addBadge(catId, type){
   if(!_badges[catId]) _badges[catId]={count:0,type};
@@ -5133,7 +5135,14 @@ function _updateChatMsgs(s, qk){
   setTimeout(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; }, 50);
 
   // ── Badge WhatsApp non-lu ──
-  const unreadMsgs = msgs.filter(m=>m.role!==myRole && !m.readBy?.[myRole] && !m.deleted);
+  // Un message est "lu" si : readBy[myRole]===true OU dans _localReadMsgIds
+  const unreadMsgs = msgs.filter(m=>{
+    if(m.role===myRole || m.deleted) return false;
+    const sid = String(m.id||m.ts);
+    if(_localReadMsgIds.has(sid)) return false; // Lu localement
+    if(m.readBy?.[myRole]) return false; // Lu confirmé Firebase
+    return true;
+  });
   const badge = document.getElementById('chat-unread-badge');
   if(badge){
     if(unreadMsgs.length>0){
@@ -5151,6 +5160,18 @@ function refreshLiveChat(s, qk){
   // Si le chat n'est pas encore initialisé pour cette question, le rendre
   if(_currentChatQk !== qk || chatZ.style.display === 'none'){
     renderLiveChat(s, qk); return;
+  }
+  // Si on est actif sur cette question → pré-marquer les nouveaux messages comme lus localement
+  const _isActive = document.getElementById('pg-q')?.classList.contains('active');
+  if(_isActive && s?.chat){
+    const _k = getChatKey(qk);
+    const _raw = s.chat[_k]||{};
+    const _arr = Array.isArray(_raw)?_raw:Object.values(_raw);
+    _arr.forEach(m=>{
+      if(m && m.role!==myRole && !m.deleted){
+        _localReadMsgIds.add(String(m.id||m.ts));
+      }
+    });
   }
   const key = getChatKey(qk);
   const msgs = s?.chat?.[key] || [];
@@ -5594,14 +5615,29 @@ async function _markAllCatRead(catId, qCount){
 }
 
 async function markChatRead(qk){
-  // Marquer localement immédiatement → badge disparaît tout de suite
+  // ── Étape 1 : marquer IMMÉDIATEMENT dans le cache local → badge disparaît instantanément ──
   _readQks.add(qk); _saveReadQks();
   if(currentCat?.id) clearBadge(currentCat.id);
-  // Mettre à jour l'UI badge immédiatement
+
+  // Pré-remplir _localReadMsgIds avec tous les messages actuels de l'autre
+  const s0 = lastRoom;
+  if(s0?.chat){
+    const key0 = getChatKey(qk);
+    const raw0 = s0.chat[key0]||{};
+    const msgs0 = Array.isArray(raw0) ? raw0 : Object.values(raw0);
+    msgs0.forEach(m=>{
+      if(m && m.role !== myRole && !m.deleted){
+        _localReadMsgIds.add(String(m.id||m.ts));
+      }
+    });
+  }
+
+  // Badge disparaît immédiatement
   const badge = document.getElementById('chat-unread-badge');
   if(badge) badge.style.display='none';
   updateBadgesOnly(lastRoom);
-  // PATCH Firebase en arrière-plan — un message à la fois
+
+  // ── Étape 2 : PATCH Firebase en arrière-plan ──
   const s = lastRoom || await loadRoom(roomCode);
   if(!s||!s.chat) return;
   const key = getChatKey(qk);
@@ -5609,12 +5645,13 @@ async function markChatRead(qk){
   const msgs = Array.isArray(raw) ? raw : Object.values(raw);
   for(const m of msgs){
     if(m && m.role !== myRole && !m.readBy?.[myRole] && !m.deleted && m.id){
+      // Marquer dans le cache local aussi
+      _localReadMsgIds.add(String(m.id||m.ts));
       try{
         await fetch(`${FB}/rooms/${roomCode}/chat/${key}/${m.id}/readBy/${myRole}.json`,{
           method:'PUT', headers:{'Content-Type':'application/json'},
           body:'true'
         });
-        // Mettre à jour localement
         if(!m.readBy) m.readBy={};
         m.readBy[myRole]=true;
       }catch(e){}
