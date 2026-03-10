@@ -870,7 +870,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
           <span id="chat-name-p1" style="font-size:11px;font-weight:700;color:var(--p1);">—</span>
           <span id="chat-unread-badge" style="display:none;background:#25D366;color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:99px;padding:0 5px;align-items:center;justify-content:center;line-height:18px;text-align:center;"></span>
         </div>
-        <p id="chat-title" style="font-size:10px;color:var(--gold);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;text-align:center;flex:1;padding:0 8px;">💬 Échange libre</p>
+        <p id="chat-title" style="font-size:10px;color:var(--gold);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;text-align:center;flex:1;padding:0 8px;"></p>
         <div style="display:flex;align-items:center;gap:7px;flex-direction:row-reverse;">
           <div id="chat-avatar-p2" style="width:30px;height:30px;border-radius:50%;background:var(--p2d);border:2px solid var(--p2b);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">🙂</div>
           <span id="chat-name-p2" style="font-size:11px;font-weight:700;color:var(--p2);">—</span>
@@ -895,7 +895,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
         </div>
         <!-- Input texte + envoyer -->
         <div style="display:flex;gap:8px;align-items:flex-end;">
-          <textarea id="chat-input" rows="2" placeholder="Ton message..." style="flex:1;font-size:13px;padding:10px 12px;border-radius:12px;resize:none;background:var(--d2);border:1.5px solid var(--faint);color:var(--cream);font-family:'Outfit',sans-serif;outline:none;transition:border-color 0.2s;box-sizing:border-box;width:100%;" onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--faint)'"></textarea>
+          <textarea id="chat-input" rows="2" placeholder="Ta réponse..." style="flex:1;font-size:13px;padding:10px 12px;border-radius:12px;resize:none;background:var(--d2);border:1.5px solid var(--faint);color:var(--cream);font-family:'Outfit',sans-serif;outline:none;transition:border-color 0.2s;box-sizing:border-box;width:100%;" onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--faint)'"></textarea>
           <button id="chat-send-btn" style="background:linear-gradient(135deg,var(--goldD),var(--gold));border:none;border-radius:12px;color:#12090A;font-weight:700;font-size:18px;cursor:pointer;padding:10px 14px;flex-shrink:0;align-self:flex-end;">➤</button>
         </div>
         <!-- Input caché pour photo -->
@@ -4180,9 +4180,9 @@ function navHTML(s, qk){
   // Message d'état
   let stateMsg = '';
   if(!myA && thA) {
-    stateMsg = `<p style="text-align:center;font-size:12px;color:var(--gold);font-weight:700;padding:8px 0;">✉️ ${fr?thName+' a répondu — réponds pour voir !':thName+' answered — respond to reveal!'}</p>`;
+    stateMsg = `<p style="text-align:center;font-size:12px;color:var(--gold);font-weight:700;padding:8px 0;">✉️ ${fr?thName+' a répondu — envoie ta réponse dans le chat !':thName+' answered — send your reply in the chat!'}</p>`;
   } else if(!myA) {
-    stateMsg = `<p style="text-align:center;font-size:12px;color:var(--gold);padding:8px 0;">✏️ ${fr?'Réponds d\'abord pour voir la réponse de '+thName:'Answer first to see '+thName+'\'s response'}</p>`;
+    stateMsg = `<p style="text-align:center;font-size:12px;color:var(--gold);padding:8px 0;">✏️ ${fr?'Tape ta réponse dans le chat ci-dessus':'Type your answer in the chat above'}</p>`;
   } else if(!thA) {
     stateMsg = `<p style="text-align:center;font-size:12px;color:var(--muted);padding:8px 0;">⏳ ${fr?'En attente de '+thName+'...':'Waiting for '+thName+'...'}</p>`;
   } else {
@@ -4737,8 +4737,10 @@ function getAvatarHtml(s, role, size=32){
 }
 
 function buildMsgHtml(s,msgs){
-  if(!msgs||msgs.length===0)return '<p style="font-size:12px;color:var(--muted);text-align:center;font-style:italic;padding:20px 0;">'+(myLang==='fr'?'Réagissez, posez des questions...':'React, ask questions, go deeper...')+'</p>';
-  return msgs.map(m=>{
+  if(!msgs||!Object.keys(msgs).length)return '<p style="font-size:12px;color:var(--muted);text-align:center;font-style:italic;padding:20px 0;">'+(myLang==='fr'?'✏️ Réponds à la question ci-dessus...':'✏️ Answer the question above...')+'</p>';
+  // Normaliser : msgs peut être un objet (Firebase) ou un tableau
+  const msgsArr = Array.isArray(msgs) ? msgs : Object.values(msgs).sort((a,b)=>a.ts-b.ts);
+  return msgsArr.map(m=>{
     const isMe=m.role===myRole;
     const nm=s?.[m.role]?.name||'?';
     const lg=s?.[m.role]?.lang||'fr';
@@ -4778,9 +4780,14 @@ function buildMsgHtml(s,msgs){
     } else {
       textHtml=`<div style="font-size:13px;line-height:1.6;color:var(--cream);white-space:pre-wrap;">${m.text}</div>`;
     }
-    const bubbleContent = `<div style="max-width:72%;min-width:0;background:${bg};border:1px solid ${bd};border-radius:14px;${radiusCorner};padding:8px 12px;word-break:break-word;${bubbleAlign}">`
+    // Badge "RÉPONSE" si c'est le premier message (réponse officielle)
+    const answerBadge = m.isAnswer && !deleted
+      ? `<span style="font-size:8px;font-weight:800;letter-spacing:0.06em;color:var(--gold);background:rgba(212,148,60,0.15);border:1px solid var(--goldD);border-radius:6px;padding:1px 6px;margin-left:4px;text-transform:uppercase;">${myLang==='fr'?'Réponse':'Answer'}</span>` : '';
+    const answerBorderTop = m.isAnswer && !deleted ? 'border-top:2px solid var(--gold);' : '';
+
+    const bubbleContent = `<div style="max-width:72%;min-width:0;background:${bg};border:1px solid ${bd};${answerBorderTop}border-radius:14px;${radiusCorner};padding:8px 12px;word-break:break-word;${bubbleAlign}">`
       +`<div style="font-size:10px;font-weight:700;color:${col};margin-bottom:4px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">`
-        +nm+` <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>`
+        +nm+` <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${answerBadge}`
         +`<span style="font-size:9px;color:var(--muted);margin-left:auto;white-space:nowrap;">${time}${edited}</span>`
       +'</div>'
       +textHtml
@@ -4804,15 +4811,29 @@ function renderLiveChat(s, qk){
   chatZ.style.display = 'block';
   _currentChatQk = qk;
 
-  // Mettre à jour le titre
+  // Titre + placeholder selon état
   const titleEl = document.getElementById('chat-title');
   const catLabel = currentCat?.[myLang==='fr'?'fr':'en'] || '';
-  if(titleEl) titleEl.textContent = '💬 ' + (myLang==='fr'?'Échange libre':'Free exchange') + (currentCat?.e ? ' — '+currentCat.e+' '+catLabel : '');
+  const _myAnswered = !!(s?.answers?.[qk+'_'+myRole]);
+  const _thRole2 = myRole==='p1'?'p2':'p1';
+  const _thAnswered = !!(s?.answers?.[qk+'_'+_thRole2]);
+  const _thName2 = s?.[_thRole2]?.name || (myLang==='fr'?'Ton partenaire':'Your partner');
 
-  // Mettre à jour le placeholder selon la langue
+  if(titleEl){
+    if(!_myAnswered){
+      titleEl.innerHTML = currentCat?.e+' <span style="color:var(--cream);font-weight:800;">'+(myLang==='fr'?'Ta réponse':'Your answer')+'</span>';
+    } else if(_myAnswered && !_thAnswered){
+      titleEl.innerHTML = '⏳ <span style="color:var(--muted);">'+(myLang==='fr'?'En attente de '+_thName2:'Waiting for '+_thName2)+'</span>';
+    } else {
+      titleEl.innerHTML = '💬 <span style="color:var(--gold);">'+(myLang==='fr'?'Échange':'Exchange')+'</span> — '+currentCat?.e+' '+catLabel;
+    }
+  }
+
+  // Placeholder selon état
   const input = document.getElementById('chat-input');
   if(input && !input.dataset.bound){
-    input.placeholder = myLang==='fr' ? 'Ton message...' : 'Your message...';
+    // Placeholder initial — sera mis à jour plus bas selon l'état
+    input.placeholder = myLang==='fr' ? 'Ta réponse...' : 'Your answer...';
     input.addEventListener('keydown', e=>{
       if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChatMsg(_currentChatQk); return; }
       // Signaler "en train d'écrire"
@@ -4843,6 +4864,22 @@ function renderLiveChat(s, qk){
   // Initialiser les avatars
   initAvatars(s);
 
+  // Placeholder dynamique selon si j'ai déjà répondu
+  const _inp = document.getElementById('chat-input');
+  const _myAns = !!(s?.answers?.[qk+'_'+myRole]);
+  const _thRoleP = myRole==='p1'?'p2':'p1';
+  const _thNmP = s?.[_thRoleP]?.name||(myLang==='fr'?'Ton partenaire':'Your partner');
+  const _thAns = !!(s?.answers?.[qk+'_'+_thRoleP]);
+  if(_inp){
+    if(!_myAns){
+      _inp.placeholder = myLang==='fr'
+        ? (_thAns ? '✍️ '+_thNmP+' a répondu — et toi ?':'✍️ Ta réponse à cette question...')
+        : (_thAns ? '✍️ '+_thNmP+' answered — your turn!':'✍️ Your answer to this question...');
+    } else {
+      _inp.placeholder = myLang==='fr'?'💬 Ton message...':'💬 Your message...';
+    }
+  }
+
   // Mettre à jour les messages
   _updateChatMsgs(s, qk);
   markChatRead(qk).catch(()=>{});
@@ -4850,7 +4887,11 @@ function renderLiveChat(s, qk){
 
 function _updateChatMsgs(s, qk){
   const key = getChatKey(qk);
-  const msgs = s?.chat?.[key] || [];
+  const rawMsgs = s?.chat?.[key] || {};
+  // Firebase retourne un objet keyed par ID — normaliser en tableau trié
+  const msgs = Array.isArray(rawMsgs)
+    ? rawMsgs
+    : Object.values(rawMsgs).sort((a,b)=>a.ts-b.ts);
   const msgsEl = document.getElementById('chat-msgs');
   if(!msgsEl) return;
 
@@ -5118,18 +5159,52 @@ async function sendChatMsg(qk){
   input.value='';
   clearTimeout(_typingTimer);
   setTyping(false);
-  const s=await loadRoom(roomCode)||lastRoom;
-  s.chat=s.chat||{};
+
+  const isFirstMsg = !(lastRoom?.answers?.[qk+'_'+myRole]);
+
+  // PATCH chat message via Firebase
   const key=getChatKey(qk);
-  s.chat[key]=s.chat[key]||[];
-  s.chat[key].push({id:Date.now()+'_'+Math.random().toString(36).slice(2,7),role:myRole,text,ts:Date.now()});
-  // Marquer tous les messages de l'autre comme lus
-  s.chat[key].forEach(m=>{ if(m.role!==myRole){m.readBy=m.readBy||{};m.readBy[myRole]=true;} });
-  await saveRoom(s);lastRoom=s;
-  _updateChatMsgs(s, qk);
-  // Réinitialiser le timer d'inactivité — quelqu'un vient d'écrire
+  const msgId=Date.now()+'_'+Math.random().toString(36).slice(2,7);
+  const msg={id:msgId,role:myRole,text,ts:Date.now(),isAnswer:isFirstMsg};
+
+  try{
+    // 1. Sauvegarder le message dans chat
+    await fetch(`${FB}/rooms/${roomCode}/chat/${key}/${msgId}.json`,{
+      method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(msg)
+    });
+    // 2. Si premier message → enregistrer aussi comme réponse officielle
+    if(isFirstMsg){
+      await fetch(`${FB}/rooms/${roomCode}/answers/${qk}_${myRole}.json`,{
+        method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(text)
+      });
+    }
+    // Mettre à jour lastRoom localement
+    if(lastRoom){
+      lastRoom.chat=lastRoom.chat||{};
+      lastRoom.chat[key]=lastRoom.chat[key]||{};
+      lastRoom.chat[key][msgId]=msg;
+      if(isFirstMsg){
+        lastRoom.answers=lastRoom.answers||{};
+        lastRoom.answers[qk+'_'+myRole]=text;
+      }
+    }
+  }catch(e){ console.error('sendChatMsg failed',e); return; }
+
+  // Marquer les messages de l'autre comme lus (PATCH local)
+  if(lastRoom?.chat?.[key]){
+    Object.values(lastRoom.chat[key]).forEach(m=>{
+      if(m.role!==myRole){m.readBy=m.readBy||{};m.readBy[myRole]=true;}
+    });
+  }
+
+  // Mettre à jour l'UI
+  _updateChatMsgs(lastRoom, qk);
+  // Mettre à jour titre + placeholder
+  renderLiveChat(lastRoom, qk);
+  // Nav + analyse
+  checkQState(lastRoom);
   cancelAutoAnalysis();
-  scheduleAutoAnalysis(s, qk);
+  scheduleAutoAnalysis(lastRoom, qk);
 }
 
 async function _markAllCatRead(catId, qCount){
