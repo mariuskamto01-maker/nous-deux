@@ -302,6 +302,39 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
   line-height:1.3;max-width:80px;
 }
 .cat-tile-count{font-size:10px;color:var(--muted);}
+/* ── Question "pending" : partenaire a répondu, moi pas encore ── */
+.q-pending-bar{
+  background:linear-gradient(90deg,var(--gold),#E8A830,var(--gold)) !important;
+  background-size:200% 100% !important;
+  animation:pendingShimmer 1.8s ease-in-out infinite;
+}
+@keyframes pendingShimmer{0%{background-position:100% 0;}100%{background-position:-100% 0;}}
+.q-pending-counter{
+  color:var(--gold) !important;
+  font-weight:800 !important;
+}
+.q-pending-banner{
+  background:linear-gradient(135deg,rgba(212,148,60,0.18),rgba(212,148,60,0.08));
+  border:1.5px solid var(--gold);
+  border-radius:10px;
+  padding:8px 12px;
+  margin-bottom:10px;
+  display:flex;align-items:center;gap:8px;
+  animation:pendingGlow 2s ease-in-out infinite;
+}
+@keyframes pendingGlow{0%,100%{box-shadow:0 0 0 0 rgba(212,148,60,0.0);}50%{box-shadow:0 0 12px 2px rgba(212,148,60,0.25);}}
+.q-pending-dot{
+  width:9px;height:9px;min-width:9px;
+  background:var(--gold);border-radius:50%;
+  animation:pendingDotPulse 1.2s ease-in-out infinite;
+}
+@keyframes pendingDotPulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.5;transform:scale(0.6);}}
+/* Indicateur nav: points de questions pendantes */
+.q-nav-dot{
+  display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:var(--gold);vertical-align:middle;
+  margin:0 2px;animation:pendingDotPulse 1.2s ease-in-out infinite;
+}
 .cat-tile-badge{
   background:#C83020;color:#fff;
   font-size:9px;font-weight:700;
@@ -3500,6 +3533,14 @@ function startPoll(){
       // Mettre à jour l'état de la question seulement si user n'écrit pas dans son textarea
       const myAnswerActive = document.activeElement?.id === 'my-answer';
       if(!myAnswerActive){
+        // Si my-zone et reveal-zone coexistent (bug overlap) → reconstruire proprement
+        const myZv = document.getElementById('my-zone');
+        const revZv = document.getElementById('reveal-zone');
+        const myZvisible = myZv && myZv.style.display !== 'none' && myZv.innerHTML.trim() !== '';
+        const revZvisible = revZv && revZv.style.display === 'block' && revZv.innerHTML.trim() !== '';
+        if(myZvisible && revZvisible){
+          myZv.style.display='none'; myZv.innerHTML='';
+        }
         checkQState(s);
       }
       // Programmer l'analyse automatique si les deux ont répondu
@@ -3780,9 +3821,20 @@ function renderQ(){
   const barEl=document.getElementById('q-bar');
   if(barEl)barEl.style.width=((currentQi+1)/total*100)+'%';
 
-  // Counter
+  // Détecter si question "pending" (partenaire a répondu, moi pas)
+  const _qk_cur=currentCat.id+'_'+currentQi;
+  const _thRole=myRole==='p1'?'p2':'p1';
+  const _isPending=!!(s?.answers?.[_qk_cur+'_'+_thRole]) && !(s?.answers?.[_qk_cur+'_'+myRole]);
+  if(barEl){
+    barEl.classList.toggle('q-pending-bar', _isPending);
+  }
+
+  // Counter — or + pulsant si pending
   const counterEl=document.getElementById('q-counter');
-  if(counterEl)counterEl.textContent=(currentQi+1)+' / '+total;
+  if(counterEl){
+    counterEl.textContent=(currentQi+1)+' / '+total;
+    counterEl.classList.toggle('q-pending-counter', _isPending);
+  }
 
   // Cat emoji + name
   const emojiEl=document.getElementById('q-emoji');
@@ -3827,6 +3879,14 @@ function checkQState(s){
   // Mode solo: chacun peut avancer sans attendre l'autre
   const revZ=document.getElementById('reveal-zone');
   const bothNow=!!(s?.answers?.[qk+'_p1']&&s?.answers?.[qk+'_p2']);
+
+  // Si j'ai répondu mais mon textarea est encore visible → le masquer immédiatement
+  if(myA){
+    const myZ=document.getElementById('my-zone');
+    if(myZ && myZ.style.display !== 'none' && myZ.querySelector('#my-answer')){
+      myZ.style.display='none'; myZ.innerHTML='';
+    }
+  }
 
   if(myA || thA){
     // Au moins une réponse → zone révélation
@@ -3877,6 +3937,11 @@ function checkQState(s){
 function showMyInput(){
   // Si le textarea existe déjà → ne pas reconstruire (user en train d écrire)
   if(document.getElementById('my-answer'))return;
+  // Détection "pending" — partenaire a répondu, moi pas encore
+  const _qk_mi=currentCat.id+'_'+currentQi;
+  const _thRole_mi=myRole==='p1'?'p2':'p1';
+  const _thName_mi=lastRoom?.[_thRole_mi]?.name||(myLang==='fr'?'Ton partenaire':'Your partner');
+  const _isPendingMI=!!(lastRoom?.answers?.[_qk_mi+'_'+_thRole_mi]);
   const pair=currentQs[currentQi];
   const isP1=myRole==='p1';
   const col=isP1?'var(--p1)':'var(--p2)';
@@ -3884,8 +3949,21 @@ function showMyInput(){
   const bd=isP1?'var(--p1b)':'var(--p2b)';
   const z=document.getElementById('my-zone');
   const qText=pair?pair[myLang==='fr'?0:1]:'';
-  z.innerHTML=`
-    <div class="card fu" style="border-color:${bd};background:${bg}cc;">
+  const _pendingBanner = _isPendingMI ? `
+    <div class="q-pending-banner">
+      <div class="q-pending-dot"></div>
+      <span style="font-size:12px;font-weight:700;color:var(--gold);">${myLang==='fr'
+        ? _thName_mi+' a répondu — à toi de jouer !'
+        : _thName_mi+' already answered — your turn!'
+      }</span>
+      <span style="margin-left:auto;font-size:15px;">✉️</span>
+    </div>` : '';
+
+  const _cardBorder = _isPendingMI ? 'var(--gold)' : bd;
+  const _cardBg = _isPendingMI ? 'rgba(212,148,60,0.08)' : bg+'cc';
+
+  z.innerHTML=_pendingBanner+`
+    <div class="card fu" style="border-color:${_cardBorder};background:${_cardBg};">
       ${strip()}
       <div class="card-body">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -3895,7 +3973,7 @@ function showMyInput(){
         </div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-style:italic;">${qText}</div>
         <textarea id="my-answer" rows="4" placeholder="${myLang==='fr'?'Ta réponse honnête...':'Your honest answer...'}" style="width:100%;box-sizing:border-box;font-size:14px;padding:10px 12px;resize:vertical;"></textarea>
-        <button onclick="submitAnswer()" style="width:100%;margin-top:10px;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,${isP1?'var(--p1d),var(--p1)':'var(--p2d),var(--p2)'});color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">${myLang==='fr'?'Valider ma réponse →':'Submit my answer →'}</button>
+        <button onclick="submitAnswer()" style="width:100%;margin-top:10px;padding:14px;border-radius:12px;border:none;background:${_isPendingMI?'linear-gradient(135deg,#7A4800,var(--gold))':'linear-gradient(135deg,'+(isP1?'var(--p1d),var(--p1)':'var(--p2d),var(--p2)')+')'};color:${_isPendingMI?'#0D0A06':'#fff'};font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">${myLang==='fr'?'Valider ma réponse →':'Submit my answer →'}</button>
       </div>
     </div>`;
   z.style.display='block';
@@ -4006,14 +4084,26 @@ async function deleteAnswer(qk){
 async function submitAnswer(){
   const val=document.getElementById('my-answer')?.value.trim();
   if(!val)return;
+
+  // Feedback visuel immédiat — désactiver le bouton pour éviter double-clic
+  const btn=document.querySelector('#my-zone button[onclick="submitAnswer()"]');
+  if(btn){btn.disabled=true;btn.textContent=myLang==='fr'?'⏳ Envoi...':'⏳ Sending...';}
+
   const s=await loadRoom(roomCode)||lastRoom;
-  if(!s)return;
+  if(!s){if(btn){btn.disabled=false;btn.textContent=myLang==='fr'?'Valider ma réponse →':'Submit my answer →';}return;}
+
   const qk=currentCat.id+'_'+currentQi;
   s.answers=s.answers||{};
   s.answers[qk+'_'+myRole]=val;
-  await saveRoom(s);lastRoom=s;
-  // Rafraîchir l'affichage - maintenant la réponse est visible
-  checkQState(s);
+  await saveRoom(s);
+  lastRoom=s;
+
+  // Masquer my-zone AVANT de reconstruire pour éviter le doublon
+  const myZ=document.getElementById('my-zone');
+  if(myZ){myZ.style.display='none';myZ.innerHTML='';}
+
+  // Reconstruire complètement la page question
+  renderQ();
 }
 
 async function forceCheck(){
@@ -4056,9 +4146,24 @@ function navHTML(s, qk){
     <span style="font-size:12px;color:var(--cream);">${p2dot} ${p2name}</span>
   </div>`;
 
+  // Compter les questions pendantes dans ce thème (partenaire a répondu, pas moi)
+  const _thRoleNav=myRole==='p1'?'p2':'p1';
+  const _pendingCount=currentQs.reduce((acc,_,qi)=>{
+    const _qkn=currentCat.id+'_'+qi;
+    return acc + (!s?.answers?.[_qkn+'_'+myRole] && s?.answers?.[_qkn+'_'+_thRoleNav] ? 1 : 0);
+  },0);
+  const _pendingIndicator = _pendingCount>0
+    ? `<div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 0;margin-bottom:4px;">
+        <span class="q-nav-dot"></span>
+        <span style="font-size:11px;color:var(--gold);font-weight:700;">${_pendingCount} ${fr?(_pendingCount>1?'questions en attente':'question en attente'):(_pendingCount>1?'pending answers':'pending answer')}</span>
+        <span class="q-nav-dot"></span>
+      </div>` : '';
+
   // Message d'état
   let stateMsg = '';
-  if(!myA) {
+  if(!myA && thA) {
+    stateMsg = `<p style="text-align:center;font-size:12px;color:var(--gold);font-weight:700;padding:8px 0;">✉️ ${fr?thName+' a répondu — réponds pour voir !':thName+' answered — respond to reveal!'}</p>`;
+  } else if(!myA) {
     stateMsg = `<p style="text-align:center;font-size:12px;color:var(--gold);padding:8px 0;">✏️ ${fr?'Réponds d\'abord pour voir la réponse de '+thName:'Answer first to see '+thName+'\'s response'}</p>`;
   } else if(!thA) {
     stateMsg = `<p style="text-align:center;font-size:12px;color:var(--muted);padding:8px 0;">⏳ ${fr?'En attente de '+thName+'...':'Waiting for '+thName+'...'}</p>`;
@@ -4088,6 +4193,7 @@ function navHTML(s, qk){
 
   return `<div style="margin-top:16px;padding:14px;background:var(--d2);border-radius:16px;border:1px solid var(--d2);">
     ${progressBar}
+    ${_pendingIndicator}
     ${statusBar}
     ${stateMsg}
     <div style="display:flex;gap:8px;margin-top:10px;">
