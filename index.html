@@ -3761,10 +3761,12 @@ function getBadges(s){
   if(s.chat){
     Object.keys(s.chat).forEach(key=>{
       // Reconstruire le qk depuis la clé chat_catId_qi
-      const qk=key.replace(/^chat_/,'');
+      const qk=key.replace(/^chat_/,'').replace(/_/g,'_');
       if(_readQks.has(qk)) return; // Déjà lu localement → pas de badge
-      const msgs=s.chat[key]||[];
-      const unread=msgs.filter(m=>m.role!==myRole&&!m.readBy?.[myRole]);
+      // Firebase retourne un objet — normaliser en tableau
+      const raw=s.chat[key]||{};
+      const msgs=Array.isArray(raw)?raw:Object.values(raw);
+      const unread=msgs.filter(m=>m&&m.role!==myRole&&!m.readBy?.[myRole]&&!m.deleted);
       if(unread.length>0){
         const parts=key.replace('chat_','').split('_');
         const catId=parts.slice(0,-1).join('_');
@@ -5541,22 +5543,32 @@ async function _markAllCatRead(catId, qCount){
 
 async function markChatRead(qk){
   // Marquer localement immédiatement → badge disparaît tout de suite
-  _readQks.add(qk);_saveReadQks();
-  clearBadge(currentCat?.id);
-  // Puis sauvegarder dans Firebase en arrière-plan
-  const s=lastRoom||await loadRoom(roomCode);
-  if(!s||!s.chat)return;
-  const key=getChatKey(qk);
-  const msgs=s.chat[key]||[];
-  let changed=false;
-  msgs.forEach(m=>{
-    if(m.role!==myRole&&(!m.readBy||!m.readBy[myRole])){
-      m.readBy=m.readBy||{};
-      m.readBy[myRole]=true;
-      changed=true;
+  _readQks.add(qk); _saveReadQks();
+  if(currentCat?.id) clearBadge(currentCat.id);
+  // Mettre à jour l'UI badge immédiatement
+  const badge = document.getElementById('chat-unread-badge');
+  if(badge) badge.style.display='none';
+  updateBadgesOnly(lastRoom);
+  // PATCH Firebase en arrière-plan — un message à la fois
+  const s = lastRoom || await loadRoom(roomCode);
+  if(!s||!s.chat) return;
+  const key = getChatKey(qk);
+  const raw = s.chat[key]||{};
+  const msgs = Array.isArray(raw) ? raw : Object.values(raw);
+  for(const m of msgs){
+    if(m && m.role !== myRole && !m.readBy?.[myRole] && !m.deleted && m.id){
+      try{
+        await fetch(`${FB}/rooms/${roomCode}/chat/${key}/${m.id}/readBy/${myRole}.json`,{
+          method:'PUT', headers:{'Content-Type':'application/json'},
+          body:'true'
+        });
+        // Mettre à jour localement
+        if(!m.readBy) m.readBy={};
+        m.readBy[myRole]=true;
+      }catch(e){}
     }
-  });
-  if(changed){await saveRoom(s);lastRoom=s;}
+  }
+  lastRoom = s;
 }
 
 // ═══════════════════════════════════════
