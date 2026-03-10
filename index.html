@@ -4750,25 +4750,31 @@ function getAvatarHtml(s, role, size=32){
 }
 
 function buildMsgHtml(s,msgs){
-  // Si pas de messages chat — juste rien (les réponses épinglées sont déjà au-dessus)
   if(!msgs||!Object.keys(msgs).length||!msgs.length)return '';
-  // Normaliser : msgs peut être un objet (Firebase) ou un tableau
   const msgsArr = Array.isArray(msgs) ? msgs : Object.values(msgs).sort((a,b)=>a.ts-b.ts);
   return msgsArr.map(m=>{
-    const isMe=m.role===myRole;
-    const nm=s?.[m.role]?.name||'?';
-    const lg=s?.[m.role]?.lang||'fr';
-    const col=m.role==='p1'?'var(--p1)':'var(--p2)';
-    const bg=m.role==='p1'?'#182A40':'#2E1810';
-    const bd=m.role==='p1'?'var(--p1b)':'var(--p2b)';
-    const avatarHtml=getAvatarHtml(s,m.role,32);
-    const time=new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    const edited=m.edited?'<span style="font-size:9px;color:var(--muted);font-style:italic;"> · '+(myLang==='fr'?'modifié':'edited')+'</span>':'';
-    const deleted=!!m.deleted;
-    // Layout WhatsApp : MOI = bulle droite + avatar droite, AUTRE = avatar gauche + bulle gauche
-    const rowDir=isMe?'row-reverse':'row';
-    const radiusCorner=isMe?'border-top-right-radius:4px':'border-top-left-radius:4px';
-    const bubbleAlign=isMe?'align-self:flex-end':'align-self:flex-start';
+    const isMe = m.role === myRole;
+    const nm  = s?.[m.role]?.name || '?';
+    const lg  = s?.[m.role]?.lang || 'fr';
+
+    // ── Couleurs : MOI = toujours bleu, AUTRE = toujours rouge ──
+    // (indépendant du rôle p1/p2 pour que les deux voient la même chose)
+    const col = isMe ? 'var(--p1)' : 'var(--p2)';
+    const bg  = isMe ? '#182A40'   : '#2E1810';
+    const bd  = isMe ? 'var(--p1b)': 'var(--p2b)';
+
+    const avatarHtml = getAvatarHtml(s, m.role, 32);
+    const time = new Date(m.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    const edited = m.edited
+      ? '<span style="font-size:9px;color:var(--muted);font-style:italic;"> · '+(myLang==='fr'?'modifié':'edited')+'</span>' : '';
+    const deleted = !!m.deleted;
+
+    // ── Layout WhatsApp ──
+    // MOI   → row-reverse : [bulle][avatar]  bulle à droite
+    // AUTRE → row         : [avatar][bulle]  bulle à gauche
+    const rowDir      = isMe ? 'row-reverse' : 'row';
+    const radiusCorner = isMe ? 'border-top-right-radius:4px' : 'border-top-left-radius:4px';
+    const bubbleAlign  = isMe ? 'margin-left:auto' : 'margin-right:auto';
     const msgId=m.id||m.ts;
     // Menu édition/suppression (seulement mes messages, pas supprimés)
     const actionsHtml = isMe && !deleted ? `
@@ -4799,7 +4805,7 @@ function buildMsgHtml(s,msgs){
       ? `<span style="font-size:8px;font-weight:800;letter-spacing:0.06em;color:var(--gold);background:rgba(212,148,60,0.15);border:1px solid var(--goldD);border-radius:6px;padding:1px 6px;margin-left:4px;text-transform:uppercase;">${myLang==='fr'?'Réponse':'Answer'}</span>` : '';
     const answerBorderTop = m.isAnswer && !deleted ? 'border-top:2px solid var(--gold);' : '';
 
-    const bubbleContent = `<div style="max-width:72%;min-width:0;background:${bg};border:1px solid ${bd};${answerBorderTop}border-radius:14px;${radiusCorner};padding:8px 12px;word-break:break-word;${bubbleAlign}">`
+    const bubbleContent = `<div style="max-width:72%;min-width:0;background:${bg};border:1px solid ${bd};${answerBorderTop}border-radius:14px;${radiusCorner};padding:8px 12px;word-break:break-word;">`
       +`<div style="font-size:10px;font-weight:700;color:${col};margin-bottom:4px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">`
         +nm+` <span class="lang-chip ${lg}">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${answerBadge}`
         +`<span style="font-size:9px;color:var(--muted);margin-left:auto;white-space:nowrap;">${time}${edited}</span>`
@@ -4807,7 +4813,9 @@ function buildMsgHtml(s,msgs){
       +textHtml
       +(isMe && !deleted ? `<div style="display:flex;justify-content:flex-end;gap:4px;margin-top:6px;">${actionsHtml}</div>` : '')
     +'</div>';
-    return `<div class="chat-msg-row" style="display:flex;flex-direction:${rowDir};gap:8px;align-items:flex-end;width:100%;box-sizing:border-box;margin-bottom:10px;" data-msgid="${msgId}">`
+    // justify-content positionne toute la row d'un côté
+    const rowJustify = isMe ? 'flex-end' : 'flex-start';
+    return `<div class="chat-msg-row" style="display:flex;flex-direction:${rowDir};justify-content:${rowJustify};gap:8px;align-items:flex-end;width:100%;box-sizing:border-box;margin-bottom:10px;" data-msgid="${msgId}">`
       +avatarHtml
       +bubbleContent
     +'</div>';
