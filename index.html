@@ -560,9 +560,17 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
   background:var(--faint);padding:3px 9px;border-radius:99px;
 }
 /* Emoji reaction picker */
-.emoji-picker-popup{position:absolute;background:var(--d2);border:1px solid var(--goldD);border-radius:16px;padding:8px 10px;display:flex;gap:6px;z-index:999;box-shadow:0 6px 24px rgba(0,0,0,0.5);}
-.emoji-picker-popup button{background:none;border:none;font-size:20px;cursor:pointer;padding:2px 5px;border-radius:8px;transition:transform 0.12s,background 0.12s;}
-.emoji-picker-popup button:hover{transform:scale(1.35);background:rgba(255,255,255,0.10);}
+#emoji-picker-modal{display:none;position:fixed;inset:0;z-index:9000;align-items:flex-end;justify-content:center;}
+#emoji-picker-modal.open{display:flex;}
+#emoji-picker-modal .epm-backdrop{position:absolute;inset:0;background:rgba(0,0,0,0.45);}
+#emoji-picker-modal .epm-sheet{position:relative;background:var(--d1);border-radius:20px 20px 0 0;padding:16px 14px 28px;width:100%;max-width:480px;z-index:1;border-top:2px solid var(--goldD);box-shadow:0 -8px 40px rgba(0,0,0,0.5);}
+#emoji-picker-modal .epm-title{font-size:12px;font-weight:700;color:var(--gold);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+#emoji-picker-modal .epm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:12px;}
+#emoji-picker-modal .epm-btn{background:rgba(255,255,255,0.05);border:1px solid var(--faint);border-radius:12px;font-size:22px;padding:8px 4px;cursor:pointer;transition:transform 0.1s,background 0.1s;width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;}
+#emoji-picker-modal .epm-btn:hover,#emoji-picker-modal .epm-btn:active{transform:scale(1.25);background:rgba(212,148,60,0.18);}
+#emoji-picker-modal .epm-btn.custom-emoji{padding:2px;overflow:hidden;}
+#emoji-picker-modal .epm-btn.custom-emoji img{width:100%;height:100%;object-fit:cover;border-radius:8px;}
+#emoji-picker-modal .epm-upload-btn{background:rgba(212,148,60,0.10);border:1px dashed var(--goldD);border-radius:12px;color:var(--gold);font-size:12px;font-weight:600;padding:8px 4px;cursor:pointer;width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;}
 .reaction-chip{display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:2px 8px;font-size:13px;cursor:pointer;transition:background 0.15s,border 0.15s;user-select:none;line-height:1.5;}
 .reaction-chip.mine{background:rgba(212,148,60,0.20);border-color:var(--goldD);}
 .reaction-chip:hover{background:rgba(212,148,60,0.14);}
@@ -5203,7 +5211,12 @@ function buildMsgHtml(s,msgs){
       const chips = Object.entries(rMap).map(([emoji,roles])=>{
         const isMine = roles.includes(myRole);
         const count = roles.length;
-        return `<button class="reaction-chip${isMine?' mine':''}" onclick="toggleReaction('${msgId}','${emoji}')" title="${roles.map(r=>s?.[r]?.name||r).join(', ')}">${emoji}<span class="rc">${count>1?count:''}</span></button>`;
+        const safeEmoji = emoji.replace(/'/g,"&#39;");
+        const isImg = emoji.startsWith('data:');
+        const emojiDisplay = isImg
+          ? `<img src="${emoji}" style="width:16px;height:16px;object-fit:cover;border-radius:4px;vertical-align:middle;">`
+          : emoji;
+        return `<button class="reaction-chip${isMine?' mine':''}" onclick="toggleReaction('${msgId}','${safeEmoji}')" title="${roles.map(r=>s?.[r]?.name||r).join(', ')}">${emojiDisplay}<span class="rc">${count>1?count:''}</span></button>`;
       }).join('');
       if(chips) reactHtml = `<div class="msg-reactions">${chips}</div>`;
     }
@@ -5863,51 +5876,107 @@ function _scrollToMsg(msgId){
   setTimeout(()=>{ el.style.background = ''; }, 900);
 }
 
-// ── Emoji picker ──
-const REACTION_EMOJIS = ['❤️','😂','😮','😢','🔥','👏','🙏','💯','😍','🥰'];
-let _emojiPickerOpen = null;
+// ═══════════════════════════════════════
+// EMOJI PICKER — bottom sheet, 25 built-in + custom uploads
+// ═══════════════════════════════════════
+const REACTION_EMOJIS = [
+  '❤️','😂','😮','😢','🔥','👏','🙏','💯','😍','🥰',
+  '😭','🤣','😅','🫶','💪','✨','🎉','🤔','😏','🥹',
+  '💔','😡','🤩','🫠','💀'
+];
+let _emojiPickerMsgId = null;
+// Custom emoji stored as [{id, data}] — data is base64 dataURL
+let _customEmojis = JSON.parse(localStorage.getItem('nd_custom_emojis')||'[]');
 
 function showEmojiPicker(e, msgId){
   e.stopPropagation();
-  // Close any open picker
-  _closeEmojiPicker();
+  _emojiPickerMsgId = msgId;
+  const modal = document.getElementById('emoji-picker-modal');
+  const grid  = document.getElementById('epm-grid');
+  if(!modal || !grid) return;
 
-  const btn = e.currentTarget;
-  const rect = btn.getBoundingClientRect();
-  const picker = document.createElement('div');
-  picker.className = 'emoji-picker-popup';
-  picker.id = '_emoji-picker';
+  grid.innerHTML = '';
 
+  // Built-in emojis
   REACTION_EMOJIS.forEach(emoji=>{
-    const b = document.createElement('button');
-    b.textContent = emoji;
-    b.onclick = (ev)=>{ ev.stopPropagation(); toggleReaction(msgId, emoji); _closeEmojiPicker(); };
-    picker.appendChild(b);
+    const btn = document.createElement('button');
+    btn.className = 'epm-btn';
+    btn.textContent = emoji;
+    btn.addEventListener('click', ()=>{ toggleReaction(msgId, emoji); _closeEmojiPicker(); });
+    grid.appendChild(btn);
   });
 
-  document.body.appendChild(picker);
-  // Position above the button
-  const pw = picker.offsetWidth || 260;
-  let left = rect.left - pw/2 + btn.offsetWidth/2;
-  left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
-  const top = rect.top + window.scrollY - picker.offsetHeight - 10;
-  picker.style.left = left + 'px';
-  picker.style.top = Math.max(8, top) + 'px';
-  picker.style.position = 'fixed';
-  picker.style.top = (rect.top - picker.offsetHeight - 10) + 'px';
+  // Custom emojis
+  _customEmojis.forEach(ce=>{
+    const btn = document.createElement('button');
+    btn.className = 'epm-btn custom-emoji';
+    btn.title = 'Custom emoji';
+    const img = document.createElement('img');
+    img.src = ce.data;
+    img.alt = '😊';
+    btn.appendChild(img);
+    // Long-press to delete custom emoji
+    let pressTimer;
+    btn.addEventListener('pointerdown', ()=>{ pressTimer=setTimeout(()=>_deleteCustomEmoji(ce.id), 600); });
+    btn.addEventListener('pointerup', ()=>clearTimeout(pressTimer));
+    btn.addEventListener('pointerleave', ()=>clearTimeout(pressTimer));
+    btn.addEventListener('click', ()=>{ toggleReaction(msgId, ce.data); _closeEmojiPicker(); });
+    grid.appendChild(btn);
+  });
 
-  _emojiPickerOpen = msgId;
+  // Upload button
+  const uploadBtn = document.createElement('button');
+  uploadBtn.className = 'epm-upload-btn';
+  uploadBtn.innerHTML = '<span style="font-size:20px;">+</span><span style="font-size:9px;">Upload</span>';
+  uploadBtn.addEventListener('click', ()=>document.getElementById('epm-upload').click());
+  grid.appendChild(uploadBtn);
 
-  // Close on outside click
-  setTimeout(()=>{
-    document.addEventListener('click', _closeEmojiPicker, {once:true});
-  }, 10);
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 
 function _closeEmojiPicker(){
-  const p = document.getElementById('_emoji-picker');
-  if(p) p.remove();
-  _emojiPickerOpen = null;
+  const modal = document.getElementById('emoji-picker-modal');
+  if(modal) modal.classList.remove('open');
+  document.body.style.overflow = '';
+  _emojiPickerMsgId = null;
+}
+
+function _addCustomEmoji(input){
+  const file = input.files?.[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    const data = e.target.result;
+    const id = 'ce_'+Date.now();
+    _customEmojis.push({id, data});
+    // Keep max 20 custom emojis
+    if(_customEmojis.length > 20) _customEmojis.shift();
+    localStorage.setItem('nd_custom_emojis', JSON.stringify(_customEmojis));
+    input.value = '';
+    // Refresh picker with same msgId
+    const msgId = _emojiPickerMsgId;
+    _closeEmojiPicker();
+    if(msgId) setTimeout(()=>{
+      // Reopen picker for the same message
+      const fakeEvt = {stopPropagation:()=>{}};
+      showEmojiPicker(fakeEvt, msgId);
+    }, 80);
+  };
+  reader.readAsDataURL(file);
+}
+
+function _deleteCustomEmoji(id){
+  if(!confirm(myLang==='fr'?'Supprimer cet emoji personnalisé ?':'Delete this custom emoji?')) return;
+  _customEmojis = _customEmojis.filter(ce=>ce.id!==id);
+  localStorage.setItem('nd_custom_emojis', JSON.stringify(_customEmojis));
+  // Refresh grid
+  const msgId = _emojiPickerMsgId;
+  _closeEmojiPicker();
+  if(msgId) setTimeout(()=>{
+    const fakeEvt = {stopPropagation:()=>{}};
+    showEmojiPicker(fakeEvt, msgId);
+  }, 80);
 }
 
 async function toggleReaction(msgId, emoji){
@@ -6225,5 +6294,17 @@ window.generateQR=function(text,canvas){
 };
 })();
 </script>
+<!-- EMOJI PICKER MODAL -->
+<div id="emoji-picker-modal">
+  <div class="epm-backdrop" onclick="_closeEmojiPicker()"></div>
+  <div class="epm-sheet">
+    <div class="epm-title">
+      <span>😊 Réagir / React</span>
+      <button onclick="_closeEmojiPicker()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0;line-height:1;">✕</button>
+    </div>
+    <div class="epm-grid" id="epm-grid"></div>
+    <input type="file" id="epm-upload" accept="image/*" style="display:none;" onchange="_addCustomEmoji(this)">
+  </div>
+</div>
 </body>
 </html>
