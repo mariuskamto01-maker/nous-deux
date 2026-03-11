@@ -559,6 +559,17 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
   font-size:11px;color:var(--muted);
   background:var(--faint);padding:3px 9px;border-radius:99px;
 }
+/* Emoji reaction picker */
+.emoji-picker-popup{position:absolute;background:var(--d2);border:1px solid var(--goldD);border-radius:16px;padding:8px 10px;display:flex;gap:6px;z-index:999;box-shadow:0 6px 24px rgba(0,0,0,0.5);}
+.emoji-picker-popup button{background:none;border:none;font-size:20px;cursor:pointer;padding:2px 5px;border-radius:8px;transition:transform 0.12s,background 0.12s;}
+.emoji-picker-popup button:hover{transform:scale(1.35);background:rgba(255,255,255,0.10);}
+.reaction-chip{display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:2px 8px;font-size:13px;cursor:pointer;transition:background 0.15s,border 0.15s;user-select:none;line-height:1.5;}
+.reaction-chip.mine{background:rgba(212,148,60,0.20);border-color:var(--goldD);}
+.reaction-chip:hover{background:rgba(212,148,60,0.14);}
+.reaction-chip .rc{font-size:10px;color:var(--muted);font-weight:600;margin-left:1px;}
+.reply-quote{background:rgba(255,255,255,0.05);border-left:2.5px solid var(--gold);border-radius:0 6px 6px 0;padding:4px 8px;margin-bottom:6px;cursor:pointer;}
+.reply-quote .rq-name{font-size:9px;font-weight:700;color:var(--gold);margin-bottom:1px;}
+.reply-quote .rq-text{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;}
 </style>
 </head>
 <body>
@@ -905,6 +916,16 @@ input::placeholder,textarea::placeholder{color:var(--muted);}
             <span style="width:8px;height:8px;border-radius:50%;background:#E84040;display:inline-block;animation:pulse 1s infinite;"></span>
             <span id="voice-rec-time" style="font-size:12px;color:#E84040;font-weight:700;">0:00</span>
             <span id="voice-rec-label" style="font-size:11px;color:var(--muted);">Enregistrement...</span>
+          </div>
+        </div>
+        <!-- Reply preview -->
+        <div id="reply-preview" style="display:none;background:rgba(212,148,60,0.08);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;padding:6px 10px;margin-bottom:6px;position:relative;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+            <div style="flex:1;overflow:hidden;">
+              <div id="reply-preview-name" style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:2px;"></div>
+              <div id="reply-preview-text" style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90%;"></div>
+            </div>
+            <button onclick="clearReply()" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0;line-height:1;flex-shrink:0;">✕</button>
           </div>
         </div>
         <!-- Input texte + envoyer -->
@@ -5105,35 +5126,49 @@ function getAvatarHtml(s, role, size=32){
 function buildMsgHtml(s,msgs){
   if(!msgs||!Object.keys(msgs).length||!msgs.length)return '';
   const msgsArr = Array.isArray(msgs) ? msgs : Object.values(msgs).sort((a,b)=>a.ts-b.ts);
+  // Build a msgId→msg lookup for reply quotes
+  const msgMap = {};
+  msgsArr.forEach(m=>{ msgMap[String(m.id||m.ts)] = m; });
+
   return msgsArr.map(m=>{
     const isMe = m.role === myRole;
     const nm  = s?.[m.role]?.name || '?';
     const lg  = s?.[m.role]?.lang || 'fr';
-
-    // ── Couleurs : toujours basées sur le rôle réel (p1=bleu, p2=rouge) ──
-    // Position : MOI à droite, AUTRE à gauche (comme WhatsApp)
     const col = m.role==='p1' ? 'var(--p1)' : 'var(--p2)';
     const bg  = m.role==='p1' ? '#182A40'   : '#2E1810';
     const bd  = m.role==='p1' ? 'var(--p1b)': 'var(--p2b)';
-
     const avatarHtml = getAvatarHtml(s, m.role, 32);
     const time = new Date(m.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     const edited = m.edited
       ? '<span style="font-size:9px;color:var(--muted);font-style:italic;"> · '+(myLang==='fr'?'modifié':'edited')+'</span>' : '';
     const deleted = !!m.deleted;
-
-    // ── Layout WhatsApp ──
-    // MOI   → row-reverse : [bulle][avatar]  bulle à droite
-    // AUTRE → row         : [avatar][bulle]  bulle à gauche
-    const rowDir      = isMe ? 'row-reverse' : 'row';
+    const msgId = String(m.id||m.ts);
     const radiusCorner = isMe ? 'border-bottom-right-radius:4px' : 'border-bottom-left-radius:4px';
-    const bubbleAlign  = isMe ? 'margin-left:auto' : 'margin-right:auto';
-    const msgId=m.id||m.ts;
-    // Menu édition/suppression (seulement mes messages, pas supprimés)
+
+    // ── Reply quote (message being replied to) ──
+    let replyQuoteHtml = '';
+    if(m.replyTo && !deleted){
+      const orig = msgMap[String(m.replyTo)];
+      if(orig){
+        const origNm = s?.[orig.role]?.name || '?';
+        let origPreview = orig.deleted ? (myLang==='fr'?'Message supprimé':'Deleted message')
+          : orig.type==='photo' ? '📷 Photo'
+          : orig.type==='voice' ? '🎙️ Voice message'
+          : (orig.text||'').slice(0,60)+(orig.text?.length>60?'…':'');
+        replyQuoteHtml = `<div class="reply-quote" onclick="_scrollToMsg('${m.replyTo}')">
+          <div class="rq-name">${origNm}</div>
+          <div class="rq-text">${origPreview}</div>
+        </div>`;
+      }
+    }
+
+    // ── Actions (edit/delete) ──
     const actionsHtml = isMe && !deleted ? `
       <button onclick="editChatMsg('${msgId}')" title="${myLang==='fr'?'Modifier':'Edit'}" style="background:rgba(212,148,60,0.1);border:1px solid var(--goldD);color:var(--gold);cursor:pointer;font-size:11px;padding:3px 8px;border-radius:6px;font-family:'Outfit',sans-serif;">✏️</button>
       <button onclick="deleteChatMsg('${msgId}')" title="${myLang==='fr'?'Supprimer':'Delete'}" style="background:rgba(232,80,80,0.08);border:1px solid rgba(232,80,80,0.25);color:#E87070;cursor:pointer;font-size:11px;padding:3px 8px;border-radius:6px;font-family:'Outfit',sans-serif;">🗑️</button>
     ` : '';
+
+    // ── Text / media content ──
     let textHtml;
     if(deleted){
       textHtml=`<span style="font-size:12px;color:var(--muted);font-style:italic;">🚫 ${myLang==='fr'?'Message supprimé':'Message deleted'}</span>`;
@@ -5153,34 +5188,57 @@ function buildMsgHtml(s,msgs){
     } else {
       textHtml=`<div style="font-size:13px;line-height:1.6;color:var(--cream);white-space:pre-wrap;">${m.text}</div>`;
     }
-    // Badge "RÉPONSE" si c'est le premier message (réponse officielle)
+
+    // ── Answer badge ──
     const answerBadge = m.isAnswer && !deleted
       ? `<span style="font-size:8px;font-weight:800;letter-spacing:0.06em;color:var(--gold);background:rgba(212,148,60,0.15);border:1px solid var(--goldD);border-radius:6px;padding:1px 6px;margin-left:4px;text-transform:uppercase;">${myLang==='fr'?'Réponse':'Answer'}</span>` : '';
     const answerBorderTop = m.isAnswer && !deleted ? 'border-top:2px solid var(--gold);' : '';
-
-    // WhatsApp : nom seulement si ANSWER (première réponse) sinon juste l'heure
     const showName = m.isAnswer && !deleted;
-    const bubbleContent = `<div style="max-width:82%;min-width:80px;background:${bg};border:1px solid ${bd};${answerBorderTop}border-radius:14px;${radiusCorner};padding:8px 12px;word-break:break-word;box-sizing:border-box;">`
+
+    // ── Reactions bar ──
+    let reactHtml = '';
+    if(m.reactions && !deleted){
+      const rMap = {};
+      Object.entries(m.reactions).forEach(([role,emoji])=>{ rMap[emoji]=(rMap[emoji]||[]); rMap[emoji].push(role); });
+      const chips = Object.entries(rMap).map(([emoji,roles])=>{
+        const isMine = roles.includes(myRole);
+        const count = roles.length;
+        return `<button class="reaction-chip${isMine?' mine':''}" onclick="toggleReaction('${msgId}','${emoji}')" title="${roles.map(r=>s?.[r]?.name||r).join(', ')}">${emoji}<span class="rc">${count>1?count:''}</span></button>`;
+      }).join('');
+      if(chips) reactHtml = `<div class="msg-reactions">${chips}</div>`;
+    }
+
+    // ── Emoji reaction trigger button (appears on hover / always on mobile) ──
+    const emojiBtn = !deleted ? `<button class="emoji-react-btn" onclick="showEmojiPicker(event,'${msgId}')" style="background:none;border:1px solid var(--faint);border-radius:50%;width:26px;height:26px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0.55;flex-shrink:0;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.55'" title="${myLang==='fr'?'Réagir':'React'}">😊</button>` : '';
+
+    // ── Reply button ──
+    const replyBtn = !deleted ? `<button onclick="setReply('${msgId}')" style="background:none;border:1px solid var(--faint);border-radius:50%;width:26px;height:26px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0.55;flex-shrink:0;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.55'" title="${myLang==='fr'?'Répondre':'Reply'}">↩️</button>` : '';
+
+    // ── Action buttons (reply + react) positioned beside bubble ──
+    const sideBtns = `<div style="display:flex;flex-direction:column;gap:4px;align-self:center;">${replyBtn}${emojiBtn}</div>`;
+
+    const bubbleContent = `<div style="max-width:78%;min-width:80px;background:${bg};border:1px solid ${bd};${answerBorderTop}border-radius:14px;${radiusCorner};padding:8px 12px;word-break:break-word;box-sizing:border-box;" data-msgid="${msgId}">`
       +(showName ? `<div style="font-size:10px;font-weight:700;color:${col};margin-bottom:4px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">${nm} <span class="lang-chip ${lg}" style="font-size:8px;">${lg==='fr'?'🇫🇷':'🇬🇧'}</span>${answerBadge}</div>` : '')
+      +replyQuoteHtml
       +textHtml
       +`<div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:4px;">
           ${isMe && !deleted ? actionsHtml : ''}
           <span style="font-size:9px;color:var(--muted);white-space:nowrap;">${time}${edited}</span>
         </div>`
+      +reactHtml
     +'</div>';
-    // WhatsApp layout : MOI à droite (avatar à droite), AUTRE à gauche (avatar à gauche)
-    // On utilise flex-direction:row pour tout, et on ordonne avatar/bulle selon isMe
+
     if(isMe){
-      // MOI : bulle à gauche de l'avatar → [bulle][avatar] avec justify flex-end
-      return `<div class="chat-msg-row" style="display:flex;flex-direction:row;justify-content:flex-end;gap:8px;align-items:flex-end;width:100%;box-sizing:border-box;margin-bottom:10px;" data-msgid="${msgId}">`
+      return `<div class="chat-msg-row" style="display:flex;flex-direction:row;justify-content:flex-end;gap:6px;align-items:flex-end;width:100%;box-sizing:border-box;margin-bottom:10px;" data-msgid="${msgId}">`
+        +sideBtns
         +bubbleContent
         +avatarHtml
       +'</div>';
     } else {
-      // AUTRE : avatar à gauche, bulle à droite → [avatar][bulle] avec justify flex-start
-      return `<div class="chat-msg-row" style="display:flex;flex-direction:row;justify-content:flex-start;gap:8px;align-items:flex-end;width:100%;box-sizing:border-box;margin-bottom:10px;" data-msgid="${msgId}">`
+      return `<div class="chat-msg-row" style="display:flex;flex-direction:row;justify-content:flex-start;gap:6px;align-items:flex-end;width:100%;box-sizing:border-box;margin-bottom:10px;" data-msgid="${msgId}">`
         +avatarHtml
         +bubbleContent
+        +sideBtns
       +'</div>';
     }
   }).join('');
@@ -5753,6 +5811,141 @@ async function deleteChatMsg(msgId){
   _updateChatMsgs(s,_currentChatQk);
 }
 
+// ═══════════════════════════════════════
+// REPLY & REACTIONS
+// ═══════════════════════════════════════
+let _replyToMsgId = null;   // currently selected reply target
+
+function setReply(msgId){
+  _replyToMsgId = msgId;
+  // Find the message in current chat
+  const qk = _currentChatQk;
+  if(!qk || !lastRoom) return;
+  const key = getChatKey(qk);
+  const msgs = lastRoom?.chat?.[key];
+  if(!msgs) return;
+  const msgsArr = Array.isArray(msgs) ? msgs : Object.values(msgs);
+  const orig = msgsArr.find(m=>String(m.id||m.ts)===String(msgId));
+  if(!orig) return;
+
+  const s = lastRoom;
+  const origNm = s?.[orig.role]?.name || '?';
+  let preview = orig.deleted ? (myLang==='fr'?'Message supprimé':'Deleted')
+    : orig.type==='photo' ? '📷 Photo'
+    : orig.type==='voice' ? '🎙️ Message vocal'
+    : (orig.text||'').slice(0,80);
+
+  const zone = document.getElementById('reply-preview');
+  const nameEl = document.getElementById('reply-preview-name');
+  const textEl = document.getElementById('reply-preview-text');
+  if(zone && nameEl && textEl){
+    nameEl.textContent = myLang==='fr' ? `↩ ${origNm}` : `↩ ${origNm}`;
+    textEl.textContent = preview;
+    zone.style.display = 'block';
+  }
+  // Focus input
+  setTimeout(()=>{ const inp=document.getElementById('chat-input'); if(inp) inp.focus(); }, 80);
+}
+
+function clearReply(){
+  _replyToMsgId = null;
+  const zone = document.getElementById('reply-preview');
+  if(zone) zone.style.display = 'none';
+}
+
+function _scrollToMsg(msgId){
+  const el = document.querySelector(`[data-msgid="${msgId}"]`);
+  if(!el) return;
+  el.scrollIntoView({behavior:'smooth', block:'center'});
+  // Flash highlight
+  el.style.transition = 'background 0.2s';
+  el.style.background = 'rgba(212,148,60,0.15)';
+  setTimeout(()=>{ el.style.background = ''; }, 900);
+}
+
+// ── Emoji picker ──
+const REACTION_EMOJIS = ['❤️','😂','😮','😢','🔥','👏','🙏','💯','😍','🥰'];
+let _emojiPickerOpen = null;
+
+function showEmojiPicker(e, msgId){
+  e.stopPropagation();
+  // Close any open picker
+  _closeEmojiPicker();
+
+  const btn = e.currentTarget;
+  const rect = btn.getBoundingClientRect();
+  const picker = document.createElement('div');
+  picker.className = 'emoji-picker-popup';
+  picker.id = '_emoji-picker';
+
+  REACTION_EMOJIS.forEach(emoji=>{
+    const b = document.createElement('button');
+    b.textContent = emoji;
+    b.onclick = (ev)=>{ ev.stopPropagation(); toggleReaction(msgId, emoji); _closeEmojiPicker(); };
+    picker.appendChild(b);
+  });
+
+  document.body.appendChild(picker);
+  // Position above the button
+  const pw = picker.offsetWidth || 260;
+  let left = rect.left - pw/2 + btn.offsetWidth/2;
+  left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+  const top = rect.top + window.scrollY - picker.offsetHeight - 10;
+  picker.style.left = left + 'px';
+  picker.style.top = Math.max(8, top) + 'px';
+  picker.style.position = 'fixed';
+  picker.style.top = (rect.top - picker.offsetHeight - 10) + 'px';
+
+  _emojiPickerOpen = msgId;
+
+  // Close on outside click
+  setTimeout(()=>{
+    document.addEventListener('click', _closeEmojiPicker, {once:true});
+  }, 10);
+}
+
+function _closeEmojiPicker(){
+  const p = document.getElementById('_emoji-picker');
+  if(p) p.remove();
+  _emojiPickerOpen = null;
+}
+
+async function toggleReaction(msgId, emoji){
+  const qk = _currentChatQk;
+  if(!qk || !roomCode) return;
+  const key = getChatKey(qk);
+
+  // Optimistic local update
+  if(!lastRoom) return;
+  lastRoom.chat = lastRoom.chat || {};
+  lastRoom.chat[key] = lastRoom.chat[key] || {};
+  const msgs = lastRoom.chat[key];
+  const msgsArr = Array.isArray(msgs) ? msgs : Object.values(msgs);
+  const msg = msgsArr.find(m=>String(m.id||m.ts)===String(msgId));
+  if(!msg) return;
+
+  msg.reactions = msg.reactions || {};
+  if(msg.reactions[myRole] === emoji){
+    // Toggle off same emoji
+    delete msg.reactions[myRole];
+  } else {
+    msg.reactions[myRole] = emoji;
+  }
+
+  // Refresh UI immediately
+  _updateChatMsgs(lastRoom, qk);
+
+  // Persist to Firebase
+  try{
+    const val = msg.reactions[myRole] || null;
+    await fetch(`${FB}/rooms/${roomCode}/chat/${key}/${msgId}/reactions/${myRole}.json`,{
+      method: val ? 'PUT' : 'DELETE',
+      headers:{'Content-Type':'application/json'},
+      body: val ? JSON.stringify(val) : undefined
+    });
+  }catch(e){ console.warn('reaction save failed', e); }
+}
+
 async function sendChatMsg(qk){
   const input=document.getElementById('chat-input');
   const text=input?.value.trim();
@@ -5767,6 +5960,8 @@ async function sendChatMsg(qk){
   const key=getChatKey(qk);
   const msgId=Date.now()+'_'+Math.random().toString(36).slice(2,7);
   const msg={id:msgId,role:myRole,text,ts:Date.now(),isAnswer:isFirstMsg};
+  // Attach reply reference if set
+  if(_replyToMsgId){ msg.replyTo = _replyToMsgId; clearReply(); }
 
   try{
     // 1. Sauvegarder le message dans chat
