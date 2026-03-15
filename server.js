@@ -35,7 +35,13 @@ function httpsPost(url, data, token) {
     req.end();
   });
 }
-const SERVICE_ACCOUNT = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+let SERVICE_ACCOUNT;
+try {
+  SERVICE_ACCOUNT = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
+} catch(e) {
+  console.error('FIREBASE_SERVICE_ACCOUNT JSON invalide:', e.message);
+  process.exit(1);
+}
 const PROJECT_ID = 'nous-deux-fb69a';
 const FCM_URL = `https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`;
 
