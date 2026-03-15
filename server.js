@@ -1,13 +1,40 @@
 const express = require('express');
 const cors = require('cors');
 const { GoogleAuth } = require('google-auth-library');
-const fetch = require('node-fetch');
+const https = require('https');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Clé de service Firebase (injectée via variable d'environnement sur Render)
+// Fonction pour faire une requête HTTPS
+function httpsPost(url, data, token) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const body = JSON.stringify(data);
+    const options = {
+      hostname: urlObj.hostname,
+      path: urlObj.pathname,
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body)
+      }
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try { resolve({ ok: res.statusCode < 300, status: res.statusCode, json: () => JSON.parse(data) }); }
+        catch(e) { resolve({ ok: false, status: res.statusCode, json: () => ({}) }); }
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
 const SERVICE_ACCOUNT = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 const PROJECT_ID = 'nous-deux-fb69a';
 const FCM_URL = `https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`;
@@ -54,16 +81,8 @@ app.post('/notify', async (req, res) => {
       }
     };
 
-    const response = await fetch(FCM_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(message),
-    });
-
-    const result = await response.json();
+    const response = await httpsPost(FCM_URL, message, accessToken);
+    const result = response.json();
 
     if (!response.ok) {
       console.error('FCM error:', result);
