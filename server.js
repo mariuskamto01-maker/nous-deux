@@ -1,109 +1,57 @@
 const express = require('express');
+const fetch = require('node-fetch');
+const admin = require('firebase-admin');
 const cors = require('cors');
-const { GoogleAuth } = require('google-auth-library');
-const https = require('https');
-
 const app = express();
-app.use(cors());
-app.use(express.json());
 
-// Fonction pour faire une requête HTTPS
-function httpsPost(url, data, token) {
-  return new Promise((resolve, reject) => {
-    const urlObj = new URL(url);
-    const body = JSON.stringify(data);
-    const options = {
-      hostname: urlObj.hostname,
-      path: urlObj.pathname,
+app.use(cors());
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
+
+// ── PROXY CLAUDE API ─────────────────────────────────────────
+app.post('/claude-proxy', async (req, res) => {
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body)
-      }
-    };
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try { resolve({ ok: res.statusCode < 300, status: res.statusCode, json: () => JSON.parse(data) }); }
-        catch(e) { resolve({ ok: false, status: res.statusCode, json: () => ({}) }); }
-      });
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify(req.body)
     });
-    req.on('error', reject);
-    req.write(body);
-    req.end();
-  });
-}
-let SERVICE_ACCOUNT;
-try {
-  SERVICE_ACCOUNT = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
-} catch(e) {
-  console.error('FIREBASE_SERVICE_ACCOUNT JSON invalide:', e.message);
-  process.exit(1);
-}
-const PROJECT_ID = 'nous-deux-fb69a';
-const FCM_URL = `https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`;
-
-// Obtenir un token OAuth2 pour FCM v1
-async function getAccessToken() {
-  const auth = new GoogleAuth({
-    credentials: SERVICE_ACCOUNT,
-    scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
-  });
-  const client = await auth.getClient();
-  const token = await client.getAccessToken();
-  return token.token;
-}
-
-// Route principale — envoyer une notification
-app.post('/notify', async (req, res) => {
-  const { token, title, body, data } = req.body;
-
-  if (!token || !title || !body) {
-    return res.status(400).json({ error: 'token, title, body requis' });
-  }
-
-  try {
-    const accessToken = await getAccessToken();
-
-    const message = {
-      message: {
-        token,
-        notification: { title, body },
-        data: data || {},
-        webpush: {
-          notification: {
-            title,
-            body,
-            icon: '/icon-192.png',
-            badge: '/icon-192.png',
-            vibrate: [200, 100, 200],
-          },
-          fcm_options: {
-            link: 'https://chic-shortbread-0efcc9.netlify.app'
-          }
-        }
-      }
-    };
-
-    const response = await httpsPost(FCM_URL, message, accessToken);
-    const result = response.json();
-
-    if (!response.ok) {
-      console.error('FCM error:', result);
-      return res.status(500).json({ error: result });
-    }
-
-    res.json({ success: true, result });
-  } catch (e) {
-    console.error('Server error:', e);
+    const data = await response.json();
+    res.json(data);
+  } catch(e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// Health check
-app.get('/', (req, res) => res.json({ status: 'ok', service: 'nous-deux-notif' }));
+// ── NOTIFICATIONS FIREBASE ───────────────────────────────────
+let serviceAccount;
+try {
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
+} catch(e) {}
+
+if(serviceAccount && serviceAccount.project_id) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+}
+
+app.post('/notify', async (req, res) => {
+  try {
+    const { token, title, body, data } = req.body;
+    if(!token) return res.json({ ok: false, error: 'no token' });
+    const message = { token, notification: { title, body }, data: data || {} };
+    const result = await admin.messaging().send(message);
+    res.json({ ok: true, result });
+  } catch(e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/health', (req, res) => res.json({ ok: true }));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Serveur notifications démarré sur port ${PORT}`));
+app.listen(PORT, () => console.log('Server running on port', PORT));
